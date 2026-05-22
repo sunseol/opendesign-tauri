@@ -1,5 +1,13 @@
 # Open Design Tauri
 
+<p align="center">
+  <a href="#korean">한국어</a> · <a href="#english">English</a>
+</p>
+
+<a id="korean"></a>
+
+## 한국어
+
 이 저장소는 공식 `nexu-io/open-design` 저장소가 아닙니다.
 
 `Open Design Tauri`는 Open Design의 데스크톱 런타임을 Electron 중심에서
@@ -224,3 +232,234 @@ pnpm tools-pack linux cleanup
 차이를 설명하기 위해 별도로 작성되었습니다.
 
 License는 원본과 동일하게 Apache-2.0을 따릅니다.
+
+<p align="right"><a href="#open-design-tauri">Back to top</a></p>
+
+<a id="english"></a>
+
+## English
+
+This repository is not the official `nexu-io/open-design` repository.
+
+`Open Design Tauri` is a personal fork for moving Open Design's desktop
+runtime from an Electron-centered path to a Tauri-centered path. The goal is to
+keep the core product experience intact, including the web app, local daemon,
+skills, design systems, and BYOK/CLI agent flow, while making the desktop shell
+and packaging path smaller and clearer through Tauri.
+
+- Upstream project: <https://github.com/nexu-io/open-design>
+- This fork: <https://github.com/sunseol/opendesign-tauri>
+- Main working branch: `codex/electron-to-tauri-migration`
+
+## Why this fork exists
+
+The original PR path repeatedly hit merge conflicts and review/CI approval
+blocks. This repository backs up the Electron to Tauri migration work so it can
+continue independently and safely.
+
+This fork does not claim to replace upstream. Its purpose is narrower:
+
+1. Finish a maintainable Tauri-based desktop runtime.
+2. Keep the existing Open Design web/daemon/agent behavior as intact as possible.
+3. Keep Electron as an explicit transition fallback instead of deleting it at once.
+4. Validate macOS, Windows, and Linux packaging through the Tauri path.
+
+## What is different from upstream
+
+| Area | Upstream Open Design | This fork |
+| --- | --- | --- |
+| Desktop runtime | Electron-centered or Electron-compatible path | Tauri is the default desktop runtime |
+| Electron | Default shell or strong fallback role | Explicit transition fallback |
+| Tauri | Migration and validation target | Default run and packaging target |
+| Packaging | Includes Electron builder-centered flows | Prioritizes Tauri mac/Windows/Linux flows in `tools-pack` |
+| Desktop IPC | Desktop shell plus sidecar IPC | The Tauri shell keeps the same STATUS/EVAL/SCREENSHOT/CONSOLE/CLICK/SHUTDOWN layer |
+| Purpose | Official Open Design product development | Preserve and independently validate the Tauri migration line |
+
+## What was migrated
+
+The work on this branch is not a product rewrite. It keeps the existing Open
+Design product structure and moves the desktop shell toward Tauri.
+
+Main migration areas:
+
+- Add and wire a Tauri desktop runtime under `apps/desktop/src-tauri/`
+- Flip `tools-dev` and `tools-pack` desktop runtime defaults to Tauri
+- Keep Electron as an explicit fallback, for example `--desktop-runtime electron`
+- Add macOS Tauri app/DMG, Windows NSIS, and Linux AppImage packaging paths
+- Organize Tauri packaged app handling for daemon/web sidecars and runtime resources
+- Preserve desktop inspection IPC:
+  `status`, `eval`, `screenshot`, `console`, `click`, `shutdown`
+- Add migration guard, status, handoff, and platform evidence scripts
+- Keep Tauri build output out of git:
+  `apps/desktop/src-tauri/gen/`, `apps/desktop/src-tauri/target/`
+
+## Why Tauri is better for this project
+
+Open Design is centered on a web UI and a local daemon. The desktop shell is not
+the whole product; it is a thin host that opens the web UI and coordinates daemon
+and sidecar state. That shape fits Tauri better than Electron.
+
+### 1. A thinner desktop shell
+
+Electron brings a large Chromium and Node runtime into the desktop shell. Open
+Design already separates the web app from the daemon, so the desktop host does
+not need to own a full heavy browser runtime.
+
+Tauri uses the OS webview and a Rust native shell, which keeps the desktop host
+smaller. This fork treats the desktop app as a small native wrapper while the
+real product logic stays in the existing web/daemon layers.
+
+### 2. Clearer security boundaries
+
+Open Design touches local files, agent CLIs, project workspaces, and packaged
+sidecars. Privileged work should stay concentrated in the daemon, while the UI
+shell should hold as little authority as possible.
+
+The Tauri migration makes that boundary clearer:
+
+- The web UI owns the user experience and preview surface
+- The daemon owns filesystem access, agent spawn, SQLite, and APIs
+- The Tauri shell owns web URL discovery and desktop lifecycle
+- Sidecar IPC connects daemon, web, and desktop through typed stamps and namespaces
+
+### 3. The product experience stays intact
+
+This migration is not a UI rewrite. The core Open Design loop remains:
+
+- skill-based artifact generation
+- design systems
+- local project workspace
+- BYOK/API proxy
+- coding-agent CLI integration
+- sandboxed artifact preview
+- persistent conversations and files
+
+The user-facing Open Design experience stays in place. The delivery layer moves
+from Electron toward Tauri.
+
+### 4. Simpler packaging and delivery
+
+This fork treats packaged desktop builds as Tauri-first:
+
+- macOS: app bundle, DMG
+- Windows: NSIS installer
+- Linux: AppImage
+
+Electron artifacts remain as transition fallback paths, but the default
+validation and documentation direction is Tauri.
+
+### 5. Lower long-term maintenance cost
+
+Keeping Electron as the default makes the desktop shell, packaging, update,
+native resource handling, and Electron builder configuration a large permanent
+maintenance surface.
+
+The Tauri direction keeps the desktop host smaller and leaves product logic in
+the already existing web/daemon boundary. The core judgment behind this fork is:
+
+> Open Design's value is not the Electron shell. It is the local daemon + agent +
+> skills + design systems loop.
+
+## Current status
+
+On this branch, Tauri is the default desktop runtime. Electron has not been fully
+removed; it remains as an explicit fallback.
+
+Main verification commands used during the migration:
+
+```bash
+pnpm install
+pnpm guard
+pnpm typecheck
+pnpm --filter @open-design/e2e typecheck
+pnpm exec tsx scripts/tauri-migration-inventory.ts --json
+```
+
+Additional checks used while resolving main-branch conflicts:
+
+```bash
+git diff --check
+pnpm --filter @open-design/contracts build
+```
+
+## Local development
+
+Use Node.js `~24` and `pnpm@10.33.2`.
+
+```bash
+corepack enable
+pnpm install
+pnpm tools-dev
+```
+
+Check status:
+
+```bash
+pnpm tools-dev status --json
+pnpm tools-dev inspect desktop status --json
+```
+
+Capture a desktop screenshot:
+
+```bash
+pnpm tools-dev inspect desktop screenshot --path /tmp/open-design-tauri.png
+```
+
+Use the Electron fallback only when needed:
+
+```bash
+pnpm tools-dev --desktop-runtime electron
+```
+
+## Packaging
+
+Tauri-first packaging commands:
+
+```bash
+pnpm tools-pack mac build --to all
+pnpm tools-pack win build --to nsis
+pnpm tools-pack linux build --to appimage
+```
+
+Install and cleanup:
+
+```bash
+pnpm tools-pack mac install
+pnpm tools-pack mac cleanup
+
+pnpm tools-pack win install
+pnpm tools-pack win cleanup
+
+pnpm tools-pack linux install
+pnpm tools-pack linux cleanup
+```
+
+## Remaining work
+
+This repository preserves the migration worktree, so these areas still need
+ongoing validation:
+
+- Keep resolving drift from upstream `main`
+- Confirm real CI results after GitHub Actions fork approval
+- Refresh macOS, Windows, and Linux smoke evidence on real platforms
+- Narrow the Electron fallback surface
+- Decide how much Electron-only packaging code should remain
+- Re-check public release channel names, updater feeds, and installer identity
+
+## Development principles
+
+Three principles guide this fork:
+
+1. Tauri is the default.
+2. The Open Design web/daemon/agent structure stays intact.
+3. Electron is a transition fallback, not the long-term default.
+
+## Attribution
+
+This repository started as a fork of `nexu-io/open-design`. It builds on the
+work of the upstream project and its contributors. This README was rewritten to
+explain the purpose and differences of the Tauri migration fork.
+
+The license remains Apache-2.0, matching upstream.
+
+<p align="right"><a href="#open-design-tauri">Back to top</a></p>
