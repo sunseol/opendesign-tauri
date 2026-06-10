@@ -153,6 +153,68 @@ git diff --check
 pnpm --filter @open-design/contracts build
 ```
 
+## 원본 기능 parity 계획
+
+이 fork의 본질은 "기능이 줄어든 Open Design"이 아니라 "Open Design의 Tauri
+버전"입니다. 따라서 최종 목표는 upstream `nexu-io/open-design`과 사용자 기능
+차이가 없도록 맞추는 것입니다. 차이는 desktop delivery layer에만 있어야 하며,
+기본 desktop runtime은 Tauri로 유지합니다.
+
+2026-06-11 parity audit 기준:
+
+- 원본 기준점: `nexu-io/open-design@ca22620b4`
+- 이 fork 기준점: `sunseol/opendesign-tauri@072fa2323b31`
+- 차이 규모: upstream-only `956` commits, 약 `4,325` changed files
+- 추적 위치: <https://github.com/sunseol/opendesign-tauri/issues>
+
+동기화 원칙:
+
+1. upstream 기능은 누락하지 않는다.
+2. Tauri를 기본 desktop runtime으로 유지한다.
+3. Electron은 검증된 Tauri 경로가 완성될 때까지 명시적 fallback으로만 둔다.
+4. web, daemon, skills, design systems, BYOK, plugin, media, release 기능은
+   upstream과 같은 수준으로 맞춘다.
+5. 큰 upstream 차이는 한 번에 섞지 않고 기능군별 이슈로 나누어 검증한다.
+
+등록한 parity 이슈:
+
+- [#1 Merge upstream main safely while preserving Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/1)
+- [#2 Port 0.10 Studio workspace features](https://github.com/sunseol/opendesign-tauri/issues/2)
+- [#3 Port question-form, discovery, onboarding, and ask-user changes](https://github.com/sunseol/opendesign-tauri/issues/3)
+- [#4 Port AMR, BYOK, model router, and provider integration upgrades](https://github.com/sunseol/opendesign-tauri/issues/4)
+- [#5 Port plugin marketplace, official plugins, baked previews, and Use menu](https://github.com/sunseol/opendesign-tauri/issues/5)
+- [#6 Port media generation, HyperFrames, image/video templates, and export surfaces](https://github.com/sunseol/opendesign-tauri/issues/6)
+- [#7 Port daemon runtime, sandbox, MCP bundles, resume, and error recovery](https://github.com/sunseol/opendesign-tauri/issues/7)
+- [#8 Port design-system 2.0, shadcn import, token contracts, and catalog updates](https://github.com/sunseol/opendesign-tauri/issues/8)
+- [#9 Port web UX polish: home, workspace, composer, manual edit, toolbox](https://github.com/sunseol/opendesign-tauri/issues/9)
+- [#10 Port landing, download, community, tutorials, SEO, and i18n surfaces](https://github.com/sunseol/opendesign-tauri/issues/10)
+- [#11 Port analytics, telemetry, Langfuse, consent, and observability changes](https://github.com/sunseol/opendesign-tauri/issues/11)
+- [#12 Port release, CI, packaging, updater, and deployment workflow changes](https://github.com/sunseol/opendesign-tauri/issues/12)
+- [#13 Port contribution workflows, MCP install, templates, and repository governance assets](https://github.com/sunseol/opendesign-tauri/issues/13)
+- [#14 Port desktop and packaged runtime changes while keeping Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/14)
+
+권장 동기화 순서:
+
+1. [#1](https://github.com/sunseol/opendesign-tauri/issues/1)에서 upstream
+   merge/rebase 전략과 충돌 정책을 먼저 확정한다.
+2. [#7](https://github.com/sunseol/opendesign-tauri/issues/7),
+   [#12](https://github.com/sunseol/opendesign-tauri/issues/12),
+   [#14](https://github.com/sunseol/opendesign-tauri/issues/14)로 daemon,
+   CI/release, packaged desktop 기반을 먼저 맞춘다.
+3. [#2](https://github.com/sunseol/opendesign-tauri/issues/2),
+   [#3](https://github.com/sunseol/opendesign-tauri/issues/3),
+   [#4](https://github.com/sunseol/opendesign-tauri/issues/4)로 Studio,
+   onboarding/question flow, AMR/BYOK 기능을 맞춘다.
+4. [#5](https://github.com/sunseol/opendesign-tauri/issues/5),
+   [#6](https://github.com/sunseol/opendesign-tauri/issues/6),
+   [#8](https://github.com/sunseol/opendesign-tauri/issues/8)로 plugin,
+   media, design-system 기능을 맞춘다.
+5. [#9](https://github.com/sunseol/opendesign-tauri/issues/9),
+   [#10](https://github.com/sunseol/opendesign-tauri/issues/10),
+   [#11](https://github.com/sunseol/opendesign-tauri/issues/11),
+   [#13](https://github.com/sunseol/opendesign-tauri/issues/13)로 web UX,
+   landing/community, observability, contributor workflow를 정리한다.
+
 ## 로컬 실행
 
 Node.js `~24`와 `pnpm@10.33.2`를 사용합니다.
@@ -381,6 +443,70 @@ Additional checks used while resolving main-branch conflicts:
 git diff --check
 pnpm --filter @open-design/contracts build
 ```
+
+## Upstream parity plan
+
+This fork is not meant to be a reduced-functionality Open Design. It is meant
+to become the Tauri version of Open Design. The final target is no user-facing
+feature gap with upstream `nexu-io/open-design`; the difference should stay in
+the desktop delivery layer, with Tauri as the default desktop runtime.
+
+Parity audit baseline from 2026-06-11:
+
+- Upstream baseline: `nexu-io/open-design@ca22620b4`
+- Fork baseline: `sunseol/opendesign-tauri@072fa2323b31`
+- Gap size: upstream-only `956` commits and about `4,325` changed files
+- Tracking board: <https://github.com/sunseol/opendesign-tauri/issues>
+
+Sync principles:
+
+1. Do not leave upstream features behind.
+2. Keep Tauri as the default desktop runtime.
+3. Keep Electron only as an explicit fallback until equivalent Tauri paths are
+   proven.
+4. Bring web, daemon, skills, design systems, BYOK, plugin, media, and release
+   capabilities back to upstream parity.
+5. Split the large upstream delta into feature-area issues instead of mixing it
+   all into one change.
+
+Opened parity issues:
+
+- [#1 Merge upstream main safely while preserving Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/1)
+- [#2 Port 0.10 Studio workspace features](https://github.com/sunseol/opendesign-tauri/issues/2)
+- [#3 Port question-form, discovery, onboarding, and ask-user changes](https://github.com/sunseol/opendesign-tauri/issues/3)
+- [#4 Port AMR, BYOK, model router, and provider integration upgrades](https://github.com/sunseol/opendesign-tauri/issues/4)
+- [#5 Port plugin marketplace, official plugins, baked previews, and Use menu](https://github.com/sunseol/opendesign-tauri/issues/5)
+- [#6 Port media generation, HyperFrames, image/video templates, and export surfaces](https://github.com/sunseol/opendesign-tauri/issues/6)
+- [#7 Port daemon runtime, sandbox, MCP bundles, resume, and error recovery](https://github.com/sunseol/opendesign-tauri/issues/7)
+- [#8 Port design-system 2.0, shadcn import, token contracts, and catalog updates](https://github.com/sunseol/opendesign-tauri/issues/8)
+- [#9 Port web UX polish: home, workspace, composer, manual edit, toolbox](https://github.com/sunseol/opendesign-tauri/issues/9)
+- [#10 Port landing, download, community, tutorials, SEO, and i18n surfaces](https://github.com/sunseol/opendesign-tauri/issues/10)
+- [#11 Port analytics, telemetry, Langfuse, consent, and observability changes](https://github.com/sunseol/opendesign-tauri/issues/11)
+- [#12 Port release, CI, packaging, updater, and deployment workflow changes](https://github.com/sunseol/opendesign-tauri/issues/12)
+- [#13 Port contribution workflows, MCP install, templates, and repository governance assets](https://github.com/sunseol/opendesign-tauri/issues/13)
+- [#14 Port desktop and packaged runtime changes while keeping Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/14)
+
+Recommended sync order:
+
+1. Use [#1](https://github.com/sunseol/opendesign-tauri/issues/1) to settle the
+   upstream merge/rebase strategy and conflict policy first.
+2. Use [#7](https://github.com/sunseol/opendesign-tauri/issues/7),
+   [#12](https://github.com/sunseol/opendesign-tauri/issues/12), and
+   [#14](https://github.com/sunseol/opendesign-tauri/issues/14) to align daemon,
+   CI/release, and packaged desktop foundations.
+3. Use [#2](https://github.com/sunseol/opendesign-tauri/issues/2),
+   [#3](https://github.com/sunseol/opendesign-tauri/issues/3), and
+   [#4](https://github.com/sunseol/opendesign-tauri/issues/4) to align Studio,
+   onboarding/question flow, and AMR/BYOK features.
+4. Use [#5](https://github.com/sunseol/opendesign-tauri/issues/5),
+   [#6](https://github.com/sunseol/opendesign-tauri/issues/6), and
+   [#8](https://github.com/sunseol/opendesign-tauri/issues/8) to align plugin,
+   media, and design-system capabilities.
+5. Use [#9](https://github.com/sunseol/opendesign-tauri/issues/9),
+   [#10](https://github.com/sunseol/opendesign-tauri/issues/10),
+   [#11](https://github.com/sunseol/opendesign-tauri/issues/11), and
+   [#13](https://github.com/sunseol/opendesign-tauri/issues/13) to finish web
+   UX, landing/community, observability, and contributor workflows.
 
 ## Local development
 
