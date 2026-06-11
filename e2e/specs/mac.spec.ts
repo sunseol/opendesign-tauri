@@ -214,11 +214,21 @@ macDescribe('packaged mac runtime smoke', () => {
       expect(value.health.ok).toBe(true);
       expect(value.health.version).toEqual(expect.any(String));
 
+      const updaterVersion = updaterFixture.info.version;
+      const readyUpdate = await waitForUpdaterStatus(
+        (status) =>
+          status.update?.state === 'downloaded' &&
+          status.update.availableVersion === updaterVersion &&
+          typeof status.update.downloadPath === 'string',
+        'ready updater prompt update downloaded',
+      );
+      expect(readyUpdate.update?.downloadPath).toEqual(expect.any(String));
+
       const popup = await waitForUpdaterPopup();
       expect(popup.visible).toBe(true);
       expect(popup.title).toBe('Update ready');
       expect(popup.installButtonVisible).toBe(true);
-      expect(popup.text ?? '').toContain(updaterFixture.info.version);
+      expect(popup.text ?? '').toContain(updaterVersion);
 
       const updateStatus = await runToolsPackJson<MacInspectResult>('inspect', ['--update-action', 'status']);
       expect(updateStatus.update?.state).toBe('downloaded');
@@ -1642,6 +1652,28 @@ async function waitForHealthyDesktop(): Promise<MacInspectResult> {
   }
 
   throw new Error(`packaged mac runtime did not become healthy: ${formatUnknown(lastResult)}`);
+}
+
+async function waitForUpdaterStatus(
+  predicate: (inspect: MacInspectResult) => boolean,
+  label: string,
+  timeoutMs = 120_000,
+): Promise<MacInspectResult> {
+  const startedAt = Date.now();
+  let lastResult: unknown = null;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const inspect = await runToolsPackJson<MacInspectResult>('inspect', ['--update-action', 'status']);
+      lastResult = inspect;
+      if (predicate(inspect)) return inspect;
+    } catch (error) {
+      lastResult = error;
+    }
+    await delay(750);
+  }
+
+  throw new Error(`${label}: updater status timed out: ${formatUnknown(lastResult)}`);
 }
 
 async function waitForUpdaterPopup(): Promise<UpdaterPopupEvalValue> {
