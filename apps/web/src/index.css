@@ -6757,6 +6757,13 @@ a.avatar-item:visited {
 
 /* -------- Design system picker (custom popover dropdown) ------------ */
 .ds-picker { position: relative; }
+/* Each `.newproj-section` keeps a residual identity transform from the
+   `od-fade-slide-up` entrance animation (`animation-fill-mode: both`), which
+   makes every section its own stacking context. `.ds-picker` is such a
+   section, so the popover's `z-index` is trapped inside the picker and cannot
+   rise above later sibling sections (Target platforms, Companion, Fidelity,
+   Create). Lift the open picker's whole stacking context above its siblings. */
+.ds-picker.open { z-index: 40; }
 .ds-picker-trigger {
   display: flex;
   align-items: center;
@@ -27350,7 +27357,7 @@ body.desktop-pet-shell .pet-task-item {
 .project-ds-picker-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 210;
+  z-index: 1800;
   background: color-mix(in srgb, var(--text) 38%, transparent);
   backdrop-filter: blur(2px);
   display: flex;
