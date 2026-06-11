@@ -188,7 +188,8 @@ test('captures the avatar menu surface', async ({ page }) => {
   await gotoVisualWorkspace(page);
 
   const menu = await openAvatarMenu(page);
-  await expect(menu.getByRole('button', { name: /^Settings\b/i })).toBeVisible();
+  // Settings lives in the header gear; keep this capture scoped to the menu.
+  await expect(menu.locator('.avatar-item').first()).toBeVisible();
 
   await captureVisual(page, 'visual-avatar-menu');
 });
@@ -198,8 +199,7 @@ test('captures the settings execution surface', async ({ page }) => {
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
 
-  const menu = await openAvatarMenu(page);
-  await menu.getByRole('button', { name: /^Settings\b/i }).click();
+  await page.locator('.settings-icon-btn').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('tab', { name: /Local CLI/i })).toBeVisible();
@@ -214,8 +214,7 @@ test('captures the settings BYOK surface', async ({ page }) => {
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
 
-  const menu = await openAvatarMenu(page);
-  await menu.getByRole('button', { name: /^Settings\b/i }).click();
+  await page.locator('.settings-icon-btn').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('tab', { name: 'BYOK' }).click();
