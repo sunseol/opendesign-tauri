@@ -1219,6 +1219,7 @@ function QueuedSendStrip({
                   className="chat-queued-send-action"
                   title={t('chat.send')}
                   aria-label={t('chat.send')}
+                  data-testid="chat-queued-send-now"
                   onClick={() => onSendNow?.(item.id)}
                   disabled={!onSendNow}
                 >
