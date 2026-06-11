@@ -51,6 +51,10 @@ const AGENT_INSTALL_LINKS: Record<
     installUrl: 'https://github.com/github/copilot-cli',
     docsUrl: 'https://docs.github.com/en/copilot/how-tos/use-copilot-extensions/use-in-cli',
   },
+  codebuddy: {
+    installUrl: 'https://www.codebuddy.cn',
+    docsUrl: 'https://www.codebuddy.cn/docs/workbuddy/Overview',
+  },
   pi: {
     installUrl: 'https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md',
     docsUrl: 'https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md',

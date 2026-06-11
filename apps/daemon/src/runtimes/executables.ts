@@ -10,6 +10,7 @@ const AGENT_BIN_ENV_KEYS = new Map<string, string>([
   ['claude', 'CLAUDE_BIN'],
   ['codex', 'CODEX_BIN'],
   ['copilot', 'COPILOT_BIN'],
+  ['codebuddy', 'CODEBUDDY_BIN'],
   ['cursor-agent', 'CURSOR_AGENT_BIN'],
   ['deepseek', 'DEEPSEEK_BIN'],
   ['devin', 'DEVIN_BIN'],

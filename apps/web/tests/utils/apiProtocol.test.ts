@@ -43,6 +43,13 @@ describe('api protocol labels', () => {
     expect(agentDisplayName('example-agent')).toBe('example-agent');
   });
 
+  it('normalizes Codebuddy local CLI ids and aliases', () => {
+    expect(agentDisplayName('codebuddy')).toBe('Codebuddy');
+    expect(exactAgentDisplayName('Codebuddy Code')).toBe('Codebuddy');
+    expect(exactAgentDisplayName('cbc')).toBe('Codebuddy');
+    expect(agentDisplayName('/usr/local/bin/codebuddy')).toBe('Codebuddy');
+  });
+
   it('includes explicit Qoder models but hides the default model', () => {
     expect(agentModelDisplayName('qoder', 'Qoder CLI', 'ultimate')).toBe('Qoder · ultimate');
     expect(agentModelDisplayName('qoder', 'Qoder CLI', 'default')).toBe('Qoder');
