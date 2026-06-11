@@ -62,6 +62,7 @@ export function PreviewDrawOverlay({
   const [note, setNote] = useState('');
   const strokesRef = useRef<Stroke[]>([]);
   const drawingRef = useRef<Stroke | null>(null);
+  const composingRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
   const [pendingAction, setPendingAction] = useState<'queue' | 'send' | null>(null);
   const sending = pendingAction !== null;
@@ -461,7 +462,17 @@ export function PreviewDrawOverlay({
               fontSize: 13,
               transition: 'background 120ms ease, border-color 120ms ease, box-shadow 120ms ease',
             }}
-            onKeyDown={(e) => { if (e.key === 'Enter') void send('queue'); }}
+            onCompositionStart={() => {
+              composingRef.current = true;
+            }}
+            onCompositionEnd={() => {
+              composingRef.current = false;
+            }}
+            onKeyDown={(e) => {
+              const nativeEvent = e.nativeEvent as KeyboardEvent & { keyCode?: number };
+              if (composingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) return;
+              if (e.key === 'Enter') void send('send');
+            }}
           />
           <button
             type="button"

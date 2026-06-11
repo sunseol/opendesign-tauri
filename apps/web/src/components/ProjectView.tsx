@@ -2841,6 +2841,15 @@ export function ProjectView({
       messagesConversationIdRef.current = fresh.id;
       setConversations((curr) => [fresh, ...curr]);
       setActiveConversationId(fresh.id);
+      navigate(
+        {
+          kind: 'project',
+          projectId: project.id,
+          conversationId: fresh.id,
+          fileName: openTabsState.active ?? null,
+        },
+        { replace: true },
+      );
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not create a conversation for this project.';
@@ -2850,7 +2859,7 @@ export function ProjectView({
       creatingConversationRef.current = false;
       setCreatingConversation(false);
     }
-  }, [project.id, activeConversationId, messages.length]);
+  }, [project.id, activeConversationId, messages.length, openTabsState.active]);
 
   // #462 — "Resume conversation in new chat". Synthesizes a handoff
   // prompt from the current transcript via the daemon, opens a fresh
