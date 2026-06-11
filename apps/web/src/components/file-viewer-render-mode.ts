@@ -46,6 +46,12 @@ export interface UrlLoadDecision {
   tweaksBridge?: boolean;
   /** User explicitly opted into the inline path via ?forceInline=1. */
   forceInline: boolean;
+  /**
+   * The HTML source contains patterns that steal focus on load (e.g.
+   * `window.focus()`, `element.focus()`). When true, forces the srcDoc path
+   * so `injectPreviewFocusGuard` can suppress the focus grab.
+   */
+  needsFocusGuard?: boolean;
 }
 
 /**
@@ -83,6 +89,7 @@ export function shouldUrlLoadHtmlPreview(d: UrlLoadDecision): boolean {
   // the artifact ships a `.tw-panel`.
   if (d.tweaksBridge) return false;
   if (d.forceInline) return false;
+  if (d.needsFocusGuard) return false;
   return true;
 }
 
@@ -145,6 +152,29 @@ export function parseForceInline(search: string | URLSearchParams | null | undef
  * positives just take the (slightly slower but safer) srcDoc path; false
  * negatives are the same blank-preview the user already hits.
  */
+/**
+ * Return true when the HTML source may call `.focus()` at load time, which
+ * would steal focus from the host page in a URL-loaded iframe. The srcDoc
+ * path injects `injectPreviewFocusGuard` to suppress this; URL-load has no
+ * such guard, so we force the srcDoc path instead.
+ *
+ * Detection covers two cases:
+ *
+ *   1. Inline `.focus(` calls and `autofocus` attributes — directly visible
+ *      in the document source.
+ *   2. External `<script src=...>` references — we cannot inspect the linked
+ *      file's content, so we conservatively assume it may call focus.
+ *
+ * False positives just route the artifact through the slightly slower srcDoc
+ * path, which is the safe direction.
+ */
+export function htmlNeedsFocusGuard(source: string): boolean {
+  if (/\.\s*focus\s*\(/i.test(source)) return true;
+  if (/\bautofocus\b/i.test(source)) return true;
+  if (/<script\b[^>]*\bsrc\s*=/i.test(source)) return true;
+  return false;
+}
+
 export function htmlNeedsSandboxShim(source: string): boolean {
   // Quote-optional: HTML5 permits unquoted attribute values
   // (`<script type=text/babel src=app.jsx>`). The trailing `\b` rejects
