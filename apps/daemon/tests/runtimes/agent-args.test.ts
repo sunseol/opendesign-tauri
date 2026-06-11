@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import {
-  assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, reasonix, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
+  aider, assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, reasonix, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
 } from './helpers/test-helpers.js';
 import type { TestAgentDef } from './helpers/test-helpers.js';
 
@@ -472,6 +472,53 @@ test('kiro fetchModels falls back to fallbackModels when detection fails', async
   const fallbackModel = kiro.fallbackModels[0];
   assert.ok(fallbackModel);
   assert.equal(fallbackModel.id, 'default');
+});
+
+test('aider args carry non-TTY flags, deliver prompt via --message, and gate model behind explicit selection', () => {
+  assert.equal(aider.promptViaStdin, undefined);
+  assert.equal(aider.maxPromptArgBytes, 30_000);
+  assert.equal(aider.streamFormat, 'plain');
+
+  const baseArgs = aider.buildArgs('hello world', [], [], {}, { cwd: '/tmp/od-project' });
+  assert.deepEqual(baseArgs, [
+    '--yes-always',
+    '--no-pretty',
+    '--no-git',
+    '--no-auto-commits',
+    '--no-suggest-shell-commands',
+    '--no-show-model-warnings',
+    '--message',
+    'hello world',
+  ]);
+
+  const defaultModelArgs = aider.buildArgs(
+    'hi',
+    [],
+    [],
+    { model: 'default' },
+    { cwd: '/tmp/od-project' },
+  );
+  assert.equal(defaultModelArgs.includes('--model'), false);
+
+  const withModel = aider.buildArgs(
+    'edit foo.ts',
+    [],
+    [],
+    { model: 'deepseek/deepseek-chat' },
+    { cwd: '/tmp/od-project' },
+  );
+  assert.deepEqual(withModel, [
+    '--yes-always',
+    '--no-pretty',
+    '--no-git',
+    '--no-auto-commits',
+    '--no-suggest-shell-commands',
+    '--no-show-model-warnings',
+    '--model',
+    'deepseek/deepseek-chat',
+    '--message',
+    'edit foo.ts',
+  ]);
 });
 
 test('kilo args use acp subcommand for json-rpc streaming', () => {

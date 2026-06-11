@@ -1,4 +1,5 @@
 const AGENT_LABELS: Record<string, string> = {
+  aider: 'Aider',
   amp: 'Amp',
   claude: 'Claude',
   codebuddy: 'Codebuddy',
@@ -34,6 +35,8 @@ const AGENT_ALIASES: Record<string, string> = {
   'github copilot cli': 'copilot',
   'deepseek tui': 'deepseek',
   'deepseek-tui': 'deepseek',
+  'aider cli': 'aider',
+  'aider chat': 'aider',
 };
 
 export function agentDisplayName(
