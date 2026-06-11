@@ -3549,7 +3549,6 @@ export function ProjectView({
               onAgentModelChange={onAgentModelChange}
               onOpenSettings={onOpenSettings}
               onRefreshAgents={onRefreshAgents}
-              onBack={onBack}
             />
           </>
         )}
