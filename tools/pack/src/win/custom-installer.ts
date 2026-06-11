@@ -336,18 +336,36 @@ FunctionEnd
 Function DetectRunningInstances
   Push $0
   Push $1
+  Push $2
   InitPluginsDir
   File "/oname=$PLUGINSDIR\\running-instances.ps1" "\${RUNNING_INSTANCES_PS1}"
+
+  ; Try PowerShell 7 first. Some modern Windows images only install pwsh.exe.
+  nsExec::ExecToStack 'pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\\running-instances.ps1" detect "$RunningInstancesInstallRoot" "$ExistingInstallLocation"'
+  Pop $0
+  Pop $1
+  \${If} $0 == "0"
+    StrCpy $RunningInstancesOutput $1
+    Goto done
+  \${EndIf}
+
+  Push "pwsh.exe failed exit=$0, trying powershell.exe"
+  Call LogInstallerEvent
+
   nsExec::ExecToStack 'powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\\running-instances.ps1" detect "$RunningInstancesInstallRoot" "$ExistingInstallLocation"'
   Pop $0
   Pop $1
   \${If} $0 == "0"
     StrCpy $RunningInstancesOutput $1
+    Goto done
   \${Else}
     StrCpy $RunningInstancesOutput "__detection_failed__"
-    Push "running instance detection failed exit=$0 output=$1"
+    Push "running instance detection failed: both pwsh.exe and powershell.exe failed, last exit=$0 output=$1"
     Call LogInstallerEvent
   \${EndIf}
+
+done:
+  Pop $2
   Pop $1
   Pop $0
 FunctionEnd
@@ -355,13 +373,38 @@ FunctionEnd
 Function CloseRunningInstances
   Push $0
   Push $1
+  Push $2
   InitPluginsDir
   File "/oname=$PLUGINSDIR\\running-instances.ps1" "\${RUNNING_INSTANCES_PS1}"
+
+  ; Try PowerShell 7 first. Fall back to Windows PowerShell 5.1 below.
+  nsExec::ExecToStack 'pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\\running-instances.ps1" close "$RunningInstancesInstallRoot" "$ExistingInstallLocation"'
+  Pop $0
+  Pop $1
+  \${If} $0 == "0"
+    Push "running instances close via pwsh.exe exit=$0 output=$1"
+    Call LogInstallerEvent
+    Goto done
+  \${EndIf}
+
+  Push "pwsh.exe failed exit=$0, trying powershell.exe"
+  Call LogInstallerEvent
+
   nsExec::ExecToStack 'powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\\running-instances.ps1" close "$RunningInstancesInstallRoot" "$ExistingInstallLocation"'
   Pop $0
   Pop $1
-  Push "running instances close exit=$0 output=$1"
+
+  \${If} $0 == "0"
+    Push "running instances close via powershell.exe exit=$0 output=$1"
+    Call LogInstallerEvent
+    Goto done
+  \${EndIf}
+
+  Push "running instances close failed: both pwsh.exe and powershell.exe failed, last exit=$0 output=$1"
   Call LogInstallerEvent
+
+done:
+  Pop $2
   Pop $1
   Pop $0
 FunctionEnd
