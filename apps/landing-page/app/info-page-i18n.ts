@@ -178,6 +178,37 @@ export interface InfoPageCopy {
     ctaTitle: string;
     ctaBody: string;
   };
+  download: {
+    title: string;
+    description: string;
+    breadcrumb: string;
+    heading: string;
+    lead: string;
+    autoCtaPrefix: string;
+    autoCtaFallback: string;
+    recommended: string;
+    publishedPrefix: string;
+    releaseNotes: string;
+    platformsTitle: string;
+    mac: string;
+    macArm: string;
+    macIntel: string;
+    windows: string;
+    windowsInstaller: string;
+    windowsPortable: string;
+    linux: string;
+    linuxBody: string;
+    dmg: string;
+    zip: string;
+    checksum: string;
+    downloadVerb: string;
+    requirementsTitle: string;
+    requirements: LinkText[];
+    allReleasesTitle: string;
+    allReleasesBody: string;
+    ctaTitle: string;
+    ctaBody: string;
+  };
 }
 
 const QUICKSTART_CODE = {
@@ -500,6 +531,45 @@ const INFO_PAGE_COPY: Partial<Record<LandingLocaleCode, InfoPageCopy>> = {
       ctaTitle: 'Switch in three commands.',
       ctaBody:
         'Star the repo, grab the desktop build, or run the install in your terminal. Your DESIGN.md system stays in your repo from the first render onward.',
+    },
+    download: {
+      title: 'Download Open Design — desktop app for macOS, Windows & Linux',
+      description:
+        'Download the latest stable Open Design desktop build for macOS, Windows, and Linux. Direct installer links are resolved from stable release metadata.',
+      breadcrumb: 'Download',
+      heading: 'Download Open Design.',
+      lead:
+        'Install the local-first desktop shell, then run the same Open Design workspace from your own machine. Builds are resolved from the stable release metadata feed.',
+      autoCtaPrefix: 'Download for',
+      autoCtaFallback: 'Download Open Design',
+      recommended: 'Recommended',
+      publishedPrefix: 'Released',
+      releaseNotes: 'Release notes',
+      platformsTitle: 'All platforms',
+      mac: 'macOS',
+      macArm: 'Apple Silicon',
+      macIntel: 'Intel',
+      windows: 'Windows',
+      windowsInstaller: 'Installer',
+      windowsPortable: 'Portable',
+      linux: 'Linux',
+      linuxBody: 'AppImage and Docker / Podman Compose builds are available from the release page.',
+      dmg: 'DMG',
+      zip: 'ZIP',
+      checksum: 'SHA-256',
+      downloadVerb: 'Download',
+      requirementsTitle: 'System requirements',
+      requirements: [
+        { label: 'macOS', body: '11 Big Sur or newer, with Apple Silicon and Intel builds.' },
+        { label: 'Windows', body: 'Windows 10 or newer, x64 installer.' },
+        { label: 'Linux', body: 'AppImage, or Docker / Podman Compose one-click setup.' },
+      ],
+      allReleasesTitle: 'All releases & checksums',
+      allReleasesBody:
+        'Every build, checksum, and past version lives on GitHub Releases and releases.open-design.ai.',
+      ctaTitle: 'Prefer the terminal?',
+      ctaBody:
+        'Open Design also runs from source through pnpm tools-dev and the od CLI, which keeps the workflow scriptable for agents and CI.',
     },
   },
 };
@@ -1269,6 +1339,7 @@ function compactInfoPageCopy(
       ],
       ctaBody: text.reusable.ctaBody,
     },
+    download: INFO_PAGE_COPY.en!.download,
   };
 }
 

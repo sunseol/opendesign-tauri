@@ -1,0 +1,591 @@
+---
+import Layout from '../../_components/sub-page-layout.astro';
+import { getLatestRelease, type ReleaseAsset } from '../../_lib/github';
+import { RELEASE_METADATA_URL } from '../../_lib/release-metadata';
+import { getInfoPageCopy } from '../../info-page-i18n';
+import { localeFromPath, localizedHref } from '../../i18n';
+
+const locale = localeFromPath(Astro.url.pathname);
+const href = (path: string) => localizedHref(path, locale);
+const copy = getInfoPageCopy(locale);
+const page = copy.download;
+const common = copy.common;
+
+const release = await getLatestRelease();
+const matrix = release.matrix;
+
+const SITE = Astro.site?.toString() ?? 'https://open-design.ai/';
+const REPO = 'https://github.com/nexu-io/open-design';
+const REPO_RELEASES = `${REPO}/releases`;
+const QUICKSTART_DOC = `${REPO}/blob/main/QUICKSTART.md`;
+
+const title = page.title;
+const description = page.description;
+
+function fmtSize(bytes: number): string | null {
+  if (!bytes || bytes <= 0) return null;
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(0)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
+}
+
+function fmtDate(iso: string | null): string | null {
+  return iso ? iso.slice(0, 10) : null;
+}
+
+type PlatformKey = 'mac-arm64' | 'mac-x64' | 'win' | 'linux';
+
+interface DownloadRow {
+  key: string;
+  variant: string;
+  asset: ReleaseAsset | null;
+}
+
+interface PlatformCard {
+  os: 'macOS' | 'Windows' | 'Linux';
+  osLabel: string;
+  arch?: string;
+  matchKey: PlatformKey;
+  rows: DownloadRow[];
+  note?: string;
+}
+
+const cards: PlatformCard[] = [
+  {
+    os: 'macOS',
+    osLabel: page.mac,
+    arch: page.macArm,
+    matchKey: 'mac-arm64',
+    rows: [{ key: 'mac-arm64-dmg', variant: page.dmg, asset: matrix.macArm64Dmg }],
+  },
+  {
+    os: 'macOS',
+    osLabel: page.mac,
+    arch: page.macIntel,
+    matchKey: 'mac-x64',
+    rows: [{ key: 'mac-x64-dmg', variant: page.dmg, asset: matrix.macX64Dmg }],
+  },
+  {
+    os: 'Windows',
+    osLabel: page.windows,
+    matchKey: 'win',
+    rows: [{ key: 'win-setup', variant: page.windowsInstaller, asset: matrix.winSetup }],
+  },
+  {
+    os: 'Linux',
+    osLabel: page.linux,
+    matchKey: 'linux',
+    rows: matrix.linux
+      ? [{ key: 'linux-appimage', variant: 'AppImage', asset: matrix.linux }]
+      : [],
+    note: page.linuxBody,
+  },
+];
+
+const publishedLabel = fmtDate(release.publishedAt);
+const absUrl = (path: string) => new URL(href(path), SITE).toString();
+
+const ICON_APPLE =
+  '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M16.36 12.78c.02 2.5 2.19 3.33 2.22 3.34-.02.06-.35 1.2-1.15 2.37-.69 1.01-1.41 2.02-2.54 2.04-1.11.02-1.47-.66-2.74-.66s-1.66.64-2.71.68c-1.09.04-1.92-1.09-2.62-2.1-1.42-2.06-2.51-5.83-1.05-8.37.72-1.27 2.01-2.07 3.41-2.09 1.07-.02 2.08.72 2.74.72.65 0 1.88-.89 3.17-.76.54.02 2.06.22 3.03 1.64-.08.05-1.81 1.06-1.79 3.15M14.28 5.6c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.54.62-1.01 1.61-.88 2.56.93.07 1.87-.47 2.46-1.16"/></svg>';
+const ICON_WINDOWS =
+  '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.3H3zm0 13.8L10.4 20v-7.2H3zm8.2 1.2L21 21.3V12.8h-9.8zm0-16.2v7.4H21V2.7z"/></svg>';
+const ICON_LINUX =
+  '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M12 2c-2.2 0-3.3 1.9-3.3 4.1 0 1.4.5 2.3.5 3.4 0 1-.7 1.8-1.4 2.9C6.9 13.9 6 15.6 6 17.3c0 .9.3 1.5.9 1.9-.1.5 0 1 .3 1.3.6.6 1.7.6 2.5.3.5-.2.8-.6.9-1.1.3 0 .6-.1.9-.1s.6 0 .9.1c.1.5.4.9.9 1.1.8.3 1.9.3 2.5-.3.3-.3.4-.8.3-1.3.6-.4.9-1 .9-1.9 0-1.7-.9-3.4-1.8-4.9-.7-1.1-1.4-1.9-1.4-2.9 0-1.1.5-2 .5-3.4C15.3 3.9 14.2 2 12 2m-1.3 4.3c.4 0 .7.4.7.9s-.3.9-.7.9-.7-.4-.7-.9.3-.9.7-.9m2.6 0c.4 0 .7.4.7.9s-.3.9-.7.9-.7-.4-.7-.9.3-.9.7-.9"/></svg>';
+const PLATFORM_ICON: Record<PlatformCard['os'], string> = {
+  macOS: ICON_APPLE,
+  Windows: ICON_WINDOWS,
+  Linux: ICON_LINUX,
+};
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Open Design', item: absUrl('/') },
+      { '@type': 'ListItem', position: 2, name: page.breadcrumb, item: absUrl('/download/') },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Open Design',
+    applicationCategory: 'DesignApplication',
+    operatingSystem: 'macOS, Windows, Linux',
+    softwareVersion: release.version,
+    softwareHelp: { '@type': 'CreativeWork', url: QUICKSTART_DOC },
+    downloadUrl: matrix.macArm64Dmg?.url ?? release.releaseUrl,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    license: 'https://www.apache.org/licenses/LICENSE-2.0',
+  },
+];
+---
+
+<Layout title={title} description={description} active="home" jsonLd={jsonLd}>
+  <nav class="breadcrumb" aria-label={common.breadcrumbAria}>
+    <a href={href('/')}>Open Design</a>
+    <span>/</span>
+    <span aria-current="page">{page.breadcrumb}</span>
+  </nav>
+
+  <article class="info-page dl-page" data-download-root>
+    <header class="dl-hero">
+      <div class="dl-hero-mark" aria-hidden="true">
+        <img src="/favicon.svg" alt="" width="48" height="48" />
+      </div>
+      <h1 class="dl-hero-heading">{page.heading}</h1>
+      <p class="dl-hero-lead">{page.lead}</p>
+
+      <a
+        class="btn btn-primary dl-hero-cta"
+        href={release.releaseUrl}
+        data-dl-auto
+        target="_blank"
+        rel="noreferrer noopener"
+      >
+        <span data-dl-auto-label>{page.autoCtaFallback}</span>
+        <span class="dl-auto-os" data-dl-auto-os hidden></span>
+      </a>
+      <p class="dl-hero-meta">
+        <a class="inline-link" href={release.releaseUrl} data-dl-release-link target="_blank" rel="noreferrer noopener">
+          <span data-dl-version data-github-version>{release.versionLabel}</span>
+        </a>
+        <span class="dl-version-date" data-dl-version-date hidden={!publishedLabel}>
+          {' '}· {page.publishedPrefix} <span data-dl-published-at>{publishedLabel}</span>
+        </span>
+        <span> · </span>
+        <a class="inline-link" href={release.releaseUrl} data-dl-release-link target="_blank" rel="noreferrer noopener">{page.releaseNotes}</a>
+      </p>
+    </header>
+
+    <section class="dl-platforms" id="platforms" aria-label={page.platformsTitle}>
+      <div class="dl-grid">
+        {cards.map((card) => (
+          <div class="dl-card" data-dl-card data-dl-match={card.matchKey}>
+            <span class="dl-rec" data-dl-rec hidden>{page.recommended}</span>
+            <span class="dl-card-icon" aria-hidden="true" set:html={PLATFORM_ICON[card.os]} />
+            <h2 class="dl-os">{card.osLabel}</h2>
+            <p class="dl-card-sub">
+              {card.arch && <span class="dl-arch">{card.arch}</span>}
+              <span class="dl-card-version" data-dl-version data-github-version>{release.versionLabel}</span>
+            </p>
+
+            {card.rows.length > 0 && (
+              <ul class="dl-rows">
+                {card.rows.map((row) => (
+                  <li class="dl-row">
+                    {row.asset ? (
+                      <>
+                        <a class="dl-link" href={row.asset.url} data-dl-key={row.key}>
+                          <span class="dl-dl-icon" aria-hidden="true">↓</span>
+                          {page.downloadVerb} <strong>{row.variant}</strong>
+                          {fmtSize(row.asset.size) && <span class="dl-size" data-dl-size-key={row.key}>{fmtSize(row.asset.size)}</span>}
+                        </a>
+                      </>
+                    ) : (
+                      <a class="dl-link dl-link-fallback" href={release.releaseUrl} data-dl-release-link target="_blank" rel="noreferrer noopener">
+                        <span class="dl-dl-icon" aria-hidden="true">↓</span>
+                        {row.variant} <span class="dl-size">Releases</span>
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {card.note && (
+              <p class="dl-note">
+                <a class="inline-link" href={release.releaseUrl} data-dl-release-link target="_blank" rel="noreferrer noopener">{card.note}</a>
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p class="dl-releases-link">
+        <a class="inline-link" href={REPO_RELEASES} target="_blank" rel="noreferrer noopener">{page.allReleasesTitle} →</a>
+      </p>
+      <p class="dl-releases-body">{page.allReleasesBody}</p>
+    </section>
+
+    <section class="dl-requirements" id="requirements" aria-label={page.requirementsTitle}>
+      <h2>{page.requirementsTitle}</h2>
+      <ul>
+        {page.requirements.map((item) => (
+          <li><strong>{item.label}</strong> — {item.body}</li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="info-cta" aria-label="Open Design call to action">
+      <div>
+        <h2>{page.ctaTitle}</h2>
+        <p>{page.ctaBody}</p>
+      </div>
+      <div class="info-cta-actions">
+        <a class="btn btn-primary" href={href('/quickstart/')}>{common.quickstart}</a>
+        <a class="btn btn-ghost" href={REPO} target="_blank" rel="noreferrer noopener">{common.starOnGithub}</a>
+      </div>
+      <div class="info-cta-meta">
+        <span class="stamp">● {common.live}</span>
+        <span><span data-dl-version data-github-version>{release.versionLabel}</span> · Apache-2.0</span>
+        <span>{common.macWinLinux}</span>
+      </div>
+    </section>
+  </article>
+
+  <script is:inline define:vars={{ autoPrefix: page.autoCtaPrefix, RELEASE_METADATA_URL }}>
+    (() => {
+      const detect = () => {
+        const ua = (navigator.userAgent || '').toLowerCase();
+        const platform = (
+          (navigator.userAgentData && navigator.userAgentData.platform) ||
+          navigator.platform || ''
+        ).toLowerCase();
+        const isWin = /win/.test(platform) || /windows/.test(ua);
+        const isMac = /mac/.test(platform) || (/mac os x/.test(ua) && !/iphone|ipad|ipod/.test(ua));
+        const isLinux = /linux/.test(platform) || (/linux/.test(ua) && !/android/.test(ua));
+        if (isWin) return { matchKey: 'win', os: 'Windows', downloadKey: 'win-setup' };
+        if (isMac) {
+          const intel = (() => {
+            try {
+              const gl = document.createElement('canvas').getContext('webgl');
+              const dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+              const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+              return /intel|radeon|amd/i.test(renderer) && !/apple/i.test(renderer);
+            } catch { return false; }
+          })();
+          return intel
+            ? { matchKey: 'mac-x64', os: 'macOS (Intel)', downloadKey: 'mac-x64-dmg' }
+            : { matchKey: 'mac-arm64', os: 'macOS', downloadKey: 'mac-arm64-dmg' };
+        }
+        if (isLinux) return { matchKey: 'linux', os: 'Linux', downloadKey: null };
+        return null;
+      };
+
+      const formatVersion = (metadata) => {
+        const fromVersion = (version) => {
+          if (typeof version !== 'string') return null;
+          const match = version.match(/(\d+\.\d+\.\d+(?:[-+][\w.]+)?)/);
+          return match ? `v${match[1]}` : null;
+        };
+        const fromTag = (tag) => {
+          if (typeof tag !== 'string') return null;
+          const cleaned = tag.replace(/^open-design[-_]?v?/i, '').trim();
+          return cleaned ? `v${cleaned.replace(/^v/, '')}` : null;
+        };
+        return (
+          fromVersion(metadata?.releaseVersion) ??
+          fromVersion(metadata?.stableVersion) ??
+          fromVersion(metadata?.baseVersion) ??
+          fromTag(metadata?.versionTag)
+        );
+      };
+
+      const releasePageUrl = (metadata, versionLabel) => {
+        if (typeof metadata?.versionTag === 'string' && metadata.versionTag.length > 0) {
+          return `https://github.com/nexu-io/open-design/releases/tag/${metadata.versionTag}`;
+        }
+        return versionLabel
+          ? `https://github.com/nexu-io/open-design/releases/tag/open-design-${versionLabel}`
+          : null;
+      };
+
+      const artifactMap = (metadata) => ({
+        'mac-arm64-dmg': metadata?.platforms?.mac?.artifacts?.dmg,
+        'mac-x64-dmg': metadata?.platforms?.macIntel?.artifacts?.dmg,
+        'win-setup': metadata?.platforms?.win?.artifacts?.installer,
+        'linux-appimage': metadata?.platforms?.linux?.artifacts?.appImage,
+      });
+
+      const formatSize = (bytes) => {
+        if (!Number.isFinite(bytes) || bytes <= 0) return null;
+        const mb = bytes / (1024 * 1024);
+        return mb >= 1 ? `${mb.toFixed(0)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
+      };
+
+      const platform = detect();
+      if (platform) {
+        for (const card of document.querySelectorAll('[data-dl-card]')) {
+          if (card.getAttribute('data-dl-match') === platform.matchKey) {
+            card.setAttribute('data-dl-recommended', 'true');
+            const rec = card.querySelector('[data-dl-rec]');
+            if (rec) rec.hidden = false;
+          }
+        }
+        const osSlot = document.querySelector('[data-dl-auto-os]');
+        const labelSlot = document.querySelector('[data-dl-auto-label]');
+        if (osSlot) { osSlot.textContent = ` ${platform.os}`; osSlot.hidden = false; }
+        if (labelSlot) labelSlot.textContent = autoPrefix;
+      }
+
+      fetch(RELEASE_METADATA_URL, { headers: { Accept: 'application/json' } })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((metadata) => {
+          if (!metadata) return;
+          const versionLabel = formatVersion(metadata);
+          if (versionLabel) {
+            for (const slot of document.querySelectorAll('[data-dl-version]')) {
+              slot.textContent = versionLabel;
+            }
+          }
+          const releaseUrl = releasePageUrl(metadata, versionLabel);
+          if (releaseUrl) {
+            for (const link of document.querySelectorAll('[data-dl-release-link]')) {
+              link.href = releaseUrl;
+            }
+          }
+          const publishedAt =
+            typeof metadata?.publishedAt === 'string'
+              ? metadata.publishedAt
+              : typeof metadata?.generatedAt === 'string'
+                ? metadata.generatedAt
+                : null;
+          if (publishedAt && publishedAt.length >= 10) {
+            const dateSlot = document.querySelector('[data-dl-published-at]');
+            const wrapper = document.querySelector('[data-dl-version-date]');
+            if (dateSlot) dateSlot.textContent = publishedAt.slice(0, 10);
+            if (wrapper) wrapper.hidden = false;
+          }
+
+          const map = artifactMap(metadata);
+          for (const [key, asset] of Object.entries(map)) {
+            if (!asset || typeof asset.url !== 'string') continue;
+            for (const link of document.querySelectorAll(`[data-dl-key="${key}"]`)) {
+              link.href = asset.url;
+            }
+            const size = formatSize(asset.size);
+            if (!size) continue;
+            for (const slot of document.querySelectorAll(`[data-dl-size-key="${key}"]`)) {
+              slot.textContent = size;
+            }
+          }
+
+          const heroAsset = platform?.downloadKey ? map[platform.downloadKey] : null;
+          const hero = document.querySelector('[data-dl-auto]');
+          if (heroAsset && typeof heroAsset.url === 'string' && hero) {
+            hero.href = heroAsset.url;
+            hero.removeAttribute('target');
+            hero.removeAttribute('rel');
+          }
+        })
+        .catch(() => {});
+    })();
+  </script>
+</Layout>
+
+<style is:global>
+  [data-download-root].info-page { max-width: none; }
+  [data-download-root].info-page > section { padding: 0; }
+  [data-download-root].info-page .info-cta {
+    margin: 56px auto 0;
+    max-width: 680px;
+    padding-top: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 18px;
+  }
+  [data-download-root].info-page .info-cta h2 { margin: 0 0 8px; }
+  [data-download-root].info-page .info-cta-actions { justify-content: center; }
+  [data-download-root].info-page .info-cta-meta {
+    justify-content: center;
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+</style>
+
+<style>
+  .dl-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-top: 24px;
+  }
+  .dl-hero-mark {
+    width: 76px;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    background: var(--surface, rgba(255, 255, 255, 0.6));
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.4);
+  }
+  .dl-hero-heading {
+    font-family: var(--serif, Georgia, serif);
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 42px);
+    letter-spacing: -0.02em;
+    margin: 24px 0 0;
+  }
+  .dl-hero-lead {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-soft, #555);
+    max-width: 52ch;
+    margin: 12px 0 0;
+  }
+  .dl-hero-cta { margin-top: 28px; }
+  .dl-hero-meta {
+    margin: 14px 0 0;
+    font-size: 0.86rem;
+    color: var(--ink-soft, #666);
+  }
+
+  .dl-platforms { margin-top: 54px; }
+  .dl-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .dl-card {
+    position: relative;
+    min-height: 236px;
+    padding: 24px 18px 20px;
+    border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--paper, #fff) 86%, white);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .dl-card[data-dl-recommended="true"] {
+    border-color: var(--coral, #ed6f5c);
+    box-shadow: 0 14px 34px -24px color-mix(in srgb, var(--coral, #ed6f5c) 65%, black);
+  }
+  .dl-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    color: var(--ink, #14120b);
+  }
+  .dl-os {
+    font-family: inherit;
+    font-weight: 650;
+    font-size: 1.05rem;
+    margin: 14px 0 0;
+  }
+  .dl-card-sub {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 0 0;
+    min-height: 20px;
+  }
+  .dl-arch { font-size: 0.82rem; opacity: 0.65; }
+  .dl-card-version {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.08rem 0.42rem;
+    border-radius: 999px;
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.14));
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+  .dl-rec {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    padding: 0.14rem 0.48rem;
+    border-radius: 999px;
+    background: var(--accent, #14120b);
+    color: #fff;
+  }
+
+  .dl-rows {
+    list-style: none;
+    margin: 18px 0 0;
+    padding: 16px 0 0;
+    width: 100%;
+    border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dl-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .dl-link {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    text-decoration: none;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    color: var(--ink, #14120b);
+    transition: color 140ms;
+  }
+  .dl-dl-icon { font-weight: 700; transition: transform 140ms; }
+  .dl-link strong { font-weight: 600; }
+  .dl-link:hover { color: var(--coral, #ed6f5c); }
+  .dl-link:hover .dl-dl-icon { transform: translateY(2px); }
+  .dl-size { font-size: 0.74rem; opacity: 0.55; }
+  .dl-note {
+    font-size: 0.82rem;
+    opacity: 0.78;
+    margin: 16px 0 0;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+    width: 100%;
+  }
+  .dl-releases-link {
+    text-align: center;
+    margin: 28px 0 0;
+    font-size: 0.9rem;
+  }
+  .dl-releases-body {
+    margin: 8px auto 0;
+    max-width: 56ch;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--ink-soft, #666);
+  }
+
+  .dl-requirements {
+    margin-top: 42px;
+    text-align: center;
+  }
+  .dl-requirements h2 {
+    font-family: inherit;
+    font-size: 1rem;
+    margin: 0 0 14px;
+  }
+  .dl-requirements ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 760px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 28px;
+    font-size: 0.82rem;
+    color: var(--ink-soft, #666);
+  }
+  .dl-requirements li { white-space: nowrap; }
+
+  @media (max-width: 980px) {
+    .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .dl-grid { grid-template-columns: 1fr; }
+    .dl-requirements ul { flex-direction: column; gap: 6px; }
+    .dl-requirements li { white-space: normal; }
+  }
+</style>

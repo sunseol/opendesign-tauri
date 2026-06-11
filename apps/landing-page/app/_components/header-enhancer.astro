@@ -1,4 +1,8 @@
-<script is:inline>
+---
+import { RELEASE_METADATA_URL } from '../_lib/release-metadata';
+---
+
+<script is:inline define:vars={{ RELEASE_METADATA_URL }}>
   (() => {
     const REPO_API = 'https://api.github.com/repos/nexu-io/open-design';
 
@@ -8,18 +12,24 @@
       return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}K`;
     };
 
-    const formatVersion = (release) => {
+    const formatVersion = (metadata) => {
+      const fromVersion = (version) => {
+        if (typeof version !== 'string') return null;
+        const match = version.match(/(\d+\.\d+\.\d+(?:[-+][\w.]+)?)/);
+        return match ? `v${match[1]}` : null;
+      };
       const fromTag = (tag) => {
         if (typeof tag !== 'string') return null;
         const cleaned = tag.replace(/^open-design[-_]?v?/i, '').trim();
         return cleaned ? `v${cleaned.replace(/^v/, '')}` : null;
       };
-      const fromName = (name) => {
-        if (typeof name !== 'string') return null;
-        const m = name.match(/(\d+\.\d+\.\d+(?:[-+][\w.]+)?)/);
-        return m ? `v${m[1]}` : null;
-      };
-      return fromName(release?.name) ?? fromTag(release?.tag_name) ?? null;
+      return (
+        fromVersion(metadata?.releaseVersion) ??
+        fromVersion(metadata?.stableVersion) ??
+        fromVersion(metadata?.baseVersion) ??
+        fromTag(metadata?.versionTag) ??
+        null
+      );
     };
 
     const chrome = document.querySelector('[data-chrome-headroom]');
@@ -87,12 +97,12 @@
 
     const versionSlots = document.querySelectorAll('[data-github-version]');
     if (versionSlots.length > 0) {
-      fetch(`${REPO_API}/releases/latest`, {
-        headers: { Accept: 'application/vnd.github+json' },
+      fetch(RELEASE_METADATA_URL, {
+        headers: { Accept: 'application/json' },
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
-        .then((data) => {
-          const label = formatVersion(data);
+        .then((metadata) => {
+          const label = formatVersion(metadata);
           if (!label) return;
           for (const slot of versionSlots) slot.textContent = label;
         })

@@ -20,7 +20,6 @@ import {
 } from '../i18n';
 
 const REPO = 'https://github.com/nexu-io/open-design';
-const REPO_RELEASES = `${REPO}/releases`;
 
 const ext = {
   target: '_blank',
@@ -261,10 +260,9 @@ export function Header({
         <div className='nav-side'>
           <a
             className='nav-cta ghost'
-            href={REPO_RELEASES}
+            href='/download/'
             aria-label={headerCopy.downloadAria}
             title={headerCopy.downloadTitle}
-            {...ext}
           >
             {headerCopy.download}
           </a>

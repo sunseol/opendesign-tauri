@@ -337,7 +337,7 @@ export default function Page({
                   {home.hero.star}
                   <span className='arrow'>{arrowOut}</span>
                 </a>
-                <a className='btn btn-ghost' href={REPO_RELEASES} {...ext}>
+                <a className='btn btn-ghost' href='/download/'>
                   {home.hero.download}
                   <span className='arrow'>{arrowPlus}</span>
                 </a>
@@ -1290,9 +1290,8 @@ export default function Page({
                 </p>
                 <a
                   className='foot-cta'
-                  href={REPO_RELEASES}
+                  href='/download/'
                   aria-label={home.footer.downloadAria}
-                  {...ext}
                 >
                   {home.footer.download}
                   <span className='meta'>
