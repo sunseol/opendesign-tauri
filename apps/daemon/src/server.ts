@@ -9020,9 +9020,6 @@ export async function startServer({
       console.warn('[custom-instructions] readAppConfig failed', err);
     }
 
-    // Project-level custom instructions from the projects table.
-    const projectInstructions = project?.customInstructions ?? '';
-
     let designSystemBody;
     let designSystemTitle;
     // Compiled (tokens.css + components manifest / components.html)
@@ -9281,7 +9278,6 @@ export async function startServer({
       ...(pluginBlock ? { pluginBlock } : {}),
       ...(activeStageBlocks ? { activeStageBlocks } : {}),
       userInstructions,
-      projectInstructions,
     });
     // The chat handler also needs to know where the active skill lives
     // on disk so it can stage a per-project copy of its side files
@@ -10648,7 +10644,7 @@ export async function startServer({
         return design.runs.finish(run, 'failed', code ?? 1, signal ?? null);
       }
       if (agentStreamError) {
-        return design.runs.finish(run, 'failed', code ?? 1, signal ?? null);
+        return design.runs.finish(run, 'failed', code === 0 ? 1 : (code ?? 1), signal ?? null);
       }
       if (
         code !== 0 &&
