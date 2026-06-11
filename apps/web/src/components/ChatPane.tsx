@@ -235,6 +235,7 @@ interface Props {
     commentAttachments: ChatCommentAttachment[],
     meta?: ChatSendMeta,
   ) => void;
+  onRetry?: (assistantMessage: ChatMessage) => void;
   onStop: () => void;
   // Skills available for @-mention assembly. ProjectView filters out the
   // user's disabled set before passing them in here.
@@ -321,6 +322,7 @@ export function ChatPane({
   onDetachComment,
   onDeleteComment,
   onSend,
+  onRetry,
   onStop,
   onRequestOpenFile,
   onRequestPluginFolderAgentAction,
@@ -385,6 +387,7 @@ export function ChatPane({
   const composerDraftStorageKey = projectId && activeConversationId
     ? `od:chat-composer:draft:${projectId}:${activeConversationId}`
     : undefined;
+  const retryAssistant = retryableAssistantMessage(messages, lastAssistantId, streaming);
   // Only the first user message gets the active-plugin chip — the
   // plugin is project-scoped so re-stamping it on every reply would be
   // noise. Subsequent messages still run under the same snapshot.
@@ -909,7 +912,20 @@ export function ChatPane({
                   </Fragment>
                 );
               })}
-              {error ? <div className="msg error">{error}</div> : null}
+              {error ? (
+                <div className="msg error">
+                  <span className="chat-error-text">{error}</span>
+                  {retryAssistant && onRetry ? (
+                    <button
+                      type="button"
+                      className="ghost chat-error-retry"
+                      onClick={() => onRetry(retryAssistant)}
+                    >
+                      {t('promptTemplates.retry')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             {/* Always mounted so the CSS transition can play in both
                 directions; the `chat-jump-btn-active` class flips the
@@ -1142,6 +1158,18 @@ function isActiveRunStatus(status: ChatMessage['runStatus']): boolean {
 
 function isTerminalRunStatus(status: ChatMessage['runStatus']): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'canceled';
+}
+
+export function retryableAssistantMessage(
+  messages: ChatMessage[],
+  lastAssistantId: string | null | undefined,
+  paneStreaming: boolean,
+): ChatMessage | null {
+  if (paneStreaming) return null;
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== 'assistant') return null;
+  if (last.id !== lastAssistantId) return null;
+  return last.runStatus === 'failed' ? last : null;
 }
 
 export function isAssistantMessageStreaming(
