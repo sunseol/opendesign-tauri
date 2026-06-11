@@ -65,6 +65,7 @@ const STABLE_POLL_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_POLL_INITIAL_DELAY_MS = 5000;
 const DEFAULT_POLL_BACKOFF_INITIAL_MS = 60 * 1000;
 const DEFAULT_POLL_BACKOFF_MAX_MS = 30 * 60 * 1000;
+const MIN_SCHEDULED_POLL_DELAY_MS = 1000;
 
 export type DesktopUpdaterConfigInput = {
   appVersion?: string | null;
@@ -219,6 +220,12 @@ function durationEnv(value: string | undefined, fallback: number, name: string):
   return parsed;
 }
 
+function positiveDurationEnv(value: string | undefined, fallback: number, name: string): number {
+  const parsed = durationEnv(value, fallback, name);
+  if (parsed === 0) throw new Error(`${name} must be greater than 0 milliseconds`);
+  return parsed;
+}
+
 function defaultPollIntervalMs(channel: DesktopUpdateChannel): number {
   return channel === DESKTOP_UPDATE_CHANNELS.BETA ? BETA_POLL_INTERVAL_MS : STABLE_POLL_INTERVAL_MS;
 }
@@ -246,12 +253,12 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
     autoCheck: isTruthyEnv(env[DESKTOP_UPDATE_ENV.AUTO_CHECK]) ?? enabled,
     autoDownload: isTruthyEnv(env[DESKTOP_UPDATE_ENV.AUTO_DOWNLOAD]) ?? true,
     autoOpen: isTruthyEnv(env[DESKTOP_UPDATE_ENV.AUTO_OPEN]) ?? false,
-    checkBackoffInitialMs: durationEnv(
+    checkBackoffInitialMs: positiveDurationEnv(
       env[DESKTOP_UPDATE_ENV.CHECK_BACKOFF_INITIAL_MS],
       DEFAULT_POLL_BACKOFF_INITIAL_MS,
       DESKTOP_UPDATE_ENV.CHECK_BACKOFF_INITIAL_MS,
     ),
-    checkBackoffMaxMs: durationEnv(
+    checkBackoffMaxMs: positiveDurationEnv(
       env[DESKTOP_UPDATE_ENV.CHECK_BACKOFF_MAX_MS],
       DEFAULT_POLL_BACKOFF_MAX_MS,
       DESKTOP_UPDATE_ENV.CHECK_BACKOFF_MAX_MS,
@@ -261,7 +268,7 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
       DEFAULT_POLL_INITIAL_DELAY_MS,
       DESKTOP_UPDATE_ENV.CHECK_INITIAL_DELAY_MS,
     ),
-    checkIntervalMs: durationEnv(
+    checkIntervalMs: positiveDurationEnv(
       env[DESKTOP_UPDATE_ENV.CHECK_INTERVAL_MS],
       defaultPollIntervalMs(channel),
       DESKTOP_UPDATE_ENV.CHECK_INTERVAL_MS,
@@ -1457,6 +1464,7 @@ export function createDesktopUpdaterScheduler(
   let timer: ReturnType<typeof setTimeout> | null = null;
   let failureCount = 0;
   let tickRunning = false;
+  let warnedZeroDelay = false;
   let unsubscribe: (() => void) | null = null;
 
   const clearTimer = () => {
@@ -1483,12 +1491,25 @@ export function createDesktopUpdaterScheduler(
     return Math.min(options.backoffMaxMs, backoff);
   };
 
+  const normalizeScheduledDelay = (delayMs: number): number => {
+    if (delayMs > 0) return delayMs;
+    if (!warnedZeroDelay) {
+      warnedZeroDelay = true;
+      logger.warn(
+        `[open-design updater] refusing non-positive scheduled poll delay (${delayMs}ms); `
+          + `using ${MIN_SCHEDULED_POLL_DELAY_MS}ms floor`,
+      );
+    }
+    return MIN_SCHEDULED_POLL_DELAY_MS;
+  };
+
   const schedule = (delayMs: number) => {
     if (!running || timer != null) return;
+    const boundedDelayMs = normalizeScheduledDelay(delayMs);
     timer = setTimeout(() => {
       timer = null;
       void tick();
-    }, delayMs);
+    }, boundedDelayMs);
     timer.unref?.();
   };
 
