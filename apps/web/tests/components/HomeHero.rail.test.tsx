@@ -10,7 +10,7 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { InstalledPluginRecord } from '@open-design/contracts';
+import type { InputFieldSpec, InstalledPluginRecord } from '@open-design/contracts';
 
 import { HomeHero } from '../../src/components/HomeHero';
 import {
@@ -22,7 +22,24 @@ afterEach(() => {
   cleanup();
 });
 
-function makePlugin(id: string, mode: string, title = id): InstalledPluginRecord {
+function makePlugin(
+  id: string,
+  mode: string,
+  title = id,
+  overrides: {
+    description?: string;
+    query?: string | Record<string, string>;
+    inputs?: InputFieldSpec[];
+  } = {},
+): InstalledPluginRecord {
+  const inputs = overrides.inputs ?? [
+    {
+      name: 'topic',
+      label: 'Topic',
+      type: 'text',
+      default: 'a focused brief',
+    },
+  ];
   return {
     id,
     title,
@@ -35,21 +52,14 @@ function makePlugin(id: string, mode: string, title = id): InstalledPluginRecord
       name: id,
       version: '1.0.0',
       title,
-      description: 'Plugin preset fixture',
+      description: overrides.description ?? 'Plugin preset fixture',
       tags: [mode],
       od: {
         mode,
         useCase: {
-          query: `Create with {{topic}} using ${title}`,
+          query: overrides.query ?? `Create with {{topic}} using ${title}`,
         },
-        inputs: [
-          {
-            name: 'topic',
-            label: 'Topic',
-            type: 'text',
-            default: 'a focused brief',
-          },
-        ],
+        inputs,
         preview: { type: 'image', poster: '/preview.png' },
       },
     },
@@ -164,6 +174,30 @@ describe('HomeHero intent rail', () => {
       deckPlugin,
       'deck',
       'Create with a focused brief using Investor deck',
+    );
+  });
+
+  it('seeds plugin presets with the curated description unless the query has editable inputs', () => {
+    const deckPlugin = makePlugin('example-deck-rich', 'deck', 'Investor deck', {
+      description: 'A crisp investor deck for a product launch.',
+      query:
+        'Build a single-page immersive parallax landing page in React + TypeScript + Tailwind CSS using Vite.\n\nScene one: ...',
+      inputs: [],
+    });
+    const { onPickExamplePlugin } = renderHero({
+      activeChipId: 'deck',
+      pluginOptions: [deckPlugin],
+    });
+
+    const preset = screen.getByTestId('home-hero-plugin-preset');
+    expect(preset.textContent).toContain('A crisp investor deck for a product launch.');
+    expect(preset.textContent).not.toContain('React + TypeScript');
+
+    fireEvent.click(preset);
+    expect(onPickExamplePlugin).toHaveBeenCalledWith(
+      deckPlugin,
+      'deck',
+      'A crisp investor deck for a product launch.',
     );
   });
 

@@ -1279,6 +1279,7 @@ interface PromptHighlightPart {
 }
 
 const INPUT_PLACEHOLDER_PATTERN = /\{\{\s*([a-zA-Z_][\w-]*)\s*\}\}/g;
+const HAS_INPUT_PLACEHOLDER_PATTERN = /\{\{\s*[a-zA-Z_][\w-]*\s*\}\}/;
 const HOME_HERO_PROMPT_MAX_HEIGHT = 180;
 
 function buildPromptHighlightParts(
@@ -2638,8 +2639,19 @@ function pluginPresetPromptPreview(
   chipId: string,
 ): string {
   const query = pluginPresetQuery(record, locale);
-  const rendered = query ? renderPluginPresetQuery(record, query) : record.manifest?.description ?? '';
-  return textPromptForPluginPreset(record, rendered, chipId, locale);
+  const description = record.manifest?.description?.trim() ?? '';
+  if (query && HAS_INPUT_PLACEHOLDER_PATTERN.test(firstPromptParagraph(query))) {
+    const head = usablePluginPresetQueryHead(record, query, chipId, locale);
+    if (head) return head;
+  }
+  if (description) {
+    return textPromptForPluginPreset(record, description, chipId, locale);
+  }
+  if (query) {
+    const head = usablePluginPresetQueryHead(record, query, chipId, locale);
+    if (head) return head;
+  }
+  return fallbackPluginPresetPrompt(record, chipId, locale);
 }
 
 function pluginPresetQuery(record: InstalledPluginRecord, locale: Locale): string | null {
@@ -2688,6 +2700,28 @@ function renderPluginPresetQuery(record: InstalledPluginRecord, query: string): 
     .replace(INPUT_PLACEHOLDER_PATTERN, (_placeholder, key: string) => (
       valueByName.get(key) ?? key
     ));
+}
+
+function firstPromptParagraph(value: string): string {
+  const normalized = value.replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+  const [head] = normalized.split(/\n\s*\n/);
+  return (head ?? normalized).trim();
+}
+
+function isMetaInstructionSeed(value: string): boolean {
+  return /逐字注入|以\s*en\s*字段为准|verbatim|example\.html/iu.test(value);
+}
+
+function usablePluginPresetQueryHead(
+  record: InstalledPluginRecord,
+  query: string,
+  chipId: string,
+  locale: Locale,
+): string | null {
+  const head = firstPromptParagraph(renderPluginPresetQuery(record, query));
+  if (!head || isMetaInstructionSeed(head)) return null;
+  return textPromptForPluginPreset(record, head, chipId, locale);
 }
 
 function textPromptForPluginPreset(
