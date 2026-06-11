@@ -405,6 +405,7 @@ async function consumeDaemonRun({
   let exitCode: number | null = null;
   let exitSignal: string | null = null;
   let endStatus: ChatRunStatus | null = null;
+  let pendingStructuredError: Error | null = null;
   // Tracks whether the server explicitly declared `status: 'succeeded'` in
   // the SSE end payload (or via the fallback run-status fetch). Distinct
   // from `endStatus === 'succeeded'`, which can be a local fallback when
@@ -414,6 +415,7 @@ async function consumeDaemonRun({
   // failure response with `{code:1}` or `{code:null,signal:"SIGTERM"}` and
   // no `status` field still surfaces an error banner.
   let serverDeclaredSuccess = false;
+  let endResumable = false;
   let lastEventId: string | null = initialLastEventId ?? null;
   let canceled = false;
   const cancelRun = () => {
@@ -513,15 +515,30 @@ async function consumeDaemonRun({
           }
 
           if (event.event === 'error') {
-            onRunStatus?.('failed');
             const data = event.data as SseErrorPayload;
-            handlers.onError(daemonSseError(data));
-            return;
+            const structuredError = daemonSseError(data);
+            pendingStructuredError = structuredError;
+            // The daemon may emit an error frame before it decides whether a
+            // same-run retry will recover. If the run is still active, keep
+            // consuming the stream and let the terminal end/status decide.
+            const status = await fetchChatRunStatus(runId).catch(() => null);
+            if (status && (status.status === 'failed' || status.status === 'canceled')) {
+              onRunStatus?.('failed');
+              handlers.onError(markErrorResumable(structuredError, status.resumable === true));
+              return;
+            }
+            if (!status) {
+              onRunStatus?.('failed');
+              handlers.onError(structuredError);
+              return;
+            }
+            continue;
           }
 
           if (event.event === 'end') {
             exitCode = typeof event.data.code === 'number' ? event.data.code : null;
             exitSignal = typeof event.data.signal === 'string' ? event.data.signal : null;
+            if (event.data.resumable === true) endResumable = true;
             // `serverDeclaredSuccess` records whether the server explicitly
             // set `status: 'succeeded'` in the end payload — the local
             // `'succeeded'` fallback below does not count and must keep
@@ -541,6 +558,7 @@ async function consumeDaemonRun({
         endStatus = status.status;
         exitCode = status.exitCode ?? null;
         exitSignal = status.signal ?? null;
+        if (status.resumable === true) endResumable = true;
         // Fallback REST path: `status.status` is explicitly declared by the
         // daemon's run record (it passed `isChatRunStatus()` above), so an
         // explicit `'succeeded'` here is just as authoritative as the SSE
@@ -574,6 +592,10 @@ async function consumeDaemonRun({
       (!serverDeclaredSuccess &&
         (exitSignal || (exitCode !== null && exitCode !== 0)));
     if (looksLikeFailure) {
+      if (pendingStructuredError) {
+        handlers.onError(markErrorResumable(pendingStructuredError, endResumable));
+        return;
+      }
       const tail = stderrBuf.trim().slice(-400);
       handlers.onError(
         new Error(`agent exited with ${exitSignal ? `signal ${exitSignal}` : `code ${exitCode}`}${tail ? `\n${tail}` : ''}`),
@@ -588,6 +610,11 @@ async function consumeDaemonRun({
 
 function isChatRunStatus(value: unknown): value is ChatRunStatus {
   return value === 'queued' || value === 'running' || value === 'succeeded' || value === 'failed' || value === 'canceled';
+}
+
+function markErrorResumable(err: Error, resumable: boolean): Error {
+  if (resumable) (err as Error & { resumable?: boolean }).resumable = true;
+  return err;
 }
 
 function normalizeToolInput(input: unknown): unknown {
