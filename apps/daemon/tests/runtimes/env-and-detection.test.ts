@@ -197,7 +197,7 @@ test('detectAgents includes sanitized install and docs metadata from split runti
       assert.ok(deepseek);
       assert.equal(
         deepseek.docsUrl,
-        'https://github.com/deepseek-ai/DeepSeek-TUI/blob/main/README.md',
+        'https://github.com/Hmbown/CodeWhale/blob/main/README.md',
       );
       assert.ok(kimi);
       assert.equal(
