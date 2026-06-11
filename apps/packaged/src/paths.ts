@@ -1,8 +1,10 @@
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join, win32 } from "node:path";
 
-import { APP_KEYS } from "@open-design/sidecar-proto";
+import { APP_KEYS, normalizeNamespace } from "@open-design/sidecar-proto";
 
 import type { PackagedConfig } from "./config.js";
+import { PackagedPathAccessError } from "./errors.js";
 
 export type PackagedNamespacePaths = {
   cacheRoot: string;
@@ -21,17 +23,85 @@ export type PackagedNamespacePaths = {
   webIdentityPath: string;
 };
 
+const HOME_BARE_TOKENS = new Set(["~", "$HOME", "${HOME}"]);
+const HOME_PREFIX_RE = /^(~|\$\{HOME\}|\$HOME)[/\\](.*)$/;
+
+function expandHomePrefix(raw: string): string {
+  if (HOME_BARE_TOKENS.has(raw)) return homedir();
+  const match = HOME_PREFIX_RE.exec(raw);
+  if (match) return join(homedir(), match[2] ?? "");
+  return raw;
+}
+
+function getScopedPackagedDataRootNamespace(raw: string): string | null {
+  const parts = raw.replace(/[\\/]+$/g, "").split(/[\\/]+/);
+  const last = parts.length - 1;
+  if (last < 2) return null;
+  if (parts[last - 2] !== "namespaces" || parts[last] !== "data") return null;
+  return parts[last - 1] ?? null;
+}
+
+function resolvePackagedDataRoot(
+  config: Pick<PackagedConfig, "namespaceBaseRoot">,
+  namespace: string,
+  env: NodeJS.ProcessEnv = {},
+): string {
+  const odDataDir = env.OD_DATA_DIR?.trim();
+  if (odDataDir) {
+    const expanded = expandHomePrefix(odDataDir);
+    const isAbs = process.platform === "win32"
+      ? win32.isAbsolute(expanded)
+      : isAbsolute(expanded);
+    if (!isAbs) {
+      throw new PackagedPathAccessError(
+        [
+          "Open Design's packaged runtime requires OD_DATA_DIR to be an absolute path.",
+          "",
+          `Configured value: ${odDataDir}`,
+          "",
+          "Set OD_DATA_DIR to an absolute path and relaunch Open Design.",
+        ].join("\n"),
+        { title: "Open Design cannot start with this OD_DATA_DIR" },
+      );
+    }
+    const scopedNamespace = getScopedPackagedDataRootNamespace(expanded);
+    if (scopedNamespace) {
+      if (scopedNamespace !== namespace) {
+        throw new PackagedPathAccessError(
+          [
+            "Open Design's packaged runtime requires OD_DATA_DIR to target the active namespace.",
+            "",
+            `Configured value: ${odDataDir}`,
+            `Configured namespace: ${scopedNamespace}`,
+            `Active namespace: ${namespace}`,
+            "",
+            "Use an unscoped absolute base path or relaunch the matching packaged namespace.",
+          ].join("\n"),
+          { title: "Open Design cannot start with this OD_DATA_DIR" },
+        );
+      }
+      return expanded;
+    }
+    return join(expanded, "namespaces", namespace, "data");
+  }
+
+  return join(config.namespaceBaseRoot, namespace, "data");
+}
+
 export function resolvePackagedNamespacePaths(
   config: PackagedConfig,
   namespace = config.namespace,
+  env: NodeJS.ProcessEnv = {},
 ): PackagedNamespacePaths {
-  const namespaceRoot = join(config.namespaceBaseRoot, namespace);
+  const normalizedNamespace = normalizeNamespace(namespace);
+  const namespaceRoot = join(config.namespaceBaseRoot, normalizedNamespace);
+  const dataRoot = resolvePackagedDataRoot(config, normalizedNamespace, env);
 
   return {
     cacheRoot: join(namespaceRoot, "cache"),
     desktopIdentityPath: join(namespaceRoot, "runtime", "desktop-root.json"),
     desktopLogPath: join(namespaceRoot, "logs", APP_KEYS.DESKTOP, "latest.log"),
-    dataRoot: join(namespaceRoot, "data"),
+    dataRoot,
     desktopLogsRoot: join(namespaceRoot, "logs", APP_KEYS.DESKTOP),
     electronSessionDataRoot: join(namespaceRoot, "user-data", "session"),
     electronUserDataRoot: join(namespaceRoot, "user-data"),

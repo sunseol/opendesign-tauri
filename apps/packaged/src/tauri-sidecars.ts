@@ -31,11 +31,6 @@ async function pathExists(path: string): Promise<boolean> {
 }
 
 function defaultNamespaceBaseRoot(): string {
-  const odDataDir = process.env.OD_DATA_DIR;
-  if (odDataDir != null && odDataDir.length > 0) {
-    return join(resolve(odDataDir.replace(/^~/, homedir())), "namespaces");
-  }
-
   switch (platform()) {
     case "darwin":
       return join(homedir(), "Library", "Application Support", "Open Design", "namespaces");
@@ -150,7 +145,7 @@ async function main(): Promise<void> {
   const stamp =
     readProcessStamp(process.argv.slice(2), OPEN_DESIGN_SIDECAR_CONTRACT) ??
     createFallbackStamp(config.namespace);
-  const paths = resolvePackagedNamespacePaths(config, stamp.namespace);
+  const paths = resolvePackagedNamespacePaths(config, stamp.namespace, process.env);
   await mkdir(paths.runtimeRoot, { recursive: true });
 
   const runtime = bootstrapSidecarRuntime(stamp, process.env, {
