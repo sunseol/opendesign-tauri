@@ -27,12 +27,28 @@ test('applyAgentLaunchEnv prepends nodeBinDir and wrapper dir, deduping PATH', (
     { PATH: ['/usr/bin', '/opt/tools/bin', '/bin', '/usr/bin'].join(delimiter) },
     launch,
     '/node/bin',
+    [],
   );
 
   assert.equal(
     env.PATH,
     ['/node/bin', '/opt/tools/bin', '/usr/bin', '/bin'].join(delimiter),
   );
+});
+
+test('applyAgentLaunchEnv appends toolchain dirs so shebang interpreters resolve at spawn time', () => {
+  const env = applyAgentLaunchEnv(
+    { PATH: ['/usr/bin', '/bin'].join(delimiter) },
+    { childPathPrepend: ['/opt/homebrew/bin'] },
+    '/node/bin',
+    ['/home/me/.bun/bin', '/usr/bin'],
+  );
+
+  const parts = (env.PATH as string).split(delimiter);
+  assert.equal(parts[0], '/node/bin');
+  assert.equal(parts[1], '/opt/homebrew/bin');
+  assert.ok(parts.includes('/home/me/.bun/bin'));
+  assert.equal(parts.filter((p: string) => p === '/usr/bin').length, 1);
 });
 
 test('applyAgentLaunchEnv updates the Path key in-place without creating a competing PATH key', () => {
@@ -44,7 +60,7 @@ test('applyAgentLaunchEnv updates the Path key in-place without creating a compe
   };
   const launch = { childPathPrepend: ['/opt/agent/bin'] };
 
-  const env = applyAgentLaunchEnv(base, launch, '/opt/node/bin');
+  const env = applyAgentLaunchEnv(base, launch, '/opt/node/bin', []);
 
   // Original 'Path' key must be updated in-place.
   assert.ok('Path' in env, 'original Path key must be preserved');
@@ -68,7 +84,7 @@ winTest('applyAgentLaunchEnv injects Node binary dir and wrapper dir into a Wind
   };
   const launch = { childPathPrepend: ['C:\\Users\\User\\AppData\\Roaming\\npm'] };
 
-  const env = applyAgentLaunchEnv(windowsBase, launch, 'C:\\Program Files\\nodejs');
+  const env = applyAgentLaunchEnv(windowsBase, launch, 'C:\\Program Files\\nodejs', []);
 
   // Original 'Path' key must be updated in-place — no competing 'PATH' key.
   assert.ok('Path' in env, 'original Path key must be preserved');

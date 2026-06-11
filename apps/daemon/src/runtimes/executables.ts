@@ -61,6 +61,14 @@ function userToolchainDirs() {
   return cachedToolchainDirs;
 }
 
+// Binary resolution searches these user-level toolchain bin directories beyond
+// process.env.PATH. Expose the same list to spawn env construction so a
+// resolved agent script can still find its shebang interpreter, e.g.
+// `#!/usr/bin/env bun`, when the daemon was launched with a minimal GUI PATH.
+export function userToolchainBinDirs(): string[] {
+  return userToolchainDirs();
+}
+
 function resolvePathDirs() {
   const seen = new Set();
   const dirs = [

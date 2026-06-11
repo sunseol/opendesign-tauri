@@ -1,6 +1,6 @@
 import { accessSync, constants, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path, { delimiter } from 'node:path';
-import { inspectAgentExecutableResolution } from './executables.js';
+import { inspectAgentExecutableResolution, userToolchainBinDirs } from './executables.js';
 import type { RuntimeAgentDef } from './types.js';
 
 export type AgentLaunchKind = 'selected' | 'codex-native';
@@ -40,6 +40,7 @@ export function applyAgentLaunchEnv(
   env: NodeJS.ProcessEnv,
   launch: Pick<AgentLaunchResolution, 'childPathPrepend'>,
   nodeBinDir: string = path.dirname(process.execPath),
+  appendPathDirs: string[] = userToolchainBinDirs(),
 ): NodeJS.ProcessEnv {
   // Build the ordered list of directories to guarantee are at the front of
   // PATH: the running Node binary directory first (so npm .cmd shims on
@@ -49,8 +50,12 @@ export function applyAgentLaunchEnv(
   // every call site — detectAgents, connection tests, and chat runs —
   // consistently reaches the correct Node binary without each caller having
   // to duplicate the dirname(process.execPath) prepend independently.
+  //
+  // `appendPathDirs` adds user toolchain bin dirs to the END of PATH so a
+  // resolved binary's shebang interpreter is findable at spawn time even when
+  // the daemon's own PATH is minimal.
   const toPrepend = [...(nodeBinDir ? [nodeBinDir] : []), ...launch.childPathPrepend];
-  if (toPrepend.length === 0) return env;
+  if (toPrepend.length === 0 && appendPathDirs.length === 0) return env;
   // Case-insensitive key lookup — Windows uses 'Path', not 'PATH'.
   // Using env.PATH directly would be undefined on Windows, yielding a
   // one-entry PATH that contains only toPrepend and discards all system
@@ -65,7 +70,7 @@ export function applyAgentLaunchEnv(
   const existingParts = existing.split(delimiter).filter((e) => e.length > 0);
   const seen = new Set<string>();
   const merged: string[] = [];
-  for (const entry of [...toPrepend, ...existingParts]) {
+  for (const entry of [...toPrepend, ...existingParts, ...appendPathDirs]) {
     const n = normalize(entry);
     if (!seen.has(n)) {
       seen.add(n);
