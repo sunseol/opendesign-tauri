@@ -30,6 +30,7 @@ interface Props {
   onClose: () => void;
   onUse: (record: InstalledPluginRecord) => void;
   isApplying?: boolean;
+  hideUseAction?: boolean;
 }
 
 export function PluginDetailsModal({
@@ -37,6 +38,7 @@ export function PluginDetailsModal({
   onClose,
   onUse,
   isApplying,
+  hideUseAction,
 }: Props) {
   const preview = inferPluginPreview(record);
 
@@ -47,6 +49,7 @@ export function PluginDetailsModal({
         onClose={onClose}
         onUse={onUse}
         isApplying={isApplying}
+        hideUseAction={hideUseAction}
       />
     );
   }
@@ -61,6 +64,7 @@ export function PluginDetailsModal({
         onClose={onClose}
         onUse={onUse}
         isApplying={isApplying}
+        hideUseAction={hideUseAction}
       />
     );
   }
@@ -72,6 +76,7 @@ export function PluginDetailsModal({
         onClose={onClose}
         onUse={onUse}
         isApplying={isApplying}
+        hideUseAction={hideUseAction}
       />
     );
   }
@@ -82,6 +87,7 @@ export function PluginDetailsModal({
       onClose={onClose}
       onUse={onUse}
       isApplying={isApplying}
+      hideUseAction={hideUseAction}
     />
   );
 }

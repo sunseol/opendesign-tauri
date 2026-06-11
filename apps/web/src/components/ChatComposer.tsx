@@ -1675,6 +1675,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               await pluginsSectionRef.current?.applyById(record.id, record);
               setDetailsRecord(null);
             }}
+            hideUseAction
           />
         ) : null}
       </div>
