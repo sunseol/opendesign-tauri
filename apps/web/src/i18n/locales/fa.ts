@@ -194,6 +194,8 @@ export const fa: Dict = {
   'settings.modeDaemonInstalledMeta': '{count} نصب شده',
   'settings.modeApi': 'ارائه‌دهنده API',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK mode talks to the model directly and cannot read, write, or edit files in your project. The agent replies with text or HTML instead of changing files. Switch to Local CLI mode (Claude Code, Codex, etc.) if you want project file edits.",
   'settings.codeAgent': 'عامل کد',
   'settings.codeAgentHint':
     'با اسکن PATH شما شناسایی شده. CLI مورد نظر برای جریان تولیدات را انتخاب کنید.',

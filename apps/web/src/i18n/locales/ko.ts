@@ -194,6 +194,8 @@ export const ko: Dict = {
   'settings.modeDaemonInstalledMeta': '{count}개 설치됨',
   'settings.modeApi': 'API 제공자',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK 모드는 모델과 직접 통신하므로 프로젝트 파일을 읽거나 쓰거나 수정할 수 없습니다. 에이전트는 실제 파일을 바꾸는 대신 텍스트나 HTML로 답합니다. 프로젝트 파일 수정을 원하면 Local CLI 모드(Claude Code, Codex 등)로 전환하세요.",
   'settings.codeAgent': '코드 에이전트',
   'settings.codeAgentHint':
     'PATH 환경 변수 스캔을 통해 감지됩니다. 생성을 처리할 CLI를 선택하세요.',

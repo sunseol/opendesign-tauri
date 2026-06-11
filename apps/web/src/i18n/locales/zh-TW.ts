@@ -194,6 +194,8 @@ export const zhTW: Dict = {
   'settings.modeDaemonInstalledMeta': '已安裝 {count} 個',
   'settings.modeApi': 'API 提供方',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK 模式會直接與模型對話，無法讀取、寫入或修改專案檔案。代理只會回覆文字或 HTML，不會實際變更檔案。若要讓代理編輯專案檔案，請切換到 Local CLI 模式（Claude Code、Codex 等）。",
   'settings.codeAgent': '程式碼代理',
   'settings.codeAgentHint': '選擇用來執行提示詞的 CLI。',
   'settings.rescan': '↻ 重新掃描',

@@ -194,6 +194,8 @@ export const ja: Dict = {
   'settings.modeDaemonInstalledMeta': '{count} インストール済み',
   'settings.modeApi': 'API プロバイダー',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK mode talks to the model directly and cannot read, write, or edit files in your project. The agent replies with text or HTML instead of changing files. Switch to Local CLI mode (Claude Code, Codex, etc.) if you want project file edits.",
   'settings.codeAgent': 'コードエージェント',
   'settings.codeAgentHint':
     'PATH をスキャンして検出されます。生成に使用する CLI を選択してください。',

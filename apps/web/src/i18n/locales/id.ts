@@ -194,6 +194,8 @@ export const id: Dict = {
   'settings.modeDaemonInstalledMeta': '{count} terpasang',
   'settings.modeApi': 'Anthropic API',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK mode talks to the model directly and cannot read, write, or edit files in your project. The agent replies with text or HTML instead of changing files. Switch to Local CLI mode (Claude Code, Codex, etc.) if you want project file edits.",
   'settings.codeAgent': 'Code agent',
   'settings.codeAgentHint': 'Terdeteksi dari PATH. Pilih CLI yang ingin dipakai untuk menjalankan generasi.',
   'settings.rescan': 'Pindai ulang',

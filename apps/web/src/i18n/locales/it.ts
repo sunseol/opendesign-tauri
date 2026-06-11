@@ -193,6 +193,8 @@ export const it: Dict = {
   'settings.modeDaemonInstalledMeta': '{count} installato/i',
   'settings.modeApi': 'Provider API',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK mode talks to the model directly and cannot read, write, or edit files in your project. The agent replies with text or HTML instead of changing files. Switch to Local CLI mode (Claude Code, Codex, etc.) if you want project file edits.",
   'settings.codeAgent': 'Agente di codice',
   'settings.codeAgentHint':
     'Rilevato analizzando il tuo PATH. Scegli la CLI attraverso cui verranno eseguite le generazioni.',

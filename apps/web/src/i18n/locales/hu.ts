@@ -194,6 +194,8 @@ export const hu: Dict = {
   'settings.modeDaemonInstalledMeta': '{count} telepítve',
   'settings.modeApi': 'API-szolgáltató',
   'settings.modeApiMeta': 'BYOK',
+  'settings.byokNoFileToolsNotice':
+    "BYOK mode talks to the model directly and cannot read, write, or edit files in your project. The agent replies with text or HTML instead of changing files. Switch to Local CLI mode (Claude Code, Codex, etc.) if you want project file edits.",
   'settings.codeAgent': 'Code agent',
   'settings.codeAgentHint':
     'A PATH átvizsgálásával észlelve. Válaszd ki a CLI-t, amelyen át a generálásokat szeretnéd futtatni.',
