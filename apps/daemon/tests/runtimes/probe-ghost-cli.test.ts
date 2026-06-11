@@ -163,6 +163,58 @@ describe('probe (issue #658) — ghost CLI after the binary is uninstalled', () 
     expect(codex?.version).toBe('codex 1.2.3');
   });
 
+  it('honors Trae CLI adapter-specific version probe timeout', async () => {
+    execAgentFileMock.mockResolvedValue({ stdout: 'agent 1.2.3\n', stderr: '' });
+    resolveAgentLaunchMock.mockImplementation((def: { id: string }) => ({
+      configuredOverridePath: null,
+      pathResolvedPath: `/fake/bin/${def.id}`,
+      selectedPath: `/fake/bin/${def.id}`,
+      launchPath: `/fake/bin/${def.id}`,
+      launchKind: 'selected' as const,
+      childPathPrepend: ['/fake/bin'],
+      diagnostic: null,
+    }));
+    const { detectAgents } = await import('../../src/runtimes/detection.js');
+
+    await detectAgents();
+
+    const traeVersionCall = execAgentFileMock.mock.calls.find(
+      ([command, args]) =>
+        command === '/fake/bin/trae-cli' &&
+        Array.isArray(args) &&
+        args.join('\0') === '--version',
+    );
+
+    expect(traeVersionCall).toBeDefined();
+    expect(traeVersionCall?.[2]).toMatchObject({ timeout: 10_000 });
+  });
+
+  it('keeps the default version probe timeout for other runtimes', async () => {
+    execAgentFileMock.mockResolvedValue({ stdout: 'agent 1.2.3\n', stderr: '' });
+    resolveAgentLaunchMock.mockImplementation((def: { id: string }) => ({
+      configuredOverridePath: null,
+      pathResolvedPath: `/fake/bin/${def.id}`,
+      selectedPath: `/fake/bin/${def.id}`,
+      launchPath: `/fake/bin/${def.id}`,
+      launchKind: 'selected' as const,
+      childPathPrepend: ['/fake/bin'],
+      diagnostic: null,
+    }));
+    const { detectAgents } = await import('../../src/runtimes/detection.js');
+
+    await detectAgents();
+
+    const codexVersionCall = execAgentFileMock.mock.calls.find(
+      ([command, args]) =>
+        command === '/fake/bin/codex' &&
+        Array.isArray(args) &&
+        args.join('\0') === '--version',
+    );
+
+    expect(codexVersionCall).toBeDefined();
+    expect(codexVersionCall?.[2]).toMatchObject({ timeout: 3000 });
+  });
+
   it('reports unavailable for a stale configured override even when a different PATH binary exists', async () => {
     // Regression for Siri-Ray's #1301 review: an earlier revision tried
     // to fall back to a PATH candidate when the configured override

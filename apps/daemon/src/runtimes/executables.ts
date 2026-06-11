@@ -25,6 +25,7 @@ const AGENT_BIN_ENV_KEYS = new Map<string, string>([
   ['qoder', 'QODER_BIN'],
   ['qwen', 'QWEN_BIN'],
   ['reasonix', 'REASONIX_BIN'],
+  ['trae-cli', 'TRAE_CLI_BIN'],
   ['vibe', 'VIBE_BIN'],
 ]);
 

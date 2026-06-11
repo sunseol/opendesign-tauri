@@ -128,6 +128,7 @@ test('resolveAgentExecutable supports configured binary overrides for non-Codex 
     ['copilot', 'copilot', 'COPILOT_BIN'],
     ['deepseek', 'deepseek', 'DEEPSEEK_BIN'],
     ['reasonix', 'reasonix', 'REASONIX_BIN'],
+    ['trae-cli', 'traecli', 'TRAE_CLI_BIN'],
   ];
   const dir = mkdtempSync(join(tmpdir(), 'od-agent-bin-overrides-'));
   try {
