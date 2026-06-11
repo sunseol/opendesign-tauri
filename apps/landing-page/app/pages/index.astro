@@ -244,6 +244,31 @@ const pageHtml = renderToStaticMarkup(
             );
           }
 
+          // Homepage uses this inline enhancer instead of the shared header
+          // enhancer, so keep the mobile menu toggle behavior in sync here.
+          const navToggle = document.querySelector('[data-nav-toggle]');
+          const primaryNav = document.querySelector('[data-nav-primary]');
+          const navEl = navToggle ? navToggle.closest('header.nav') : null;
+          if (navToggle && primaryNav && navEl) {
+            const setNavOpen = (open) => {
+              navEl.classList.toggle('is-open', open);
+              navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            };
+            navToggle.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              setNavOpen(!navEl.classList.contains('is-open'));
+            });
+            primaryNav.querySelectorAll('a').forEach((link) => {
+              link.addEventListener('click', () => setNavOpen(false));
+            });
+            document.addEventListener('click', (ev) => {
+              if (!navEl.contains(ev.target)) setNavOpen(false);
+            });
+            document.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Escape') setNavOpen(false);
+            });
+          }
+
           const stars = document.querySelector('[data-github-stars]');
           if (stars) {
             fetch('https://api.github.com/repos/nexu-io/open-design', {
