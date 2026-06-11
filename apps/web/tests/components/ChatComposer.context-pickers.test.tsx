@@ -228,6 +228,24 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@Deck Builder');
   });
 
+  it('inserts a skill mention when picking from the tools panel', async () => {
+    const onProjectSkillChange = vi.fn();
+    renderComposer({ onProjectSkillChange });
+    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
+
+    fireEvent.change(input, {
+      target: { value: 'Build ', selectionStart: 6 },
+    });
+    input.setSelectionRange(6, 6);
+    fireEvent.click(screen.getByLabelText('Open CLI and model settings'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Skills' }));
+    fireEvent.click(screen.getByText('Deck Builder'));
+
+    await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
+    await waitFor(() => expect(input.value).toBe('Build @Deck Builder '));
+    expect(input.selectionStart).toBe('Build @Deck Builder '.length);
+  });
+
   it('shows all matching skills and ranks exact prefix matches first', async () => {
     skills = [
       makeSkill({
