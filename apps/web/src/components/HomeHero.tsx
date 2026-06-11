@@ -112,7 +112,11 @@ interface HomeHeroDesignSystemOption {
   logoUrl?: string;
 }
 
-type HomeMentionTab = 'all' | 'plugins' | 'skills' | 'mcp' | 'connectors';
+type HomeMentionTab = 'all' | 'files' | 'plugins' | 'skills' | 'mcp' | 'connectors';
+
+// Keep the combined overview compact while allowing the dedicated files tab to
+// show every user-staged design file.
+const HOME_MENTION_ALL_TAB_PREVIEW = 6;
 
 interface HomeMentionOption {
   id: string;
@@ -200,6 +204,15 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
   const mention = getContextMention(prompt);
   const mentionActive = Boolean(mention);
   const mentionQuery = mention?.query ?? '';
+  const fileMatches = useMemo(
+    () =>
+      mentionActive
+        ? stagedFiles
+            .map((file, index) => ({ file, index }))
+            .filter(({ file }) => fileMatchesQuery(file, mentionQuery))
+        : [],
+    [mentionActive, mentionQuery, stagedFiles],
+  );
   const pluginMatches = useMemo(
     () =>
       mentionActive
@@ -230,17 +243,43 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
   );
   const pickerOpen = mentionActive;
   const tabs: Array<{ id: HomeMentionTab; label: string; count: number }> = [
-    { id: 'all', label: t('common.all'), count: pluginMatches.length + skillMatches.length + mcpMatches.length + connectorMatches.length },
+    {
+      id: 'all',
+      label: t('common.all'),
+      count:
+        Math.min(fileMatches.length, HOME_MENTION_ALL_TAB_PREVIEW) +
+        pluginMatches.length +
+        skillMatches.length +
+        mcpMatches.length +
+        connectorMatches.length,
+    },
+    { id: 'files', label: t('designFiles.title'), count: fileMatches.length },
     { id: 'plugins', label: t('entry.navPlugins'), count: pluginMatches.length },
     { id: 'skills', label: t('homeHero.skills'), count: skillMatches.length },
     { id: 'mcp', label: 'MCP', count: mcpMatches.length },
     { id: 'connectors', label: 'Connectors', count: connectorMatches.length },
   ];
+  const showFiles = mentionTab === 'all' || mentionTab === 'files';
   const showPlugins = mentionTab === 'all' || mentionTab === 'plugins';
   const showSkills = mentionTab === 'all' || mentionTab === 'skills';
   const showMcp = mentionTab === 'all' || mentionTab === 'mcp';
   const showConnectors = mentionTab === 'all' || mentionTab === 'connectors';
   const visibleSections: HomeMentionSection[] = [
+    showFiles
+      ? {
+          id: 'files',
+          label: t('designFiles.title'),
+          options: (mentionTab === 'files' ? fileMatches : fileMatches.slice(0, HOME_MENTION_ALL_TAB_PREVIEW))
+            .map(({ file, index }) => ({
+              id: `file-${index}-${file.name}`,
+              icon: isImageFile(file) ? 'image' : 'file',
+              title: file.name,
+              description: file.type || t('designFiles.title'),
+              meta: formatFileSize(file.size),
+              onPick: () => pickFile(file),
+            })),
+        }
+      : null,
     showPlugins
       ? {
           id: 'plugins',
@@ -316,6 +355,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         pluginOptions,
         connectorOptions,
         selectedPluginContexts,
+        stagedFiles,
         skillOptions,
       }),
     [
@@ -326,6 +366,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
       pluginOptions,
       connectorOptions,
       selectedPluginContexts,
+      stagedFiles,
       skillOptions,
     ],
   );
@@ -501,6 +542,20 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         )
       : prompt;
     onPickConnector(connector, nextPrompt);
+  }
+
+  function pickFile(file: File) {
+    if (!mention) return;
+    const nextPrompt = replaceMentionTokenWithText(prompt, mention, inlineMentionToken(file.name));
+    onPromptChange(nextPrompt);
+    setSelectedIndex(0);
+    requestAnimationFrame(() => {
+      const input = inputElementRef.current;
+      if (!input) return;
+      input.focus();
+      const position = nextPrompt.length;
+      input.setSelectionRange(position, position);
+    });
   }
 
   function updatePluginInput(name: string, value: unknown) {
@@ -1425,6 +1480,7 @@ function buildHomeMentionEntities({
   mcpOptions,
   pluginOptions,
   selectedPluginContexts,
+  stagedFiles,
   skillOptions,
 }: {
   activePluginRecord: InstalledPluginRecord | null;
@@ -1434,6 +1490,7 @@ function buildHomeMentionEntities({
   mcpOptions: McpServerConfig[];
   pluginOptions: InstalledPluginRecord[];
   selectedPluginContexts: InstalledPluginRecord[];
+  stagedFiles: File[];
   skillOptions: SkillSummary[];
 }): InlineMentionEntity[] {
   const entities: InlineMentionEntity[] = [];
@@ -1525,6 +1582,15 @@ function buildHomeMentionEntities({
       });
     }
   }
+  stagedFiles.forEach((file, index) => {
+    entities.push({
+      id: homeFileKey(file, index),
+      kind: 'file',
+      label: file.name,
+      token: inlineMentionToken(file.name),
+      title: `File: ${file.name}`,
+    });
+  });
   return entities;
 }
 
@@ -2322,6 +2388,12 @@ function connectorMatchesQuery(connector: ConnectorDetail, query: string): boole
     .join(' ')
     .toLowerCase()
     .includes(q);
+}
+
+function fileMatchesQuery(file: File, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [file.name, file.type].join(' ').toLowerCase().includes(q);
 }
 
 function getPluginSourceLabel(plugin: InstalledPluginRecord): string {

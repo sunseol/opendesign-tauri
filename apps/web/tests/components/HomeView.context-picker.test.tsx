@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID,
@@ -125,6 +125,75 @@ describe('HomeView context picker', () => {
       pluginId: DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID,
       attachments: [file],
     }));
+  });
+
+  it('lists every staged design file in the dedicated Home @ picker tab', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      if (typeof url === 'string' && url === '/api/plugins') {
+        return new Response(JSON.stringify({ plugins: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url === '/api/mcp/servers') {
+        return new Response(JSON.stringify({ servers: [], templates: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+
+    const files = Array.from(
+      { length: 7 },
+      (_, i) => new File(['design'], `design-${i + 1}.png`, { type: 'image/png' }),
+    );
+
+    render(
+      <HomeView
+        projects={[]}
+        onSubmit={() => undefined}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+      />,
+    );
+
+    const input = await screen.findByTestId('home-hero-input');
+    fireEvent.paste(input, {
+      clipboardData: {
+        items: files.map((file) => ({ kind: 'file', getAsFile: () => file })),
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('design-1.png')).toBeTruthy());
+
+    fireEvent.change(input, { target: { value: '@design' } });
+
+    const allTab = await screen.findByRole('tab', { name: /^all/i });
+    expect(allTab.textContent).toContain('6');
+    expect(allTab.textContent).not.toContain('7');
+
+    const picker = screen.getByTestId('home-hero-plugin-picker');
+    const previewed = files.filter((file) => within(picker).queryByText(file.name));
+    expect(previewed).toHaveLength(6);
+
+    const filesTab = screen.getByRole('tab', { name: /design files/i });
+    expect(filesTab.textContent).toContain('7');
+    fireEvent.click(filesTab);
+
+    for (const file of files) {
+      expect(within(picker).getByText(file.name)).toBeTruthy();
+    }
+
+    fireEvent.mouseDown(within(picker).getByRole('option', { name: /design-7\.png/i }));
+    await waitFor(() => {
+      expect((input as HTMLTextAreaElement).value).toBe('@design-7.png');
+    });
   });
 
   it('adds multiple @ plugins as context without applying or hydrating their query', async () => {
