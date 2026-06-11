@@ -163,6 +163,10 @@ export function defaultDesignSystemSelection(
     : [];
 }
 
+function isSelectableProjectDesignSystem(system: DesignSystemSummary): boolean {
+  return system.status !== 'draft';
+}
+
 export function buildDesignSystemCreateSelection(
   showDesignSystemPicker: boolean,
   selectedIds: string[],
@@ -233,9 +237,13 @@ export function NewProjectPanel({
   // Design-system selection is now an *array* internally so the same
   // component can drive both single-select and multi-select modes without
   // duplicating state. Single-select coerces to length 0/1.
+  const selectableDesignSystems = useMemo(
+    () => designSystems.filter(isSelectableProjectDesignSystem),
+    [designSystems],
+  );
   const initialDefaultDsSelection = useMemo(
-    () => defaultDesignSystemSelection(defaultDesignSystemId, designSystems),
-    [defaultDesignSystemId, designSystems],
+    () => defaultDesignSystemSelection(defaultDesignSystemId, selectableDesignSystems),
+    [defaultDesignSystemId, selectableDesignSystems],
   );
   const [selectedDsIds, setSelectedDsIds] = useState<string[]>(
     () => initialDefaultDsSelection,
@@ -692,7 +700,7 @@ export function NewProjectPanel({
 
         {showDesignSystemPicker ? (
           <DesignSystemPicker
-            designSystems={designSystems}
+            designSystems={selectableDesignSystems}
             defaultDesignSystemId={defaultDesignSystemId}
             selectedIds={selectedDsIds}
             multi={dsMulti}
