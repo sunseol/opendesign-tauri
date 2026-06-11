@@ -3614,6 +3614,13 @@ function HtmlViewer({
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const activatedSrcDocTransportHtmlRef = useRef<string | null>(null);
+  // Tracks the iframe DOM node whose dedupe ref was last reset by the
+  // srcDoc onLoad handler. We reset the dedupe exactly once per freshly
+  // mounted iframe (the first load is the shell HTML), and skip every
+  // subsequent load on the same node (those are our own
+  // document.open/write/close inside the shell). See onLoad below for
+  // the infinite-loop story (issue #2361).
+  const srcDocFrameDedupeResetForRef = useRef<HTMLIFrameElement | null>(null);
   const isActivePreviewIframeSource = useCallback((source: MessageEventSource | null) => {
     return !!source && source === iframeRef.current?.contentWindow;
   }, []);
@@ -4109,13 +4116,9 @@ function HtmlViewer({
     [previewSource, effectiveDeck, projectId, file.name, previewStateKey, manualEditMode, selectedPalette],
   );
   const lazySrcDocTransport = useMemo(() => buildLazySrcdocTransport(), []);
-  const [hasLazySrcDocTransport, setHasLazySrcDocTransport] = useState(useUrlLoadPreview);
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
   const [srcDocShellReady, setSrcDocShellReady] = useState(false);
   const wasUrlLoadPreviewRef = useRef(useUrlLoadPreview);
-  useEffect(() => {
-    if (useUrlLoadPreview) setHasLazySrcDocTransport(true);
-  }, [useUrlLoadPreview]);
   // Reset the shell-ready latch whenever the srcDoc iframe re-mounts. The
   // next shell will post `od:srcdoc-transport-ready` (or fire onLoad) and
   // flip this back to true. See #2253.
@@ -4137,7 +4140,11 @@ function HtmlViewer({
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
-  const useLazySrcDocTransport = useUrlLoadPreview || hasLazySrcDocTransport;
+  // Lazy transport preloads an empty shell only while URL-load is the active
+  // transport. Once srcdoc becomes active (sandbox shim, Draw, Tweaks, etc.),
+  // mount the real artifact HTML directly so we do not depend on a postMessage
+  // activation that can race (#2253) and strand the iframe blank (#2361, #2791).
+  const useLazySrcDocTransport = !manualEditMode && useUrlLoadPreview;
   const srcDocTransportContent = useLazySrcDocTransport ? lazySrcDocTransport : srcDoc;
   const urlTransportSrc = useUrlLoadPreview ? activePreviewSrcUrl : 'about:blank';
   const activateSrcDocTransport = useCallback((target: HTMLIFrameElement | null = srcDocPreviewIframeRef.current) => {
@@ -4163,9 +4170,30 @@ function HtmlViewer({
       wasUrlLoadPreviewRef.current = true;
       return;
     }
+    if (wasUrlLoadPreviewRef.current) {
+      setSrcDocTransportResetKey((key) => key + 1);
+      activatedSrcDocTransportHtmlRef.current = null;
+    }
     wasUrlLoadPreviewRef.current = false;
     activateSrcDocTransport();
   }, [activateSrcDocTransport, useUrlLoadPreview]);
+
+  // Re-activate srcDoc transport when exiting manual edit mode to ensure
+  // the preview renders correctly when switching from Edit to Draw mode.
+  // Without this, the preview can remain blank because the frozen source
+  // is cleared but the iframe content is not refreshed.
+  const prevManualEditModeRef = useRef(manualEditMode);
+  useEffect(() => {
+    const wasInEditMode = prevManualEditModeRef.current;
+    const isNowInEditMode = manualEditMode;
+    prevManualEditModeRef.current = isNowInEditMode;
+
+    // When exiting edit mode (was true, now false), re-activate the transport
+    if (wasInEditMode && !isNowInEditMode && !useUrlLoadPreview) {
+      activateSrcDocTransport();
+    }
+  }, [manualEditMode, useUrlLoadPreview, activateSrcDocTransport]);
+
   useEffect(() => {
     restorePreviewScrollPosition();
   }, [boardMode, manualEditMode, srcDoc, restorePreviewScrollPosition]);
@@ -6329,10 +6357,14 @@ function HtmlViewer({
                       onLoad={() => {
                         const frame = srcDocPreviewIframeRef.current;
                         if (!useUrlLoadPreview) iframeRef.current = frame;
-                        // Belt-and-suspenders for the ready handshake: if the
-                        // postMessage racing the parent's listener registration
-                        // ever loses, the load event still tells us the shell
-                        // script ran to completion.
+                        // Reset activation only once per mounted iframe. The
+                        // srcDoc transport fires a second load after
+                        // document.write(); clearing the dedupe on every load
+                        // loops activation and can keep animated previews blank.
+                        if (frame && srcDocFrameDedupeResetForRef.current !== frame) {
+                          srcDocFrameDedupeResetForRef.current = frame;
+                          activatedSrcDocTransportHtmlRef.current = null;
+                        }
                         if (useLazySrcDocTransport) setSrcDocShellReady(true);
                         activateSrcDocTransport(frame);
                         dcViewportRestoreAtRef.current = Date.now();

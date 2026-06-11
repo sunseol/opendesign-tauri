@@ -379,7 +379,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(markup).toContain('sandbox="allow-scripts allow-downloads"');
   });
 
-  it('keeps inactive HTML preview transports mounted without booting the artifact', async () => {
+  it('keeps inactive URL-load preview transports mounted and renders active srcDoc directly', async () => {
     const file = baseFile({
       name: 'page.html',
       path: 'page.html',
@@ -414,25 +414,99 @@ describe('FileViewer SVG artifacts', () => {
     expect(srcDocFrame?.srcdoc).toContain('data-od-lazy-srcdoc-transport');
     expect(srcDocFrame?.srcdoc).not.toContain('__odArtifactBootCount');
 
-    const postMessageSpy = vi.spyOn(srcDocFrame!.contentWindow!, 'postMessage');
     fireEvent.click(screen.getByTestId('inspect-mode-toggle'));
 
-    const urlFrameAfter = container.querySelector('iframe[data-od-render-mode="url-load"]') as HTMLIFrameElement | null;
-    const srcDocFrameAfter = container.querySelector('iframe[data-od-render-mode="srcdoc"]') as HTMLIFrameElement | null;
+    await waitFor(() => {
+      const urlFrameAfter = container.querySelector('iframe[data-od-render-mode="url-load"]') as HTMLIFrameElement | null;
+      const srcDocFrameAfter = container.querySelector('iframe[data-od-render-mode="srcdoc"]') as HTMLIFrameElement | null;
+      expect(urlFrameAfter).toBe(urlFrame);
+      expect(urlFrameAfter?.getAttribute('data-od-active')).toBe('false');
+      expect(urlFrameAfter?.getAttribute('src')).toBe('about:blank');
+      expect(srcDocFrameAfter?.getAttribute('data-od-active')).toBe('true');
+      expect(srcDocFrameAfter?.srcdoc).toContain('__odArtifactBootCount');
+      expect(srcDocFrameAfter?.srcdoc).toContain('data-od-selection-bridge');
+      expect(srcDocFrameAfter?.srcdoc).toContain('data-od-preview-focus-guard');
+      expect(srcDocFrameAfter?.srcdoc).not.toContain('data-od-lazy-srcdoc-transport');
+    });
+  });
 
-    expect(urlFrameAfter).toBe(urlFrame);
-    expect(srcDocFrameAfter).toBe(srcDocFrame);
-    expect(urlFrameAfter?.getAttribute('data-od-active')).toBe('false');
-    expect(urlFrameAfter?.getAttribute('src')).toBe('about:blank');
-    expect(srcDocFrameAfter?.getAttribute('data-od-active')).toBe('true');
-    expect(srcDocFrameAfter?.srcdoc).toContain('data-od-lazy-srcdoc-transport');
-    expect(srcDocFrameAfter?.srcdoc).not.toContain('__odArtifactBootCount');
+  it('renders sandbox-shim artifacts on the srcdoc transport without entering edit mode (#2791)', () => {
+    const file = baseFile({
+      name: 'search.html',
+      path: 'search.html',
+      mime: 'text/html',
+      kind: 'html',
+      artifactManifest: {
+        version: 1,
+        kind: 'html',
+        title: 'Search',
+        entry: 'search.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    });
+
+    const { container } = render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={file}
+        liveHtml='<html><body><script src="app.js"></script><main data-od-id="results">Results</main></body></html>'
+      />,
+    );
+
+    const srcDocFrame = container.querySelector('iframe[data-od-render-mode="srcdoc"]') as HTMLIFrameElement | null;
+    expect(srcDocFrame?.getAttribute('data-od-active')).toBe('true');
+    expect(srcDocFrame?.srcdoc).toContain('data-od-id="results"');
+    expect(srcDocFrame?.srcdoc).not.toContain('data-od-lazy-srcdoc-transport');
+    expect(srcDocFrame?.srcdoc).toContain('data-od-sandbox-shim');
+  });
+
+  it('reactivates the srcDoc transport after switching source back to preview', async () => {
+    const file = baseFile({
+      name: 'page.html',
+      path: 'page.html',
+      mime: 'text/html',
+      kind: 'html',
+      artifactManifest: {
+        version: 1,
+        kind: 'html',
+        title: 'Page',
+        entry: 'page.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    });
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={file}
+        liveHtml='<html><body><main data-od-id="hero">Hero</main></body></html>'
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('inspect-mode-toggle'));
 
     await waitFor(() => {
-      const activations = srcDocActivationMessages(postMessageSpy.mock.calls);
-      expect(activations.at(-1)?.html).toContain('__odArtifactBootCount');
-      expect(activations.at(-1)?.html).toContain('data-od-selection-bridge');
-      expect(activations.at(-1)?.html).toContain('data-od-preview-focus-guard');
+      const activeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+      expect(activeFrame.getAttribute('data-od-render-mode')).toBe('srcdoc');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Code' }));
+    expect(screen.queryByTestId('artifact-preview-frame')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Preview' }));
+
+    await waitFor(() => {
+      const activeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+      expect(activeFrame.getAttribute('data-od-render-mode')).toBe('srcdoc');
+      expect(activeFrame.srcdoc).toContain('data-od-selection-bridge');
+      expect(activeFrame.srcdoc).toContain('Hero');
+      expect(activeFrame.srcdoc).not.toContain('data-od-lazy-srcdoc-transport');
     });
   });
 
@@ -1379,18 +1453,17 @@ describe('FileViewer tweaks toolbar', () => {
     );
 
     expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).getAttribute('data-od-render-mode')).toBe('url-load');
-    const inactiveSrcDocFrame = screen.getByTestId('artifact-preview-frame-srcdoc') as HTMLIFrameElement;
-    const postMessageSpy = vi.spyOn(inactiveSrcDocFrame.contentWindow!, 'postMessage');
     fireEvent.click(screen.getByTestId('draw-overlay-toggle'));
 
     const frame = await waitFor(() => {
       const activeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
       expect(activeFrame.getAttribute('data-od-render-mode')).toBe('srcdoc');
-      expect(activeFrame.srcdoc).toContain('data-od-lazy-srcdoc-transport');
+      expect(activeFrame.srcdoc).toContain('data-od-selection-bridge');
+      expect(activeFrame.srcdoc).not.toContain('data-od-lazy-srcdoc-transport');
       return activeFrame;
     });
     await waitFor(() => {
-      expect(srcDocActivationMessages(postMessageSpy.mock.calls).at(-1)?.html).toContain('data-od-selection-bridge');
+      expect(frame.srcdoc).toContain('data-od-id="hero"');
     });
     const initialSrcDoc = frame.srcdoc;
 
