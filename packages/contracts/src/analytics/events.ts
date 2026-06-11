@@ -221,7 +221,7 @@ export type TrackingExportFormat =
 export type TrackingResult = 'success' | 'failed';
 export type TrackingRunResult = 'success' | 'failed' | 'cancelled';
 export type TrackingExportResult = 'success' | 'failed' | 'cancelled';
-export type TrackingTestResult = 'success' | 'failed' | 'timeout' | 'not_ready';
+export type TrackingTestResult = 'success' | 'failed' | 'timeout';
 export type TrackingRunFailureCategory =
   | 'auth'
   | 'rate_limit'
@@ -2219,11 +2219,9 @@ export interface SettingsPrivacyClickProps {
   element:
     | 'anonymous_metrics'
     | 'conversation_and_tool_content'
-    | 'project_artifacts_manifest'
     | 'delete_my_data';
   anonymous_metrics_status?: 'on' | 'off';
   conversation_and_tool_content_status?: 'on' | 'off';
-  project_artifacts_manifest_status?: 'on' | 'off';
 }
 
 export interface SettingsDesignReviewClickProps {
@@ -2659,7 +2657,7 @@ export interface LangfuseReportResultProps {
   langfuse_delivery_status: TrackingLangfuseDeliveryStatus;
   langfuse_drop_reason?: TrackingLangfuseDropReason;
   langfuse_report_result: TrackingLangfuseReportResult;
-  langfuse_report_trigger: 'final_message';
+  langfuse_report_trigger: 'final_message' | 'terminal_fallback';
   langfuse_report_skip_reason?: TrackingLangfuseReportSkipReason;
   report_duration_ms?: number;
   result?: TrackingRunResult;

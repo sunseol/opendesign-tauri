@@ -355,8 +355,9 @@ export interface AppConfig {
   // rotate or clear the anonymous id without re-opening the consent banner.
   privacyDecisionAt?: number | null;
   // Privacy preferences governing what (if anything) is shipped to the
-  // Langfuse-backed telemetry endpoint. All three default to off until the
-  // user makes an explicit choice.
+  // Langfuse-backed telemetry endpoint. Complete-context object manifests
+  // follow the content switch; the legacy artifactManifest field remains
+  // accepted for saved config compatibility.
   telemetry?: TelemetryConfig;
   customInstructions?: string;
 }

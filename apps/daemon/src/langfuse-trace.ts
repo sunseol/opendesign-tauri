@@ -10,9 +10,8 @@
 // Privacy gates are layered: `prefs.metrics` is the master switch, and
 // `prefs.content` is required for Langfuse traces because this sink is used
 // for turn-quality evals. If either is off, no network call is made.
-// `prefs.artifactManifest` decides whether the produced-files manifest is
-// included. None of these defaults to true; the Web onboarding flow flips
-// metrics + content after explicit consent.
+// Complete-context manifests are part of content telemetry: when content is
+// enabled, Langfuse receives the trace and associated object references.
 //
 // See: specs/change/20260507-langfuse-telemetry/spec.md
 
@@ -247,7 +246,7 @@ function buildTagList(ctx: ReportContext): string[] {
 
 export function buildTracePayload(ctx: ReportContext): unknown[] {
   const wantsContent = ctx.prefs.content === true;
-  const wantsArtifacts = ctx.prefs.artifactManifest === true;
+  const wantsArtifacts = wantsContent;
 
   const sessionId =
     ctx.conversationId.length <= SESSION_ID_MAX ? ctx.conversationId : undefined;

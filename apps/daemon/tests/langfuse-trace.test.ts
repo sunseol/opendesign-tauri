@@ -283,7 +283,7 @@ describe('buildTracePayload', () => {
     expect(/^设+$/.test(trace.input as string)).toBe(true);
   });
 
-  it('omits artifacts when manifest gate is off', () => {
+  it('omits artifacts when content telemetry is off', () => {
     const batch = buildTracePayload(
       makeCtx({
         artifacts: [
@@ -306,7 +306,7 @@ describe('buildTracePayload', () => {
     const batch = buildTracePayload(
       makeCtx({
         artifacts: many,
-        prefs: { metrics: true, content: false, artifactManifest: true },
+        prefs: { metrics: true, content: true },
       }),
     );
     const trace = (batch[0] as any).body;

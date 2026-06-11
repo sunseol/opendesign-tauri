@@ -1184,7 +1184,8 @@ export function SettingsDialog({
           page_name: 'settings',
           area: 'execution_model',
           provider_id: byokProviderId,
-          result: 'not_ready',
+          result: 'failed',
+          error_code: missing.length > 1 ? 'multiple_missing_fields' : `${missing[0]}_missing`,
           duration_ms: 0,
         });
       }
