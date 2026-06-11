@@ -7,12 +7,14 @@ export interface ClaudeCliDiagnosticInput {
   stderrTail?: string | null;
   stdoutTail?: string | null;
   env?: Record<string, unknown> | null;
+  resolvedBin?: string | null;
 }
 
 export interface ClaudeCliDiagnostic {
   message: string;
   detail: string;
   retryable: boolean;
+  code?: string;
 }
 
 function envValue(
@@ -32,22 +34,33 @@ function body(input: ClaudeCliDiagnosticInput): string {
     .join('\n');
 }
 
+function selectedClaudeCompatibleRuntime(input: ClaudeCliDiagnosticInput): 'claude' | 'openclaude' {
+  const resolvedBin = typeof input.resolvedBin === 'string' ? input.resolvedBin : '';
+  return /(^|[/\\])openclaude(?:\.(?:exe|cmd|bat))?$/i.test(resolvedBin)
+    ? 'openclaude'
+    : 'claude';
+}
+
 function withContext(
   message: string,
   detail: string,
   input: ClaudeCliDiagnosticInput,
+  code?: string,
 ): ClaudeCliDiagnostic {
   const configDir = envValue(input.env, 'CLAUDE_CONFIG_DIR');
   const baseUrl = envValue(input.env, 'ANTHROPIC_BASE_URL');
+  const runtimeLabel =
+    selectedClaudeCompatibleRuntime(input) === 'openclaude' ? 'OpenClaude' : 'Claude Code';
   const diagnosticTail = redactSecrets(body(input)).replace(/\s+/g, ' ').trim().slice(-240);
   const context: string[] = [message, detail];
   if (diagnosticTail) context.push(`Claude output: ${diagnosticTail}`);
   if (configDir) context.push(`Effective CLAUDE_CONFIG_DIR: ${configDir}.`);
-  if (baseUrl) context.push('ANTHROPIC_BASE_URL is set for this Claude Code process.');
+  if (baseUrl) context.push(`ANTHROPIC_BASE_URL is set for this ${runtimeLabel} process.`);
   return {
     message: redactSecrets(message),
     detail: redactSecrets(context.filter(Boolean).join(' ')),
     retryable: true,
+    ...(code ? { code } : {}),
   };
 }
 
@@ -61,6 +74,9 @@ export function diagnoseClaudeCliFailure(
   const normalized = text.toLowerCase();
   const hasCustomBaseUrl = envValue(input.env, 'ANTHROPIC_BASE_URL') !== null;
   const hasConfigDir = envValue(input.env, 'CLAUDE_CONFIG_DIR') !== null;
+  const isOpenClaude = selectedClaudeCompatibleRuntime(input) === 'openclaude';
+  const runtimeLabel = isOpenClaude ? 'OpenClaude' : 'Claude Code';
+  const defaultEndpointLabel = isOpenClaude ? 'its configured endpoint' : 'the Anthropic API';
 
   const customEndpointConnectionFailure =
     hasCustomBaseUrl &&
@@ -72,6 +88,39 @@ export function diagnoseClaudeCliFailure(
       'Claude Code could not reach the configured custom Anthropic endpoint.',
       'ANTHROPIC_BASE_URL appears to point at a local or proxy endpoint that refused the connection. Start or fix that proxy, clear the stale endpoint, or remove the custom endpoint to retry with standard Claude Code auth.',
       input,
+    );
+  }
+
+  const connectionDropped =
+    /socket connection was closed/i.test(text) ||
+    /closed unexpectedly/i.test(text) ||
+    /unable to connect to api \((econnreset|etimedout)\)/i.test(text) ||
+    /socket hang up/i.test(text) ||
+    /econnreset/i.test(text) ||
+    /etimedout/i.test(text) ||
+    /epipe/i.test(text) ||
+    /und_err_socket/i.test(text) ||
+    /premature close/i.test(text) ||
+    /other side closed/i.test(text) ||
+    /fetch failed/i.test(text) ||
+    /\bconnection (error|reset|closed)\b/i.test(text);
+  if (connectionDropped) {
+    if (hasCustomBaseUrl) {
+      const customEndpointFallback = isOpenClaude
+        ? 'check the OpenClaude endpoint configuration.'
+        : 'remove ANTHROPIC_BASE_URL to retry with standard Claude Code auth.';
+      return withContext(
+        `${runtimeLabel} lost its connection to the configured custom Anthropic endpoint before the response finished.`,
+        `The connection to ANTHROPIC_BASE_URL was closed mid-stream, often because a proxy or relay drops long-lived streaming requests. Retry; if it keeps happening, raise the proxy idle or stream timeout, or ${customEndpointFallback}`,
+        input,
+        'AGENT_CONNECTION_DROPPED',
+      );
+    }
+    return withContext(
+      `${runtimeLabel} lost its connection to ${defaultEndpointLabel} before the response finished.`,
+      'The network connection was closed mid-response, which is common on unstable networks, VPNs, or proxies that drop long-lived streaming requests. Retry the request.',
+      input,
+      'AGENT_CONNECTION_DROPPED',
     );
   }
 

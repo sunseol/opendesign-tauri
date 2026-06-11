@@ -160,6 +160,13 @@ export function createClaudeStreamHandler(onEvent: EventSink) {
       if (stopReason) {
         onEvent({ type: 'turn_end', stopReason });
       }
+      if (typeof obj.error === 'string' && obj.error.trim()) {
+        onEvent({
+          type: 'error',
+          message: assistantText(obj.message.content) || obj.error,
+          code: obj.error,
+        });
+      }
       return;
     }
 
@@ -190,6 +197,16 @@ export function createClaudeStreamHandler(onEvent: EventSink) {
       });
       return;
     }
+  }
+
+  function assistantText(content: unknown[]): string {
+    const parts: string[] = [];
+    for (const block of content) {
+      if (isRecord(block) && block.type === 'text' && typeof block.text === 'string') {
+        parts.push(block.text);
+      }
+    }
+    return parts.join('\n').trim();
   }
 
   function handleStreamEvent(ev: Record<string, unknown>) {

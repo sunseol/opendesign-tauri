@@ -1110,6 +1110,59 @@ process.exit(1);
     );
   });
 
+  it('classifies Claude stream socket drops with a retryable stable error code', async () => {
+    await withFakeAgent(
+      'claude',
+      `
+const args = process.argv.slice(2);
+if (args.includes('--version')) {
+  console.log('claude 2.1.168-test');
+  process.exit(0);
+}
+if (args.includes('--help')) {
+  console.log('--include-partial-messages\\n--add-dir');
+  process.exit(0);
+}
+console.log(JSON.stringify({
+  type: 'assistant',
+  message: {
+    id: 'msg_1',
+    content: [{ type: 'text', text: 'API Error: The socket connection was closed unexpectedly.' }],
+    stop_reason: 'stop_sequence',
+  },
+  error: 'unknown',
+}));
+process.exit(1);
+`,
+      async () => {
+        const createResponse = await fetch(`${baseUrl}/api/runs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: 'claude',
+            message: 'hello',
+          }),
+        });
+        expect(createResponse.status).toBe(202);
+        const { runId } = await createResponse.json() as { runId: string };
+
+        const eventsController = new AbortController();
+        const eventsResponse = await fetch(`${baseUrl}/api/runs/${runId}/events`, {
+          signal: eventsController.signal,
+        });
+        const eventsBody = await readSseUntil(eventsResponse, 'AGENT_CONNECTION_DROPPED');
+        eventsController.abort();
+        const statusBody = await waitForRunStatus(baseUrl, runId);
+
+        expect(eventsBody).toContain('event: error');
+        expect(eventsBody).toContain('AGENT_CONNECTION_DROPPED');
+        expect(eventsBody).toContain('lost its connection');
+        expect(eventsBody).not.toContain('AGENT_EXECUTION_FAILED');
+        expect(statusBody.status).toBe('failed');
+      },
+    );
+  });
+
   it('fails Qoder runs when the result reports is_error with exit code 0', async () => {
     const qoderResultLine = JSON.stringify({
       type: 'result',

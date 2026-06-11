@@ -10442,6 +10442,30 @@ export async function startServer({
           ));
           return;
         }
+        const diagnostic = diagnoseClaudeCliFailure({
+          agentId: def.id,
+          exitCode: null,
+          signal: null,
+          stderrTail: typeof ev.raw === 'string' ? ev.raw : agentStreamError,
+          stdoutTail: agentStreamError,
+          env: spawnedAgentEnv,
+          resolvedBin,
+        });
+        if (diagnostic) {
+          agentStreamError = diagnostic.message;
+          send('error', createSseErrorPayload(
+            diagnostic.code ?? 'AGENT_EXECUTION_FAILED',
+            diagnostic.message,
+            {
+              details: {
+                detail: diagnostic.detail,
+                ...(ev.raw ? { raw: ev.raw } : {}),
+              },
+              retryable: diagnostic.retryable,
+            },
+          ));
+          return;
+        }
         send('error', createSseErrorPayload('AGENT_EXECUTION_FAILED', agentStreamError, {
           details: ev.raw ? { raw: ev.raw } : undefined,
           retryable: false,
@@ -10696,10 +10720,11 @@ export async function startServer({
           stderrTail: agentStderrTail,
           stdoutTail: agentStdoutTail,
           env: spawnedAgentEnv,
+          resolvedBin,
         });
         if (diagnostic) {
           send('error', createSseErrorPayload(
-            'AGENT_EXECUTION_FAILED',
+            diagnostic.code ?? 'AGENT_EXECUTION_FAILED',
             diagnostic.message,
             { retryable: diagnostic.retryable, details: { detail: diagnostic.detail } },
           ));
