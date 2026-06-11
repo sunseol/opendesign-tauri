@@ -1493,7 +1493,7 @@ export function App() {
               ...latestPersistedConfigRef.current,
               installationId,
               privacyDecisionAt: Date.now(),
-              telemetry: { metrics: true, content: true, artifactManifest: false },
+              telemetry: { metrics: true, content: true },
             });
             if (!latestPersistedConfigRef.current.onboardingCompleted) {
               navigate({ kind: 'home', view: 'onboarding' });

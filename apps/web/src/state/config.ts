@@ -17,6 +17,7 @@ import {
   DEFAULT_FAILURE_SOUND_ID,
   DEFAULT_SUCCESS_SOUND_ID,
 } from '../utils/notifications';
+import { randomUUID } from '../utils/uuid';
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 1;
@@ -82,6 +83,11 @@ export const DEFAULT_CONFIG: AppConfig = {
   pet: DEFAULT_PET,
   notifications: DEFAULT_NOTIFICATIONS,
   orbit: DEFAULT_ORBIT,
+  // Telemetry defaults to on so first-run product analytics are not dropped
+  // before the privacy banner is resolved. The banner and Settings keep the
+  // one-click opt-out path, and mergeDaemonConfig mints the daemon-owned
+  // anonymous id unless the user explicitly opted out.
+  telemetry: { metrics: true, content: true },
 };
 
 /** Well-known providers with pre-filled base URLs. */
@@ -672,6 +678,19 @@ export function mergeDaemonConfig(
     // existed. If the daemon already has an id or telemetry prefs, the user
     // has resolved the first-run prompt and should not see it again.
     next.privacyDecisionAt = Date.now();
+  }
+  // Default-on reporting. Unless the user explicitly opted out
+  // (telemetry.metrics === false with installationId: null), ensure the
+  // daemon-owned anonymous id exists and keep the product default telemetry
+  // channels enabled. This prevents upgraded or never-prompted installs from
+  // showing as "opted out" just because no installationId had been minted.
+  const explicitlyOptedOut = next.telemetry?.metrics === false;
+  if (!explicitlyOptedOut && !next.installationId) {
+    next.installationId = randomUUID();
+    next.telemetry = {
+      metrics: true,
+      content: next.telemetry?.content ?? true,
+    };
   }
   if (daemonConfig.customInstructions !== undefined) {
     next.customInstructions = daemonConfig.customInstructions ?? undefined;

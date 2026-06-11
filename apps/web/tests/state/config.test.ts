@@ -222,6 +222,38 @@ describe('mergeDaemonConfig', () => {
     expect(merged.installationId).toBe('install-1');
     expect(typeof merged.privacyDecisionAt).toBe('number');
   });
+
+  it('defaults reporting on and mints an installationId when the install never opted out', () => {
+    const merged = mergeDaemonConfig(DEFAULT_CONFIG, {});
+
+    expect(merged.telemetry?.metrics).toBe(true);
+    expect(merged.telemetry?.content).toBe(true);
+    expect(typeof merged.installationId).toBe('string');
+    expect(merged.installationId).toBeTruthy();
+  });
+
+  it('mints an installationId for a reporting install that somehow has none', () => {
+    const merged = mergeDaemonConfig(DEFAULT_CONFIG, {
+      telemetry: { metrics: true, content: false },
+      installationId: null,
+    });
+
+    expect(merged.telemetry?.metrics).toBe(true);
+    expect(merged.telemetry?.content).toBe(false);
+    expect(merged.installationId).toBeTruthy();
+  });
+
+  it('preserves an explicit opt-out and never re-mints an id', () => {
+    const merged = mergeDaemonConfig(DEFAULT_CONFIG, {
+      telemetry: { metrics: false, content: false },
+      installationId: null,
+      privacyDecisionAt: 1778244000000,
+    });
+
+    expect(merged.telemetry?.metrics).toBe(false);
+    expect(merged.telemetry?.content).toBe(false);
+    expect(merged.installationId == null).toBe(true);
+  });
 });
 
 describe('mergeDaemonMediaProviders', () => {
