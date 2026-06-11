@@ -543,6 +543,29 @@ describe('sandboxed preview Blob exports', () => {
     expect(htmlArg).not.toContain('window.print()');
   });
 
+  it('reports artifact content size through the print-ready handshake', async () => {
+    const printPdfMock = vi.fn().mockResolvedValue({ ok: true });
+    const restoreHost = installMockOpenDesignHost({
+      host: { pdf: { print: printPdfMock } },
+    });
+
+    try {
+      await exportAsPdf('<div style="height:4000px">tall artifact</div>', 'Tall PDF');
+    } finally {
+      restoreHost();
+    }
+
+    const htmlArg = printPdfMock.mock.calls[0]![0];
+    expect(htmlArg).toContain('document.documentElement');
+    expect(htmlArg).toContain('scrollHeight');
+    expect(htmlArg).toContain('offsetHeight');
+    expect(htmlArg).toContain('width:w');
+    expect(htmlArg).toContain('height:h');
+    expect(htmlArg).toContain('window.__odPrintSize');
+    expect(htmlArg).toContain('Number.isFinite(e.data.width)');
+    expect(htmlArg).toContain('Number.isFinite(e.data.height)');
+  });
+
   it('injects the readiness cache for non-sandboxed desktop exports too', async () => {
     const printPdfMock = vi.fn().mockResolvedValue({ ok: true });
     const restoreHost = installMockOpenDesignHost({

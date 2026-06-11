@@ -695,23 +695,18 @@ function injectPrintScript(doc: string, title: string): string {
 }
 
 function injectPrintReadyHandshake(doc: string, nonce: string): string {
-  // Wait for fonts, the window load event (which covers initial images), and
-  // any images that are still loading after load fires (dynamically added or
-  // slow images that weren't complete by the time this script ran). This
-  // mirrors the safety of the legacy waitForPrintableContent() helper and
-  // prevents image-heavy exports from printing with blank images.
-  //
-  // The nonce is a per-export random UUID that verifies the readiness signal
-  // came from our injected handshake, not a spoofed message from untrusted
-  // artifact code.
-  const script = `<script data-od-print-ready>(function(){Promise.all([document.fonts&&document.fonts.ready?document.fonts.ready.catch(function(){}):Promise.resolve(),new Promise(function(r){if(document.readyState==='complete')r();else window.addEventListener('load',r,{once:true})})]).then(function(){var imgs=Array.from(document.images).filter(function(img){return !img.complete});return Promise.all(imgs.map(function(img){return new Promise(function(r){img.addEventListener('load',r,{once:true});img.addEventListener('error',r,{once:true});if(img.complete)r()})}))}).then(function(){window.parent.postMessage({type:'OD_PRINT_READY',nonce:'${nonce}'},'*')})})();<\/script>`;
+  // Wait for fonts, load, and late images, then report readiness plus the
+  // artifact's own content size from inside the sandboxed iframe.
+  const script = `<script data-od-print-ready>(function(){Promise.all([document.fonts&&document.fonts.ready?document.fonts.ready.catch(function(){}):Promise.resolve(),new Promise(function(r){if(document.readyState==='complete')r();else window.addEventListener('load',r,{once:true})})]).then(function(){var imgs=Array.from(document.images).filter(function(img){return !img.complete});return Promise.all(imgs.map(function(img){return new Promise(function(r){img.addEventListener('load',r,{once:true});img.addEventListener('error',r,{once:true});if(img.complete)r()})}))}).then(function(){var de=document.documentElement;var b=document.body||de;var w=Math.max(de.scrollWidth,b.scrollWidth,de.offsetWidth,b.offsetWidth);var h=Math.max(de.scrollHeight,b.scrollHeight,de.offsetHeight,b.offsetHeight);window.parent.postMessage({type:'OD_PRINT_READY',nonce:'${nonce}',width:w,height:h},'*')})})();<\/script>`;
   if (/<\/head>/i.test(doc)) return doc.replace(/<\/head>/i, `${script}</head>`);
   if (/<\/body>/i.test(doc)) return doc.replace(/<\/body>/i, `${script}</body>`);
   return doc + script;
 }
 
 function injectParentPrintReadyCache(doc: string, nonce: string): string {
-  const script = `<script>window.__odPrintReady=false;window.addEventListener('message',function(e){if(e.data&&e.data.type==='OD_PRINT_READY'&&e.data.nonce==='${nonce}'&&(e.source===window||(window.frames&&e.source===window.frames[0])))window.__odPrintReady=true});<\/script>`;
+  // Native PDF bridges can use this to size the page to the artifact rather
+  // than the sandbox wrapper viewport.
+  const script = `<script>window.__odPrintReady=false;window.__odPrintSize=null;window.addEventListener('message',function(e){if(e.data&&e.data.type==='OD_PRINT_READY'&&e.data.nonce==='${nonce}'&&(e.source===window||(window.frames&&e.source===window.frames[0]))){window.__odPrintReady=true;if(Number.isFinite(e.data.width)&&Number.isFinite(e.data.height)&&e.data.width>0&&e.data.height>0)window.__odPrintSize={width:e.data.width,height:e.data.height}}});<\/script>`;
   if (/<head>/i.test(doc)) return doc.replace(/<head>/i, `<head>${script}`);
   return script + doc;
 }

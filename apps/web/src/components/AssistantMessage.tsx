@@ -11,7 +11,12 @@ import {
   trackAssistantFeedbackReasonSubmitClick,
   trackFeedbackSubmitResult,
 } from "../analytics/events";
-import type { TrackingProjectKind } from "@open-design/contracts/analytics";
+import {
+  feedbackAgentProviderIdToTracking,
+  modelIdForTracking,
+  type TrackingFeedbackProviderId,
+  type TrackingProjectKind,
+} from "@open-design/contracts/analytics";
 import {
   splitOnQuestionForms,
   type QuestionForm,
@@ -294,6 +299,8 @@ export function AssistantMessage({
                 conversationId={conversationId}
                 runId={message.runId ?? null}
                 assistantMessageId={message.id}
+                agentProviderId={feedbackAgentProviderIdToTracking(message.agentId)}
+                modelId={modelIdForTracking(assistantModelDetail(message))}
                 producedFileCount={displayedProduced.length}
                 hasDesignSystemContext={hasDesignSystemContext}
                 footerProps={{
@@ -493,6 +500,8 @@ function AssistantFeedback({
   conversationId,
   runId,
   assistantMessageId,
+  agentProviderId,
+  modelId,
   producedFileCount,
 }: {
   feedback: ChatMessage["feedback"];
@@ -504,6 +513,8 @@ function AssistantFeedback({
   conversationId: string | null;
   runId: string | null;
   assistantMessageId: string;
+  agentProviderId: TrackingFeedbackProviderId;
+  modelId: string;
   producedFileCount: number;
 }) {
   const t = useT();
@@ -574,6 +585,8 @@ function AssistantFeedback({
       conversation_id: conversationId,
       assistant_message_id: assistantMessageId,
       run_id: runId ?? "",
+      agent_provider_id: agentProviderId,
+      model_id: modelId,
       rating,
       rating_before: ratingBefore,
       has_produced_files: producedFileCount > 0,
@@ -612,6 +625,8 @@ function AssistantFeedback({
         conversation_id: conversationId,
         assistant_message_id: assistantMessageId,
         run_id: runId ?? "",
+        agent_provider_id: agentProviderId,
+        model_id: modelId,
         rating: reasonRating,
         ...(reasonJoined ? { reason: reasonJoined } : {}),
         reason_count: reasonCodes.length,
@@ -636,6 +651,8 @@ function AssistantFeedback({
         conversation_id: conversationId,
         assistant_message_id: assistantMessageId,
         run_id: runId ?? "",
+        agent_provider_id: agentProviderId,
+        model_id: modelId,
         rating: reasonRating,
         ...(reasonJoined ? { reason: reasonJoined } : {}),
         reason_count: reasonCodes.length,
