@@ -123,6 +123,7 @@ function releaseMetadataFields(): Record<string, unknown> {
       nightlyNumber: parsed.number,
       nightlyVersion: releaseVersion,
       releaseVersion,
+      stableVersion: optional("STABLE_VERSION", parsed.baseVersion),
     };
   }
   const parsed = parseStableReleaseVersion(releaseVersion);

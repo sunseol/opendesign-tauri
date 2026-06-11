@@ -131,6 +131,8 @@ describe("shared release metadata publisher", () => {
           };
           allReadyTargetsSigned?: boolean;
           signed?: boolean;
+          stableVersion?: string;
+          github?: { commit?: string };
         };
         expect(metadata.channel).toBe(channel);
         expect(metadata.releaseState).toBe("complete");
@@ -138,6 +140,10 @@ describe("shared release metadata publisher", () => {
         expect(metadata.allReadyTargetsSigned).toBe(false);
         expect(metadata.releaseTargets?.mac_arm64?.artifacts?.payload?.url).toBe("https://example.test/mac-payload");
         expect(metadata.releaseTargets?.win_x64?.artifacts?.payload?.url).toBe("https://example.test/win-payload");
+        expect(metadata.github?.commit).toBe("abc123");
+        if (channel === "nightly") {
+          expect(metadata.stableVersion).toBe("1.2.3");
+        }
         expect(server.getObject(`${channel}/latest/metadata.json`)).not.toBeNull();
       }
     } finally {
