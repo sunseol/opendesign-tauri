@@ -15,6 +15,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { InstalledPluginRecord } from '@open-design/contracts';
 import type { ComponentProps } from 'react';
 import { PluginsHomeSection } from '../../src/components/PluginsHomeSection';
+import { I18nProvider, type Locale } from '../../src/i18n';
 
 function makePlugin(overrides: {
   id: string;
@@ -52,8 +53,9 @@ function makePlugin(overrides: {
 function renderSection(
   plugins: InstalledPluginRecord[] = sample,
   props: Partial<ComponentProps<typeof PluginsHomeSection>> = {},
+  locale?: Locale,
 ) {
-  return render(
+  const section = (
     <PluginsHomeSection
       plugins={plugins}
       loading={false}
@@ -62,7 +64,14 @@ function renderSection(
       onUse={() => {}}
       onOpenDetails={() => {}}
       {...props}
-    />,
+    />
+  );
+  return render(
+    locale ? (
+      <I18nProvider initial={locale}>
+        {section}
+      </I18nProvider>
+    ) : section,
   );
 }
 
@@ -120,6 +129,18 @@ describe('PluginsHomeSection (category bar)', () => {
     expect(screen.getByTestId('plugins-home-pill-subcategory-prototype-business-dashboards')).toBeTruthy();
     expect(screen.getByTestId('plugins-home-pill-subcategory-prototype-app-prototypes')).toBeTruthy();
     expect(screen.getByTestId('plugins-home-pill-subcategory-prototype-developer-tools')).toBeTruthy();
+  });
+
+  it('localizes curated subcategory labels', () => {
+    renderSection(sample, {}, 'zh-CN');
+
+    expect(screen.getByTestId('plugins-home-pill-subcategory-prototype-business-dashboards').textContent)
+      .toContain('数据看板');
+
+    fireEvent.click(screen.getByTestId('plugins-home-pill-category-video'));
+
+    expect(screen.getByTestId('plugins-home-pill-subcategory-video-social-short-form').textContent)
+      .toContain('社交 / 短视频');
   });
 
   it('filters Video separately from HyperFrames', () => {

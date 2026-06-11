@@ -21,6 +21,7 @@ import type { PluginShareAction } from '../state/projects';
 import { Icon } from './Icon';
 import { PluginCard } from './plugins-home/PluginCard';
 import { isFeaturedPlugin, type FacetOption, type FacetSelection } from './plugins-home/facets';
+import { pluginSubfacetLabel } from './plugins-home/subfacetLabel';
 import { usePluginFacets } from './plugins-home/usePluginFacets';
 import { useSavedPluginIds } from './plugins-home/savedPlugins';
 import type { PluginUseAction } from './plugins-home/useActions';
@@ -401,7 +402,7 @@ function pluginFacetLabel(slug: string, fallback: string, t: ReturnType<typeof u
     case 'public-link': return t('pluginsHome.facet.publicLink');
     case 'github-pr': return t('pluginsHome.facet.githubPr');
     case 'github-gist': return t('pluginsHome.facet.githubGist');
-    default: return fallback;
+    default: return pluginSubfacetLabel(slug, fallback, t);
   }
 }
 
