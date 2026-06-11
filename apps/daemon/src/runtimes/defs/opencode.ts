@@ -7,11 +7,13 @@ export const opencodeAgentDef = {
     bin: 'opencode-cli',
     fallbackBins: ['opencode'],
     versionArgs: ['--version'],
-    // `opencode models` prints `provider/model` per line.
+    // `opencode models` prints `provider/model` per line. Real-world calls
+    // can take >8s while they fetch provider registry data, so keep the budget
+    // aligned with the other network-backed agent model probes.
     listModels: {
       args: ['models'],
       parse: parseLineSeparatedModels,
-      timeoutMs: 8000,
+      timeoutMs: 15_000,
     },
     fallbackModels: [
       DEFAULT_MODEL_OPTION,

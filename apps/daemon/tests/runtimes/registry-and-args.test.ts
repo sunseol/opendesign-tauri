@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import {
-  AGENT_DEFS, amp, assert, chmodSync, codex, cursorAgent, detectAgents, join, mkdtempSync, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
+  AGENT_DEFS, amp, assert, chmodSync, codex, cursorAgent, detectAgents, join, mkdtempSync, opencode, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
 import { readLocalAgentProfileDefs } from '../../src/runtimes/registry.js';
 
@@ -340,6 +340,11 @@ test('cursor-agent parses live model ids separately from display labels', () => 
     { id: 'composer-2.5', label: 'Composer 2.5 (current)' },
     { id: 'grok-4.3', label: 'Grok 4.3 1M' },
   ]);
+});
+
+test('opencode live model discovery allows network-backed provider registry latency', () => {
+  assert.ok(opencode.listModels, 'opencode must define live model discovery');
+  assert.equal(opencode.listModels.timeoutMs, 15_000);
 });
 
 // Recent Codex CLI versions reject a bare `-` argv sentinel; passing it
