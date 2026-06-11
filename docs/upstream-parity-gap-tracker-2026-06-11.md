@@ -46,6 +46,19 @@ The second pass found six weakly tracked areas that were too easy to miss:
 
 ## Priority Queue
 
+## Active Ralph Progress
+
+- [#1](https://github.com/sunseol/opendesign-tauri/issues/1) is now
+  `In progress`.
+- Merge dry-run command:
+  `git merge-tree --write-tree --name-only HEAD upstream/main`
+- Dry-run result: `48` conflicted paths.
+- Strategy document:
+  [upstream-parity-merge-strategy-2026-06-12.md](upstream-parity-merge-strategy-2026-06-12.md)
+- Important constraint: upstream Electron-era desktop file changes must be
+  ported to Tauri or packaged helpers where relevant; they must not restore
+  Electron as the default runtime.
+
 ### P0 - Integration And Safety Gates
 
 These should move first because later feature ports depend on them or they
