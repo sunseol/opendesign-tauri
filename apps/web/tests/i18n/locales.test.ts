@@ -171,4 +171,23 @@ describe('i18n locales', () => {
 
     expect(source).not.toMatch(/en\['(?:connectors\.category\.|liveArtifact\.viewer\.)/);
   });
+
+  it('keeps zh-CN explicitly translated for every English key', () => {
+    const englishKeys = Object.keys(en).sort();
+    const explicit = explicitLocaleKeys('zh-CN').sort();
+
+    expect(
+      explicit,
+      'zh-CN must explicitly declare every English key instead of relying on fallback spread.',
+    ).toEqual(englishKeys);
+  });
+
+  it('keeps the zh-CN locale source free of the `...en` spread fallback', () => {
+    const source = readFileSync(new URL('../../src/i18n/locales/zh-CN.ts', import.meta.url), 'utf8');
+
+    expect(
+      source,
+      'zh-CN.ts must not use `...en`; add Chinese values directly when new keys are introduced.',
+    ).not.toMatch(/\.\.\.en\b/);
+  });
 });
