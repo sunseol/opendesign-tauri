@@ -23,6 +23,7 @@ const AGENT_BIN_ENV_KEYS = new Map<string, string>([
   ['pi', 'PI_BIN'],
   ['qoder', 'QODER_BIN'],
   ['qwen', 'QWEN_BIN'],
+  ['reasonix', 'REASONIX_BIN'],
   ['vibe', 'VIBE_BIN'],
 ]);
 

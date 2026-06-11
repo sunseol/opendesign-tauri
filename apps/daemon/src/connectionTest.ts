@@ -1057,7 +1057,10 @@ interface AgentSpawnHandle {
 }
 
 function attachAgentStreamHandlers(
-  def: { streamFormat?: string; eventParser?: string; id: string; promptViaStdin?: boolean },
+  def: Pick<
+    RuntimeAgentDef,
+    'acpMcpEnvFormat' | 'eventParser' | 'id' | 'promptViaStdin' | 'streamFormat'
+  >,
   child: ReturnType<typeof spawn>,
   prompt: string,
   cwd: string,
@@ -1098,6 +1101,7 @@ function attachAgentStreamHandlers(
       cwd,
       model: model ?? null,
       mcpServers: [],
+      envFormat: def.acpMcpEnvFormat ?? 'array',
       send,
     });
   } else if (def.streamFormat === 'json-event-stream') {

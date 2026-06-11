@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import { createLiveArtifactsMcpTools, handleLiveArtifactsMcpRequest } from '../../src/mcp-live-artifacts-server.js';
-import { AGENT_DEFS, assert, buildLiveArtifactsMcpServersForAgent, hermes, kimi } from './helpers/test-helpers.js';
+import { AGENT_DEFS, assert, buildLiveArtifactsMcpServersForAgent, hermes, kimi, reasonix } from './helpers/test-helpers.js';
 
 test('live artifact MCP discovery is limited to mature ACP agents', () => {
   assert.deepEqual(buildLiveArtifactsMcpServersForAgent(hermes), [
@@ -19,9 +19,17 @@ test('live artifact MCP discovery is limited to mature ACP agents', () => {
       env: [{ name: 'ELECTRON_RUN_AS_NODE', value: '1' }],
     },
   ]);
+  assert.deepEqual(buildLiveArtifactsMcpServersForAgent(reasonix), [
+    {
+      name: 'open-design-live-artifacts',
+      command: 'od',
+      args: ['mcp', 'live-artifacts'],
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+    },
+  ]);
 
   for (const agent of AGENT_DEFS) {
-    if (agent.id === 'hermes' || agent.id === 'kimi') continue;
+    if (agent.id === 'hermes' || agent.id === 'kimi' || agent.id === 'reasonix') continue;
     assert.deepEqual(buildLiveArtifactsMcpServersForAgent(agent), []);
   }
 });

@@ -10528,6 +10528,7 @@ export async function startServer({
         cwd: effectiveCwd,
         model: safeModel,
         mcpServers,
+        envFormat: def.acpMcpEnvFormat ?? 'array',
         send: (event, data) => {
           noteAgentActivity();
           send(event, data);

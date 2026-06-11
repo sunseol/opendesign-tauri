@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import {
-  assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
+  assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, reasonix, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
 } from './helpers/test-helpers.js';
 import type { TestAgentDef } from './helpers/test-helpers.js';
 
@@ -150,6 +150,15 @@ test('kiro args use acp subcommand for json-rpc streaming', () => {
 
   assert.deepEqual(args, ['acp']);
   assert.equal(kiro.streamFormat, 'acp-json-rpc');
+});
+
+test('reasonix args use acp subcommand and map MCP env for json-rpc streaming', () => {
+  const args = reasonix.buildArgs('', [], [], {});
+
+  assert.deepEqual(args, ['acp']);
+  assert.equal(reasonix.streamFormat, 'acp-json-rpc');
+  assert.equal(reasonix.externalMcpInjection, 'acp-merge');
+  assert.equal(reasonix.acpMcpEnvFormat, 'map');
 });
 
 test('devin args use acp subcommand for json-rpc streaming', () => {

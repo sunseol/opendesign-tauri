@@ -406,6 +406,7 @@ const AGENT_SHORT_DESCRIPTIONS: Record<string, string> = {
   kilo: 'Kilo Code CLI',
   vibe: 'Mistral open-source CLI',
   deepseek: 'DeepSeek terminal UI',
+  reasonix: 'DeepSeek native coding CLI',
   hermes: 'ACP agent CLI',
   'grok-build': 'xAI coding CLI',
 };

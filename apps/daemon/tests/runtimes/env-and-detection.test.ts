@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import {
   assert, chmodSync, detectAgents, inspectAgentExecutableResolution, join, minimalAgentDef, mkdirSync, mkdtempSync, opencode, resolveAgentExecutable, rmSync, spawnEnvForAgent, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
-import { isCursorAuthFailureText } from '../../src/runtimes/auth.js';
+import { isCursorAuthFailureText, isReasonixAuthFailureText } from '../../src/runtimes/auth.js';
 
 const fsTest = process.platform === 'win32' ? test.skip : test;
 
@@ -126,6 +126,7 @@ test('resolveAgentExecutable supports configured binary overrides for non-Codex 
     ['qoder', 'qodercli', 'QODER_BIN'],
     ['copilot', 'copilot', 'COPILOT_BIN'],
     ['deepseek', 'deepseek', 'DEEPSEEK_BIN'],
+    ['reasonix', 'reasonix', 'REASONIX_BIN'],
   ];
   const dir = mkdtempSync(join(tmpdir(), 'od-agent-bin-overrides-'));
   try {
@@ -184,6 +185,7 @@ test('detectAgents includes sanitized install and docs metadata from split runti
       const agents = await detectAgents();
       const qoder = agents.find((agent) => agent.id === 'qoder');
       const deepseek = agents.find((agent) => agent.id === 'deepseek');
+      const reasonix = agents.find((agent) => agent.id === 'reasonix');
       const kimi = agents.find((agent) => agent.id === 'kimi');
 
       assert.ok(qoder);
@@ -200,6 +202,9 @@ test('detectAgents includes sanitized install and docs metadata from split runti
         kimi.docsUrl,
         'https://www.kimi.com/code/docs/en/kimi-cli/guides/getting-started.html?aff=open-design',
       );
+      assert.ok(reasonix);
+      assert.equal(reasonix.installUrl, 'https://github.com/esengine/DeepSeek-Reasonix');
+      assert.equal(reasonix.docsUrl, 'https://esengine.github.io/DeepSeek-Reasonix/');
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -539,6 +544,18 @@ test('detectAgents treats Cursor Agent Not logged in status as missing auth', as
 test('Cursor auth matcher covers current unauthenticated Cursor error records', () => {
   assert.equal(isCursorAuthFailureText('ConnectError: [unauthenticated]'), true);
   assert.equal(isCursorAuthFailureText('Error: [unauthenticated] Error'), true);
+});
+
+test('Reasonix auth matcher stays anchored to Reasonix-specific config text', () => {
+  assert.equal(
+    isReasonixAuthFailureText('missing apiKey in ~/.reasonix/config.json'),
+    true,
+  );
+  assert.equal(
+    isReasonixAuthFailureText('DEEPSEEK_API_KEY is required for auth'),
+    true,
+  );
+  assert.equal(isReasonixAuthFailureText('generic api key missing'), false);
 });
 
 // Windows env-var names are case-insensitive at the kernel level, but

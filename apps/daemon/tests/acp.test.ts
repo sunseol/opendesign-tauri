@@ -52,6 +52,41 @@ test('ACP session params preserve caller-provided type and env fields', () => {
   assert.deepEqual(server.env, [{ key: 'TOKEN', value: 'secret' }]);
 });
 
+test('ACP session params can emit MCP env as a map for Reasonix-compatible agents', () => {
+  const mcpServers = [
+    {
+      name: 'open-design-live-artifacts',
+      command: 'od',
+      args: ['mcp', 'live-artifacts'],
+      env: [{ name: 'ELECTRON_RUN_AS_NODE', value: '1' }],
+    },
+  ];
+
+  const result = buildAcpSessionNewParams('/tmp/od-project', {
+    mcpServers,
+    envFormat: 'map',
+  });
+
+  assert.deepEqual(result.mcpServers[0]?.env, { ELECTRON_RUN_AS_NODE: '1' });
+});
+
+test('ACP session params convert map env back to arrays for default ACP agents', () => {
+  const mcpServers = [
+    {
+      name: 'open-design-live-artifacts',
+      command: 'od',
+      args: ['mcp', 'live-artifacts'],
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+    },
+  ];
+
+  const result = buildAcpSessionNewParams('/tmp/od-project', { mcpServers });
+
+  assert.deepEqual(result.mcpServers[0]?.env, [
+    { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
+  ]);
+});
+
 test('ACP model normalization prefers session configOptions models', () => {
   const models = normalizeModels(
     {

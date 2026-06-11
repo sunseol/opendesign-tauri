@@ -72,6 +72,10 @@ export type RuntimeAgentDef = {
   supportsImagePaths?: boolean;
   maxPromptArgBytes?: number;
   mcpDiscovery?: string;
+  // Format for ACP `session/new` MCP server env descriptors.
+  // Most ACP agents consume `[{ name, value }]`; Reasonix 1.x expects
+  // standard MCP map env (`{ KEY: value }`).
+  acpMcpEnvFormat?: 'array' | 'map';
   // How the daemon forwards the user's `.od/mcp-config.json` external MCP
   // servers to this runtime at spawn time. The shape of the injection
   // is one of three strategies, each of which the server.ts spawn

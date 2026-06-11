@@ -75,6 +75,10 @@ const AGENT_INSTALL_LINKS: Record<
     installUrl: 'https://github.com/deepseek-ai/DeepSeek-TUI',
     docsUrl: 'https://github.com/deepseek-ai/DeepSeek-TUI/blob/main/README.md',
   },
+  reasonix: {
+    installUrl: 'https://github.com/esengine/DeepSeek-Reasonix',
+    docsUrl: 'https://esengine.github.io/DeepSeek-Reasonix/',
+  },
 };
 
 function sanitizeHttpsUrl(value: string | undefined): string | undefined {
