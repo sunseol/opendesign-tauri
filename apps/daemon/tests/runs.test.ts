@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createChatRunService } from '../src/runs.js';
@@ -29,6 +30,26 @@ describe('chat run service shutdown', () => {
       errorCode: 'AGENT_EXECUTION_FAILED',
       error: 'Agent stalled without emitting any new output for 1s.',
     });
+  });
+
+  it('destroys child stdio streams when a run reaches a terminal state', () => {
+    const runs = createRuns();
+    const child = new FakeChildProcess({ closeOn: 'SIGTERM', withStdio: true });
+    const run = runs.create({ projectId: 'project-1', conversationId: 'conv-1' });
+    run.status = 'running';
+    (run as any).child = child;
+    child.stdout?.on('data', () => undefined);
+    child.stderr?.on('data', () => undefined);
+    child.stdin?.on('error', () => undefined);
+
+    runs.finish(run, 'failed', 1, null);
+
+    expect(child.stdout?.destroyed).toBe(true);
+    expect(child.stderr?.destroyed).toBe(true);
+    expect(child.stdin?.destroyed).toBe(true);
+    expect(child.stdout?.listenerCount('data')).toBe(0);
+    expect(child.stderr?.listenerCount('data')).toBe(0);
+    expect(child.stdin?.listenerCount('error')).toBe(0);
   });
 
   it('filters active runs by conversation within the same project', () => {
@@ -112,9 +133,17 @@ class FakeChildProcess extends EventEmitter {
   signalCode: string | null = null;
   killed = false;
   signals: string[] = [];
+  stdout?: PassThrough;
+  stderr?: PassThrough;
+  stdin?: PassThrough;
 
-  constructor(private readonly options: { closeOn: 'SIGTERM' | 'SIGKILL' }) {
+  constructor(private readonly options: { closeOn: 'SIGTERM' | 'SIGKILL'; withStdio?: boolean }) {
     super();
+    if (options.withStdio) {
+      this.stdout = new PassThrough();
+      this.stderr = new PassThrough();
+      this.stdin = new PassThrough();
+    }
   }
 
   kill(signal: string): boolean {

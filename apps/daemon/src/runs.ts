@@ -16,6 +16,26 @@ function extractErrorDetails(data) {
   };
 }
 
+function destroyChildStdio(child) {
+  if (!child) return;
+  const destroyStream = (stream) => {
+    if (!stream || stream.destroyed) return;
+    try {
+      stream.removeAllListeners();
+    } catch {
+      // Best-effort cleanup; terminal run handling must keep moving.
+    }
+    try {
+      stream.destroy();
+    } catch {
+      // Same best-effort boundary as listener removal.
+    }
+  };
+  destroyStream(child.stdout);
+  destroyStream(child.stderr);
+  destroyStream(child.stdin);
+}
+
 export function createChatRunService({
   createSseResponse,
   createSseErrorPayload,
@@ -115,6 +135,7 @@ export function createChatRunService({
     run.clients.clear();
     for (const waiter of run.waiters) waiter(statusBody(run));
     run.waiters.clear();
+    destroyChildStdio(run.child);
     scheduleCleanup(run);
   };
 
