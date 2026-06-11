@@ -336,7 +336,12 @@ describe('streamViaDaemon', () => {
       handlers,
     });
 
-    expect(handlers.onError).toHaveBeenCalledWith(new Error('typed message'));
+    expect(handlers.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'AGENT_UNAVAILABLE',
+        message: 'typed message',
+      }),
+    );
     expect(handlers.onDone).not.toHaveBeenCalled();
   });
 
