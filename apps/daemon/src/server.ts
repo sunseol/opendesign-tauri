@@ -1705,6 +1705,11 @@ async function readProjectPluginManifest(folder) {
   const name = typeof manifest.name === 'string' && manifest.name.trim()
     ? manifest.name.trim()
     : path.basename(folder);
+  if (/[/\\]/.test(name) || /^\.+$/.test(name)) {
+    throw new Error(
+      `open-design.json in ${folder}: name "${name}" must not contain path separators or consist only of dots`,
+    );
+  }
   return {
     name,
     title: typeof manifest.title === 'string' ? manifest.title : name,
@@ -1712,6 +1717,8 @@ async function readProjectPluginManifest(folder) {
     manifest,
   };
 }
+
+export const __forTestReadProjectPluginManifest = readProjectPluginManifest;
 
 function githubRepoNameFromPluginName(name) {
   const slug = String(name)
