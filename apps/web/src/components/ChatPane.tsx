@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackChatPanelClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -389,7 +389,41 @@ export function ChatPane({
   // We key the dismissal on the snapshot (serialized TodoWrite input) so
   // the next time the agent emits a different snapshot the card returns,
   // but the same snapshot stays hidden across renders / streaming ticks.
-  const [dismissedPinnedTodoKey, setDismissedPinnedTodoKey] = useState<string | null>(null);
+  const dismissedTodoStorageKey = activeConversationId
+    ? `od:pinned-todo-dismissed:${activeConversationId}`
+    : null;
+  const [dismissedPinnedTodoKey, setDismissedPinnedTodoKey] = useState<string | null>(() => {
+    if (!dismissedTodoStorageKey || typeof window === 'undefined') return null;
+    try {
+      return window.sessionStorage.getItem(dismissedTodoStorageKey);
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (!dismissedTodoStorageKey || typeof window === 'undefined') {
+      setDismissedPinnedTodoKey(null);
+      return;
+    }
+    try {
+      setDismissedPinnedTodoKey(window.sessionStorage.getItem(dismissedTodoStorageKey));
+    } catch {
+      setDismissedPinnedTodoKey(null);
+    }
+  }, [dismissedTodoStorageKey]);
+  const dismissPinnedTodo = useCallback((key: string | null) => {
+    setDismissedPinnedTodoKey(key);
+    if (!dismissedTodoStorageKey || typeof window === 'undefined') return;
+    try {
+      if (key) {
+        window.sessionStorage.setItem(dismissedTodoStorageKey, key);
+      } else {
+        window.sessionStorage.removeItem(dismissedTodoStorageKey);
+      }
+    } catch {
+      // sessionStorage can be unavailable in private or sandboxed contexts.
+    }
+  }, [dismissedTodoStorageKey]);
   const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
   const hasActiveRunMessage = messages.some(
     (m) => m.role === 'assistant' && isActiveRunStatus(m.runStatus),
@@ -575,7 +609,8 @@ export function ChatPane({
       snapshot(target);
       const distance =
         target.scrollHeight - target.scrollTop - target.clientHeight;
-      setScrolledFromBottom(distance > 120);
+      const next = distance > 120;
+      setScrolledFromBottom((prev) => (prev === next ? prev : next));
       pinnedToBottomRef.current = distance < 80;
     }
     el.addEventListener('scroll', onScroll);
@@ -1003,7 +1038,7 @@ export function ChatPane({
             messages={messages}
             streaming={streaming}
             dismissedKey={dismissedPinnedTodoKey}
-            onDismiss={setDismissedPinnedTodoKey}
+            onDismiss={dismissPinnedTodo}
           />
           <QueuedSendStrip
             containerRef={queuedSendStripRef}

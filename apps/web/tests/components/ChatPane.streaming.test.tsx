@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +17,11 @@ const translations: Record<string, string> = {
   'chat.queuedEdit': 'Edit',
   'chat.queuedMore': 'more queued',
   'chat.queuedFollowUpFallback': 'Queued follow-up',
+  'tool.todos': 'Todos',
+  'tool.todosCollapse': 'Collapse todos',
+  'tool.todosDismiss': 'Dismiss completed todos',
+  'tool.todosDone': 'Done',
+  'tool.todosExpand': 'Expand todos',
 };
 
 vi.mock('../../src/i18n', () => ({
@@ -70,6 +75,7 @@ class MockResizeObserver {
 
 beforeEach(() => {
   MockResizeObserver.instances = [];
+  window.sessionStorage.clear();
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     cb(0);
@@ -259,6 +265,66 @@ Expected output:
     expect(container.querySelector('.todo-in_progress')).toBeNull();
     expect(container.querySelector('.op-todo-current')).toBeNull();
   });
+
+  it('keeps a dismissed completed pinned todo hidden across conversation remounts', () => {
+    vi.useFakeTimers();
+    try {
+      const messages: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          createdAt: 1,
+          endedAt: 2,
+          runStatus: 'succeeded',
+          events: [
+            {
+              kind: 'tool_use',
+              id: 'todo-1',
+              name: 'TodoWrite',
+              input: {
+                todos: [
+                  { content: 'Ship parity fix', status: 'completed' },
+                ],
+              },
+            },
+          ],
+        },
+      ];
+      const props = {
+        messages,
+        streaming: false,
+        error: null,
+        projectId: 'project-1',
+        projectFiles: [],
+        onEnsureProject: async () => 'project-1',
+        onSend: vi.fn(),
+        onStop: vi.fn(),
+        conversations,
+        activeConversationId: 'conv-1',
+        onSelectConversation: vi.fn(),
+        onDeleteConversation: vi.fn(),
+        projectMetadata,
+      };
+
+      const { unmount } = render(<ChatPane {...props} />);
+
+      expect(screen.getByText('1/1')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      act(() => {
+        vi.advanceTimersByTime(220);
+      });
+      expect(screen.queryByText('1/1')).toBeNull();
+
+      unmount();
+      render(<ChatPane {...props} />);
+
+      expect(screen.queryByText('1/1')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows several queued prompts above the composer before collapsing overflow', () => {
     const onRemoveQueuedSend = vi.fn();
     const onSendQueuedNow = vi.fn();
