@@ -44,6 +44,9 @@ export function spawnEnvForAgent(
       'OPENCODE_RUN_ID',
       'OPENCODE_SERVER_PASSWORD',
     ]);
+    if (!env.OPENCODE_DISABLE_PROJECT_CONFIG?.trim()) {
+      env.OPENCODE_DISABLE_PROJECT_CONFIG = 'true';
+    }
     return env;
   }
   if (agentId === 'claude') {

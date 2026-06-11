@@ -165,6 +165,16 @@ describe('spawnEnvForAgent', () => {
     expect(env).toEqual({
       PATH: '/bin',
       KEEP_ME: 'ok',
+      OPENCODE_DISABLE_PROJECT_CONFIG: 'true',
     });
+  });
+
+  it('preserves an explicit OpenCode project config override', () => {
+    const env = spawnEnvForAgent('opencode', {
+      PATH: '/bin',
+      OPENCODE_DISABLE_PROJECT_CONFIG: 'false',
+    });
+
+    expect(env.OPENCODE_DISABLE_PROJECT_CONFIG).toBe('false');
   });
 });

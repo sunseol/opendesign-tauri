@@ -829,10 +829,14 @@ async function callLocalCli(provider, system, user, options) {
     throw new Error(`${def.name} CLI is not installed or not on PATH`);
   }
 
+  // This background extractor never reads project files. Falling back to the
+  // daemon cwd lets bun-based CLIs such as OpenCode run startup installs inside
+  // the dev pnpm workspace, so use a neutral temp directory when no project root
+  // is explicitly provided.
   const cwd =
     typeof options?.projectRoot === 'string' && options.projectRoot.trim()
       ? options.projectRoot
-      : process.cwd();
+      : os.tmpdir();
   const prompt = [
     system,
     '',
