@@ -501,6 +501,7 @@ export function App() {
   // user's previous choice, so we only fill an empty slot.
   useEffect(() => {
     if (!daemonConfigLoaded || agentsLoading) return;
+    if (config.onboardingCompleted !== true) return;
     if (config.agentId) return;
     const firstAvailable = agents.find((a) => a.available);
     if (!firstAvailable) return;
@@ -511,7 +512,7 @@ export function App() {
       void syncConfigToDaemon(next);
       return next;
     });
-  }, [daemonConfigLoaded, agentsLoading, agents, config.agentId]);
+  }, [daemonConfigLoaded, agentsLoading, agents, config.agentId, config.onboardingCompleted]);
 
   // Auto-pick the default design system the same way — only after daemon
   // config has merged so we never overwrite a daemon-stored selection.
