@@ -221,11 +221,25 @@ function stripFns(
   return rest;
 }
 
+async function safeProbe(
+  def: RuntimeAgentDef,
+  configuredEnv: Record<string, string> = {},
+): Promise<DetectedAgent> {
+  try {
+    return await probe(def, configuredEnv);
+  } catch {
+    // Fault isolation: one adapter probe throwing during launch resolution,
+    // environment construction, or a post-launch check must not blank the
+    // entire model picker. Degrade only that adapter to unavailable.
+    return unavailableAgent(def);
+  }
+}
+
 export async function detectAgents(
   configuredEnvByAgent: Record<string, Record<string, string>> = {},
 ) {
   const results = await Promise.all(
-    AGENT_DEFS.map((def) => probe(def, configuredEnvByAgent?.[def.id] ?? {})),
+    AGENT_DEFS.map((def) => safeProbe(def, configuredEnvByAgent?.[def.id] ?? {})),
   );
   // Refresh the validation cache from whatever we just surfaced to the UI
   // so /api/chat can accept any model the user could have just picked,
