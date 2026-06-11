@@ -30,6 +30,7 @@ function makePlugin(
     description?: string;
     query?: string | Record<string, string>;
     inputs?: InputFieldSpec[];
+    tags?: string[];
   } = {},
 ): InstalledPluginRecord {
   const inputs = overrides.inputs ?? [
@@ -53,7 +54,7 @@ function makePlugin(
       version: '1.0.0',
       title,
       description: overrides.description ?? 'Plugin preset fixture',
-      tags: [mode],
+      tags: overrides.tags ?? [mode],
       od: {
         mode,
         useCase: {
@@ -175,6 +176,32 @@ describe('HomeHero intent rail', () => {
       'deck',
       'Create with a focused brief using Investor deck',
     );
+  });
+
+  it('keeps the audio example presets to audio plugins only', () => {
+    const audioPlugin = makePlugin('example-audio-notification', 'audio', 'Notification sounds');
+    const audioReactiveVideo = makePlugin(
+      'audio-reactive-video-template',
+      'video',
+      'Audio reactive video',
+      { tags: ['video', 'audio-reactive'] },
+    );
+    const catchAllMediaRouter = makePlugin(
+      'od-media-generation',
+      'audio',
+      'Media generation',
+    );
+
+    renderHero({
+      activeChipId: 'audio',
+      pluginOptions: [audioPlugin, audioReactiveVideo, catchAllMediaRouter],
+    });
+
+    const presets = screen.getAllByTestId('home-hero-plugin-preset');
+    expect(presets).toHaveLength(1);
+    expect(presets[0]?.textContent).toContain('Notification sounds');
+    expect(screen.queryByText('Audio reactive video')).toBeNull();
+    expect(screen.queryByText('Media generation')).toBeNull();
   });
 
   it('seeds plugin presets with the curated description unless the query has editable inputs', () => {

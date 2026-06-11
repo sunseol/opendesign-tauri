@@ -2552,12 +2552,15 @@ function homeHeroChipTitle(chip: HomeHeroChip, t: ReturnType<typeof useT>): stri
   }
 }
 
+const EXAMPLE_PRESET_HIDDEN_PLUGIN_IDS = new Set<string>(['od-media-generation']);
+
 function homeHeroExamplePluginsForChip(
   chipId: string,
   plugins: InstalledPluginRecord[],
   locale: Locale,
 ): InstalledPluginRecord[] {
   return plugins
+    .filter((plugin) => !EXAMPLE_PRESET_HIDDEN_PLUGIN_IDS.has(plugin.id))
     .filter((plugin) => pluginMatchesExampleChip(plugin, chipId))
     .filter((plugin) => Boolean(pluginPresetQuery(plugin, locale)))
     .sort((a, b) => pluginPresetRank(b, chipId) - pluginPresetRank(a, chipId))
@@ -2585,7 +2588,7 @@ function pluginMatchesExampleChip(record: InstalledPluginRecord, chipId: string)
     case 'video':
       return (has('video') || hasPart('video-template')) && !hasPart('hyperframes', 'audio');
     case 'audio':
-      return has('audio') || hasPart('audio');
+      return (has('audio') || hasPart('audio')) && !hasPart('video', 'hyperframes');
     default:
       return false;
   }
