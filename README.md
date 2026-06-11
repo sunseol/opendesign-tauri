@@ -163,11 +163,12 @@ pnpm --filter @open-design/contracts build
 2026-06-11 parity audit 기준:
 
 - 원본 기준점: `nexu-io/open-design@ca22620b4`
-- 이 fork 기준점: `sunseol/opendesign-tauri@a2d65f0269d8`
-- 차이 규모: fork-only `230` commits, upstream-only `956` commits,
-  약 `4,325` changed files
+- 이 fork 기준점: `sunseol/opendesign-tauri@2265d8d43`
+- 차이 규모: fork-only `231` commits, upstream-only `956` commits,
+  약 `4,326` changed files
 - 추적 위치: <https://github.com/sunseol/opendesign-tauri/issues>
 - 상세 audit 문서: [docs/upstream-parity-audit-2026-06-11.md](docs/upstream-parity-audit-2026-06-11.md)
+- gap tracker: [docs/upstream-parity-gap-tracker-2026-06-11.md](docs/upstream-parity-gap-tracker-2026-06-11.md)
 
 동기화 원칙:
 
@@ -178,8 +179,8 @@ pnpm --filter @open-design/contracts build
    upstream과 같은 수준으로 맞춘다.
 5. 큰 upstream 차이는 한 번에 섞지 않고 기능군별 이슈로 나누어 검증한다.
 
-등록한 parity 이슈는 총 48개입니다. 아래 #1-#14는 상위 트랙이고,
-[#15-#48 상세 이슈 전체 목록](docs/upstream-parity-audit-2026-06-11.md#issue-map)은
+등록한 parity 이슈는 총 54개입니다. 아래 #1-#14는 상위 트랙이고,
+[#15-#54 상세 이슈 전체 목록](docs/upstream-parity-audit-2026-06-11.md#issue-map)은
 audit 문서에서 관리합니다.
 
 - [#1 Merge upstream main safely while preserving Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/1)
@@ -220,7 +221,7 @@ audit 문서에서 관리합니다.
    landing/community, observability, contributor workflow를 정리한다.
    세부 구현 단위는
    [상세 audit 문서](docs/upstream-parity-audit-2026-06-11.md#issue-map)의
-   #15-#48 이슈를 기준으로 나눈다.
+   #15-#54 이슈를 기준으로 나눈다.
 
 ## 로컬 실행
 
@@ -461,11 +462,12 @@ the desktop delivery layer, with Tauri as the default desktop runtime.
 Parity audit baseline from 2026-06-11:
 
 - Upstream baseline: `nexu-io/open-design@ca22620b4`
-- Fork baseline: `sunseol/opendesign-tauri@a2d65f0269d8`
-- Gap size: fork-only `230` commits, upstream-only `956` commits, and about
-  `4,325` changed files
+- Fork baseline: `sunseol/opendesign-tauri@2265d8d43`
+- Gap size: fork-only `231` commits, upstream-only `956` commits, and about
+  `4,326` changed files
 - Tracking board: <https://github.com/sunseol/opendesign-tauri/issues>
 - Detailed audit: [docs/upstream-parity-audit-2026-06-11.md](docs/upstream-parity-audit-2026-06-11.md)
+- Gap tracker: [docs/upstream-parity-gap-tracker-2026-06-11.md](docs/upstream-parity-gap-tracker-2026-06-11.md)
 
 Sync principles:
 
@@ -478,8 +480,8 @@ Sync principles:
 5. Split the large upstream delta into feature-area issues instead of mixing it
    all into one change.
 
-There are 48 opened parity issues. The list below shows the #1-#14 umbrella
-tracks; the complete [#15-#48 detail issue map](docs/upstream-parity-audit-2026-06-11.md#issue-map)
+There are 54 opened parity issues. The list below shows the #1-#14 umbrella
+tracks; the complete [#15-#54 detail issue map](docs/upstream-parity-audit-2026-06-11.md#issue-map)
 lives in the audit document.
 
 - [#1 Merge upstream main safely while preserving Tauri as default](https://github.com/sunseol/opendesign-tauri/issues/1)
@@ -519,7 +521,7 @@ Recommended sync order:
    [#13](https://github.com/sunseol/opendesign-tauri/issues/13) to finish web
    UX, landing/community, observability, and contributor workflows.
    Use [the detailed audit](docs/upstream-parity-audit-2026-06-11.md#issue-map)
-   for the #15-#48 implementation-level issues.
+   for the #15-#54 implementation-level issues.
 
 ## Local development
 

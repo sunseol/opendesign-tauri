@@ -2,15 +2,16 @@
 
 이 문서는 `sunseol/opendesign-tauri`가 upstream `nexu-io/open-design`과 기능
 parity를 맞추기 위해 등록한 GitHub issue map입니다. 결론은 단순히 14개가
-아니라, 상위 트랙 14개와 구현 단위 상세 이슈 34개, 총 48개입니다.
+아니라, 상위 트랙 14개와 구현 단위 상세 이슈 40개, 총 54개입니다.
 
 ## Baseline
 
 - Upstream: `nexu-io/open-design@ca22620b4fa0`
-- Tauri fork: `sunseol/opendesign-tauri@a2d65f0269d8`
-- Divergence: fork-only `230` commits, upstream-only `956` commits
-- Diff size: `4,325` files changed, `859,775` insertions, `106,044` deletions
+- Tauri fork: `sunseol/opendesign-tauri@2265d8d43`
+- Divergence: fork-only `231` commits, upstream-only `956` commits
+- Diff size: `4,326` files changed, `859,775` insertions, `106,173` deletions
 - Issue board: <https://github.com/sunseol/opendesign-tauri/issues>
+- Gap tracker: [upstream-parity-gap-tracker-2026-06-11.md](upstream-parity-gap-tracker-2026-06-11.md)
 
 ## Audit Method
 
@@ -45,6 +46,14 @@ parity를 맞추기 위해 등록한 GitHub issue map입니다. 결론은 단순
 | `tools/pr` | 20 |
 | `e2e/lib` | 20 |
 | `mocks/bin` | 18 |
+| `packages/components` | 13 |
+| `charts/open-design` | 13 |
+| `tools/dev` | 12 |
+| `tools/serve` | 10 |
+| `packages/metatool` | 7 |
+| `packages/launcher-proto` | 6 |
+| `packages/download` | 6 |
+| `apps/telemetry-worker` | 4 |
 
 ## Issue Map
 
@@ -101,6 +110,12 @@ parity를 맞추기 위해 등록한 GitHub issue map입니다. 결론은 단순
 - [#46 Port deployment assets: Helm chart, Docker/Podman installer, cloud docs, and staging gates](https://github.com/sunseol/opendesign-tauri/issues/46)
 - [#47 Port plugin preview baking, CDN/R2 cache keys, gallery performance, and packaged preview serving](https://github.com/sunseol/opendesign-tauri/issues/47)
 - [#48 Port privacy/security boundary fixes for raw HTML, file links, uploads, and local path exposure](https://github.com/sunseol/opendesign-tauri/issues/48)
+- [#49 Port skills, design templates, prompt templates, scenario rails, and skill-to-plugin migration helpers](https://github.com/sunseol/opendesign-tauri/issues/49)
+- [#50 Port runtime helper packages: download, host, launcher-proto, metatool, diagnostics, platform, sidecar](https://github.com/sunseol/opendesign-tauri/issues/50)
+- [#51 Port telemetry worker, relay configuration, public analytics params, and worker tests](https://github.com/sunseol/opendesign-tauri/issues/51)
+- [#52 Port tools-serve release/updater fixtures and release metadata smoke harness](https://github.com/sunseol/opendesign-tauri/issues/52)
+- [#53 Port guard, source checks, Nix hash maintenance, postinstall, and repository integrity scripts](https://github.com/sunseol/opendesign-tauri/issues/53)
+- [#54 Port curated data assets: contributors, event fixtures, cards, plugin preview manifests, and catalog seed data](https://github.com/sunseol/opendesign-tauri/issues/54)
 
 ## Planning Notes
 
@@ -110,7 +125,10 @@ parity를 맞추기 위해 등록한 GitHub issue map입니다. 결론은 단순
   make later UI ports appear to work while CLI/daemon shapes are wrong.
 - #27, #37, and #45 are Tauri-fork critical. They must preserve Tauri as the
   default desktop runtime while absorbing upstream packaged/desktop fixes.
-- #28, #33, #36, and #48 are validation/security gates. They should be treated
-  as blockers before declaring broad parity complete.
+- #28, #33, #36, #48, #52, and #53 are validation/security gates. They should
+  be treated as blockers before declaring broad parity complete.
+- #49, #50, #51, #52, #53, and #54 were added after a second coverage pass
+  found weak tracking around skills/templates, helper packages, telemetry,
+  release fixtures, guard scripts, and curated data.
 - The issue map intentionally avoids one issue per commit. Each issue is a
   user-visible or operational feature surface with its own acceptance criteria.
