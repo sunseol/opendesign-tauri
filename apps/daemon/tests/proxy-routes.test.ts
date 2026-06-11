@@ -358,6 +358,32 @@ describe('API proxy routes', () => {
     expect(upstreamInit?.redirect).toBe('error');
   });
 
+  it('normalizes Gemini model ids and base URLs in the streaming proxy', async () => {
+    const fetchMock = vi.fn((input: FetchInput, init?: FetchInit) => {
+      const url = String(input);
+      if (url.startsWith(baseUrl)) return realFetch(input, init);
+      return Promise.resolve(sseResponse('data: {"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}\n\n'));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await realFetch(`${baseUrl}/api/proxy/google/stream`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        apiKey: 'google-key',
+        model: 'models/gemini-2.0-flash',
+        messages: [{ role: 'user', content: 'hello' }],
+      }),
+    });
+
+    const [upstreamUrl, upstreamInit] = fetchMock.mock.calls[0]!;
+    expect(String(upstreamUrl)).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse',
+    );
+    expect(upstreamInit?.redirect).toBe('error');
+  });
+
   it('keeps the default Azure api-version for deployment URLs when the field is blank', async () => {
     const fetchMock = vi.fn((input: FetchInput, init?: FetchInit) => {
       const url = String(input);
