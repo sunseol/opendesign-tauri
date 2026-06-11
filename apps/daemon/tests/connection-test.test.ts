@@ -1005,6 +1005,42 @@ describe('POST /api/test/connection provider mode', () => {
     );
   });
 
+  it('retries Azure connection tests with max_completion_tokens when max_tokens is rejected', async () => {
+    const fetchMock = vi.fn((_input: FetchInput, init?: FetchInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      if ('max_tokens' in body) {
+        return Promise.resolve(jsonResponse({
+          error: {
+            message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+          },
+        }, { status: 400 }));
+      }
+      return Promise.resolve(jsonResponse({
+        choices: [{ message: { role: 'assistant', content: 'ok' } }],
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(testProviderConnection({
+      protocol: 'azure',
+      baseUrl: 'https://my-azure.openai.azure.com',
+      apiKey: 'azure-key',
+      model: 'prod',
+      apiVersion: '',
+    })).resolves.toMatchObject({
+      ok: true,
+      kind: 'success',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body));
+    expect(firstBody).toMatchObject({ max_tokens: 100, stream: false });
+    expect(firstBody).not.toHaveProperty('max_completion_tokens');
+    expect(secondBody).toMatchObject({ max_completion_tokens: 100, stream: false });
+    expect(secondBody).not.toHaveProperty('max_tokens');
+  });
+
   it('keeps the default Azure api-version in connection tests when the field is blank', async () => {
     const fetchMock = passThroughOrUpstream(() =>
       jsonResponse({
