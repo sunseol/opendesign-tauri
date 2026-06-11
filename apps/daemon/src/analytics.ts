@@ -23,6 +23,7 @@ import {
   EVENT_SCHEMA_VERSION,
 } from '@open-design/contracts/analytics';
 import { readAppConfig } from './app-config.js';
+import { readTelemetryEnvironment } from './telemetry-environment.js';
 
 const DEFAULT_HOST = 'https://us.i.posthog.com';
 
@@ -60,6 +61,7 @@ function headerString(req: Request, name: string): string | null {
 export interface PosthogConfig {
   key: string;
   host: string;
+  env: string;
 }
 
 export function readPosthogConfig(
@@ -68,7 +70,7 @@ export function readPosthogConfig(
   const key = env.POSTHOG_KEY?.trim();
   if (!key) return null;
   const host = (env.POSTHOG_HOST?.trim() || DEFAULT_HOST).replace(/\/+$/, '');
-  return { key, host };
+  return { key, host, env: readTelemetryEnvironment(env) };
 }
 
 // Baseline wire response for GET /api/analytics/config — checks only the
@@ -78,8 +80,9 @@ export function readPublicConfigResponse(
   env: NodeJS.ProcessEnv = process.env,
 ): AnalyticsConfigResponse {
   const cfg = readPosthogConfig(env);
-  if (!cfg) return { enabled: false, key: null, host: null };
-  return { enabled: true, key: cfg.key, host: cfg.host };
+  const telemetryEnv = cfg?.env ?? readTelemetryEnvironment(env);
+  if (!cfg) return { enabled: false, env: telemetryEnv, key: null, host: null };
+  return { enabled: true, env: cfg.env, key: cfg.key, host: cfg.host };
 }
 
 export interface AnalyticsService {
