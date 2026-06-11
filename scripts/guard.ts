@@ -103,6 +103,7 @@ const residualSkippedDirectories = new Set([
 const residualAllowedExactPaths = new Set([
   // esbuild config entrypoints are executed directly by Node before package
   // dist output exists.
+  "apps/daemon/bin/od.mjs",
   "packages/agui-adapter/esbuild.config.mjs",
   "packages/contracts/esbuild.config.mjs",
   "packages/diagnostics/esbuild.config.mjs",
