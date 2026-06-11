@@ -590,6 +590,123 @@ test('spawnEnvForAgent preserves ANTHROPIC_API_KEY for non-claude adapters', () 
   }
 });
 
+test('spawnEnvForAgent strips OPENAI_API_KEY for the codex adapter when OPENAI_BASE_URL is absent', () => {
+  const env = spawnEnvForAgent('codex', {
+    OPENAI_API_KEY: 'sk-stale-byok',
+    PATH: '/usr/bin',
+    OD_DAEMON_URL: 'http://127.0.0.1:7456',
+  });
+
+  assert.equal('OPENAI_API_KEY' in env, false);
+  assert.equal(env.PATH, '/usr/bin');
+  assert.equal(env.OD_DAEMON_URL, 'http://127.0.0.1:7456');
+});
+
+test('spawnEnvForAgent strips CODEX_API_KEY for the codex adapter when OPENAI_BASE_URL is absent', () => {
+  const env = spawnEnvForAgent('codex', {
+    CODEX_API_KEY: 'sk-stale-byok',
+    PATH: '/usr/bin',
+  });
+
+  assert.equal('CODEX_API_KEY' in env, false);
+  assert.equal(env.PATH, '/usr/bin');
+});
+
+test('spawnEnvForAgent strips Codex API keys when OPENAI_BASE_URL is empty or whitespace', () => {
+  for (const openAiBaseUrl of ['', '   ']) {
+    const env = spawnEnvForAgent('codex', {
+      OPENAI_API_KEY: 'sk-stale-byok',
+      CODEX_API_KEY: 'sk-stale-byok',
+      OPENAI_BASE_URL: openAiBaseUrl,
+      PATH: '/usr/bin',
+    });
+
+    assert.equal('OPENAI_API_KEY' in env, false);
+    assert.equal('CODEX_API_KEY' in env, false);
+    assert.equal(env.PATH, '/usr/bin');
+  }
+});
+
+test('spawnEnvForAgent preserves Codex API keys when OPENAI_BASE_URL is set to a custom proxy', () => {
+  const env = spawnEnvForAgent('codex', {
+    OPENAI_API_KEY: 'sk-proxy',
+    CODEX_API_KEY: 'codex-proxy',
+    OPENAI_BASE_URL: 'https://proxy.example.com/v1',
+    PATH: '/usr/bin',
+  });
+
+  assert.equal(env.OPENAI_API_KEY, 'sk-proxy');
+  assert.equal(env.CODEX_API_KEY, 'codex-proxy');
+  assert.equal(env.OPENAI_BASE_URL, 'https://proxy.example.com/v1');
+  assert.equal(env.PATH, '/usr/bin');
+});
+
+test('spawnEnvForAgent strips Codex API keys case-insensitively when OPENAI_BASE_URL is absent', () => {
+  const env = spawnEnvForAgent('codex', {
+    Openai_Api_Key: 'sk-mixed-case',
+    openai_api_key: 'sk-lower-case',
+    Codex_Api_Key: 'sk-mixed-case',
+    PATH: '/usr/bin',
+  });
+
+  const remainingOpenAi = Object.keys(env).filter(
+    (k) => k.toUpperCase() === 'OPENAI_API_KEY',
+  );
+  const remainingCodex = Object.keys(env).filter(
+    (k) => k.toUpperCase() === 'CODEX_API_KEY',
+  );
+  assert.deepEqual(remainingOpenAi, []);
+  assert.deepEqual(remainingCodex, []);
+  assert.equal(env.PATH, '/usr/bin');
+});
+
+test('spawnEnvForAgent preserves Codex API keys for non-codex adapters', () => {
+  for (const agentId of ['claude', 'gemini', 'opencode', 'devin']) {
+    const env = spawnEnvForAgent(agentId, {
+      OPENAI_API_KEY: 'sk-keep',
+      CODEX_API_KEY: 'codex-keep',
+      PATH: '/usr/bin',
+    });
+    assert.equal(
+      env.OPENAI_API_KEY,
+      'sk-keep',
+      `expected ${agentId} to preserve OPENAI_API_KEY`,
+    );
+    assert.equal(
+      env.CODEX_API_KEY,
+      'codex-keep',
+      `expected ${agentId} to preserve CODEX_API_KEY`,
+    );
+  }
+});
+
+test('spawnEnvForAgent applies configured codex env and preserves API key when base URL is configured', () => {
+  const env = spawnEnvForAgent(
+    'codex',
+    { PATH: '/usr/bin' },
+    {
+      OPENAI_BASE_URL: 'https://proxy.example.com/v1',
+      OPENAI_API_KEY: 'sk-configured',
+    },
+  );
+
+  assert.equal(env.OPENAI_BASE_URL, 'https://proxy.example.com/v1');
+  assert.equal(env.OPENAI_API_KEY, 'sk-configured');
+});
+
+test('spawnEnvForAgent strips stale configured OPENAI_API_KEY when configured base URL was also cleared', () => {
+  const env = spawnEnvForAgent(
+    'codex',
+    { PATH: '/usr/bin' },
+    {
+      OPENAI_API_KEY: 'sk-stale-byok',
+    },
+  );
+
+  assert.equal('OPENAI_API_KEY' in env, false);
+  assert.equal(env.PATH, '/usr/bin');
+});
+
 test('spawnEnvForAgent preserves ANTHROPIC_API_KEY when ANTHROPIC_BASE_URL is set', () => {
   const env = spawnEnvForAgent('claude', {
     ANTHROPIC_API_KEY: 'sk-kimi',
