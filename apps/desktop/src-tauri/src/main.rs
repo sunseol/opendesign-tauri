@@ -1346,16 +1346,22 @@ async fn desktop_open_project_path(
         .unwrap_or_else(|error| error.to_string()))
 }
 
+async fn pick_folder_for_window(window: &WebviewWindow) -> Result<Option<PathBuf>, String> {
+    let dialog = rfd::FileDialog::new().set_parent(window);
+    tauri::async_runtime::spawn_blocking(move || dialog.pick_folder())
+        .await
+        .map_err(|error| format!("folder picker failed: {error}"))
+}
+
 #[tauri::command]
 async fn desktop_pick_and_import(
+    window: WebviewWindow,
     state: tauri::State<'_, AppState>,
     init: Option<PickAndImportInit>,
 ) -> Result<Value, String> {
     let picked = match env::var(TAURI_PICK_FOLDER_PATH_ENV) {
         Ok(path) => Some(PathBuf::from(path)),
-        Err(_) => tauri::async_runtime::spawn_blocking(|| rfd::FileDialog::new().pick_folder())
-            .await
-            .map_err(|error| format!("folder picker failed: {error}"))?,
+        Err(_) => pick_folder_for_window(&window).await?,
     };
     let Some(path) = picked else {
         return Ok(json!({ "ok": false, "canceled": true }));
