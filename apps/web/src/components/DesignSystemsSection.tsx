@@ -8,6 +8,7 @@ import {
   importLocalDesignSystem,
 } from '../providers/registry';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
+import { orderDesignSystemGroups } from './design-system-group-order';
 
 // Sibling Settings section that hosts the design-systems registry.
 // Lifted out of the previous LibrarySection so each surface (functional
@@ -87,6 +88,11 @@ export function DesignSystemsSection({ cfg, setCfg }: Props) {
     }
     return groups;
   }, [filtered]);
+
+  const orderedGroups = useMemo(
+    () => orderDesignSystemGroups(Array.from(grouped.entries())),
+    [grouped],
+  );
 
   useEffect(() => {
     if (!highlightedDesignSystemId) return;
@@ -389,7 +395,7 @@ export function DesignSystemsSection({ cfg, setCfg }: Props) {
           <p className="library-empty">{t('settings.libraryNoResults')}</p>
         ) : (
           <>
-            {Array.from(grouped.entries()).map(([category, items]) => (
+            {orderedGroups.map(([category, items]) => (
               <div key={category} className="library-group">
                 {categoryFilter === 'All' ? (
                   <h4 className="library-group-title">

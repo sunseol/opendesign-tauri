@@ -264,6 +264,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [toolsTab, setToolsTab] = useState<ToolsTab>('plugins');
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const composingRef = useRef(false);
     const toolsMenuRef = useRef<HTMLDivElement | null>(null);
     const toolsTriggerRef = useRef<HTMLButtonElement | null>(null);
     const petEnabled = Boolean(onAdoptPet && onTogglePet);
@@ -924,6 +925,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
           new RegExp(`(^|\\s)@${escapeRegExp(s.id)}(\\s|$)`).test(value),
         ),
       );
+      // Skip mention and slash detection during IME composition (Chinese,
+      // Japanese, Korean, etc.) to avoid cursor jumps after @ or / triggers.
+      if (composingRef.current) return;
       // Detect a fresh @ at start or after whitespace; capture the typed
       // query up to the cursor.
       const before = value.slice(0, cursor);
@@ -1308,6 +1312,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 placeholder={t('chat.composerPlaceholder')}
                 spellCheck={false}
                 onChange={handleChange}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                }}
                 onPaste={handlePaste}
                 onScroll={(event) => {
                   setComposerScrollTop(event.currentTarget.scrollTop);
