@@ -2014,18 +2014,33 @@
   gap: 28px;
 }
 .ds-project-section-head {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 10px;
 }
+.ds-project-section-head-trigger {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: inherit;
+}
 .ds-project-section-title {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  flex: 1;
   min-width: 0;
   border: 0;
   background: transparent;
   color: inherit;
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 0;
@@ -2039,7 +2054,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .ds-project-section-title strong {
   margin: 0;
@@ -2101,6 +2116,8 @@
   color: var(--amber);
 }
 .ds-project-review-actions {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -2414,11 +2431,18 @@
   border-top: 1px solid var(--border);
 }
 .ds-project-review-item .ds-project-inline-preview {
-  height: clamp(340px, 48vw, 540px);
+  height: clamp(170px, 20vw, 260px);
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  background: var(--bg);
+}
+.ds-project-review-item--ui-kit .ds-project-inline-preview {
+  height: clamp(420px, 56vw, 760px);
   background: #d8d8d8;
+}
+.ds-project-review-item--asset .ds-project-inline-preview {
+  height: clamp(220px, 28vw, 360px);
 }
 .ds-project-review-item .ds-project-review-notice,
 .ds-project-review-item .ds-project-last-feedback,
