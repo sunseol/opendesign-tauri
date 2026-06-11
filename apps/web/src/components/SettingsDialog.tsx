@@ -1452,7 +1452,7 @@ export function SettingsDialog({
       case 'invalid_model_id':
         return t('settings.testInvalidModelId', { model: testedModel });
       case 'invalid_base_url':
-        return t('settings.testInvalidBaseUrl');
+        return result.detail?.trim() || t('settings.testInvalidBaseUrl');
       case 'rate_limited':
         return t('settings.testRateLimited');
       case 'upstream_unavailable':
