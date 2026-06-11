@@ -67,10 +67,44 @@ describe('codebuddy runtime adapter', () => {
     expect(args).not.toContain('--add-dir');
   });
 
+  it('emits --session-id with the minted id on a create turn', () => {
+    const args = codebuddyAgentDef.buildArgs('prompt', [], [], {}, {
+      newSessionId: '11111111-1111-4111-8111-111111111111',
+      resumeSessionId: null,
+    });
+
+    expect(args).toContain('--session-id');
+    expect(args[args.indexOf('--session-id') + 1]).toBe(
+      '11111111-1111-4111-8111-111111111111',
+    );
+    expect(args).not.toContain('--resume');
+  });
+
+  it('emits --resume with the stored id on a resume turn', () => {
+    const args = codebuddyAgentDef.buildArgs('prompt', [], [], {}, {
+      newSessionId: '22222222-2222-4222-8222-222222222222',
+      resumeSessionId: 'stored-session-abc',
+    });
+
+    expect(args).toContain('--resume');
+    expect(args[args.indexOf('--resume') + 1]).toBe('stored-session-abc');
+    expect(args).not.toContain('--session-id');
+  });
+
+  it('emits neither session flag when no session context is supplied', () => {
+    const args = codebuddyAgentDef.buildArgs('prompt', [], [], {}, {});
+
+    expect(args).not.toContain('--resume');
+    expect(args).not.toContain('--session-id');
+  });
+
   it('declares fallback binary, MCP injection, and multi-provider model hints', () => {
     expect(codebuddyAgentDef.fallbackBins).toEqual(['cbc']);
     expect(codebuddyAgentDef.externalMcpInjection).toBe('claude-mcp-json');
     expect(codebuddyAgentDef.helpArgs).toEqual(['-p', '--help']);
+    expect(codebuddyAgentDef.resumesSessionViaCli).toBe(true);
+    expect(codebuddyAgentDef.installUrl).toBe('https://www.codebuddy.cn');
+    expect(codebuddyAgentDef.docsUrl).toBe('https://www.codebuddy.cn/docs/workbuddy/Overview');
 
     const modelIds = codebuddyAgentDef.fallbackModels.map((model) => model.id);
     expect(modelIds).toEqual(expect.arrayContaining([

@@ -42,7 +42,7 @@ export const codebuddyAgentDef = {
     { id: 'xhigh', label: 'XHigh' },
     { id: 'max', label: 'Max' },
   ],
-  buildArgs: (_prompt, _imagePaths, extraAllowedDirs = [], options = {}) => {
+  buildArgs: (_prompt, _imagePaths, extraAllowedDirs = [], options = {}, runtimeContext = {}) => {
     const caps = agentCapabilities.get('codebuddy') || {};
     const args = [
       '-p',
@@ -67,6 +67,11 @@ export const codebuddyAgentDef = {
     if (dirs.length > 0 && caps.addDir !== false) {
       args.push('--add-dir', ...dirs);
     }
+    if (typeof runtimeContext.resumeSessionId === 'string' && runtimeContext.resumeSessionId) {
+      args.push('--resume', runtimeContext.resumeSessionId);
+    } else if (typeof runtimeContext.newSessionId === 'string' && runtimeContext.newSessionId) {
+      args.push('--session-id', runtimeContext.newSessionId);
+    }
     args.push('--permission-mode', 'bypassPermissions');
     return args;
   },
@@ -74,4 +79,7 @@ export const codebuddyAgentDef = {
   promptInputFormat: 'stream-json',
   streamFormat: 'claude-stream-json',
   externalMcpInjection: 'claude-mcp-json',
+  resumesSessionViaCli: true,
+  installUrl: 'https://www.codebuddy.cn',
+  docsUrl: 'https://www.codebuddy.cn/docs/workbuddy/Overview',
 } satisfies RuntimeAgentDef;

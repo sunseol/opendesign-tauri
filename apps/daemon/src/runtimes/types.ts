@@ -18,6 +18,10 @@ export type RuntimeBuildOptions = {
 
 export type RuntimeContext = {
   cwd?: string;
+  // Resume-capable adapters can use these to continue the CLI's own session
+  // rather than relying solely on daemon-rendered transcript history.
+  resumeSessionId?: string | null;
+  newSessionId?: string;
 };
 
 export type RuntimeCapabilityMap = Record<string, boolean>;
@@ -108,6 +112,9 @@ export type RuntimeAgentDef = {
   // When false, Settings hides custom free-text model input for CLIs whose
   // model selector is a fixed mode/catalog rather than arbitrary model ids.
   supportsCustomModel?: boolean;
+  // True when the adapter's CLI can persist and resume its own session
+  // across daemon spawns.
+  resumesSessionViaCli?: boolean;
 };
 
 export type DetectedAgent = Omit<
