@@ -29,6 +29,15 @@ export function spawnEnvForAgent(
     ...baseEnv,
     ...expandConfiguredEnv(configuredEnv),
   };
+  if (agentId === 'opencode') {
+    stripKeysCaseInsensitive(env, [
+      'OPENCODE',
+      'OPENCODE_PID',
+      'OPENCODE_RUN_ID',
+      'OPENCODE_SERVER_PASSWORD',
+    ]);
+    return env;
+  }
   if (agentId !== 'claude') return env;
   const hasCustomBaseUrl = Object.keys(env).some(
     (k) =>
@@ -41,4 +50,14 @@ export function spawnEnvForAgent(
     if (key.toUpperCase() === 'ANTHROPIC_API_KEY') delete env[key];
   }
   return env;
+}
+
+function stripKeysCaseInsensitive(
+  env: NodeJS.ProcessEnv,
+  keysToStrip: readonly string[],
+): void {
+  const keysUpper = new Set(keysToStrip.map((key) => key.toUpperCase()));
+  for (const key of Object.keys(env)) {
+    if (keysUpper.has(key.toUpperCase())) delete env[key];
+  }
 }

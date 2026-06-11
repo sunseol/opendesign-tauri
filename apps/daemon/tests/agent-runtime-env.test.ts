@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAgentRuntimeEnv, createAgentRuntimeToolPrompt } from '../src/server.js';
 import { applyAgentLaunchEnv } from '../src/runtimes/launch.js';
+import { spawnEnvForAgent } from '../src/runtimes/env.js';
 
 describe('agent runtime tool environment', () => {
   it('injects daemon URL and run-scoped tool token into agent sessions', () => {
@@ -147,5 +148,23 @@ describe('applyAgentLaunchEnv', () => {
     const base = { Path: existing };
     const result = applyAgentLaunchEnv(base, { childPathPrepend: ['/opt/bin'] }, '');
     expect(result.Path).toBe(existing);
+  });
+});
+
+describe('spawnEnvForAgent', () => {
+  it('strips inherited OpenCode session env before spawning opencode', () => {
+    const env = spawnEnvForAgent('opencode', {
+      PATH: '/bin',
+      OPENCODE: '1',
+      opencode_pid: '123',
+      OPENCODE_RUN_ID: 'run-1',
+      OpenCode_Server_Password: 'secret',
+      KEEP_ME: 'ok',
+    });
+
+    expect(env).toEqual({
+      PATH: '/bin',
+      KEEP_ME: 'ok',
+    });
   });
 });

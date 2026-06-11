@@ -9812,19 +9812,20 @@ export async function startServer({
     // var is *merged* with the user's saved `~/.config/opencode/opencode
     // .json` (per OpenCode's documented config layering), so adding a
     // server here does not erase whatever the user already has in their
-    // global config. We deliberately leave the env unset when no servers
-    // are enabled — overwriting with `{}` would wipe the user's saved
-    // mcp section for this single invocation, which is exactly the kind
-    // of surprise the previous silent-failure UX taught us to avoid.
+    // global config. It can also carry daemon-selected external_directory
+    // allowlist rules for project cwd and staged skill dirs, even when no
+    // MCP servers are enabled. We still leave the env unset when there is
+    // no MCP content and no directory grant, so the user's saved config
+    // continues to apply as-is.
     let opencodeConfigContent: string | null = null;
-    if (
-      def.externalMcpInjection === 'opencode-env-content' &&
-      enabledExternalMcp.length > 0
-    ) {
+    if (def.externalMcpInjection === 'opencode-env-content') {
       try {
         opencodeConfigContent = buildOpenCodeMcpConfigContent(
           enabledExternalMcp,
           oauthTokensForSpawn,
+          {
+            allowedDirectories: [effectiveCwd, ...extraAllowedDirs],
+          },
         );
       } catch (err) {
         console.warn(
@@ -10080,10 +10081,9 @@ export async function startServer({
         // might have exported in their shell — that would let an
         // outdated content string suppress the user's freshly-saved
         // MCP servers, which is exactly the bug we are fixing.
-        // `opencodeConfigContent === null` means "no enabled servers";
-        // we deliberately leave the env unset in that case so the
-        // user's saved `~/.config/opencode/opencode.json` continues
-        // to apply as-is.
+        // `opencodeConfigContent === null` means "no invocation-scoped MCP
+        // or permission content"; in that case the user's saved
+        // `~/.config/opencode/opencode.json` continues to apply as-is.
         ...(opencodeConfigContent
           ? { OPENCODE_CONFIG_CONTENT: opencodeConfigContent }
           : {}),
