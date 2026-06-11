@@ -314,6 +314,16 @@ export function FileWorkspace({
     setActiveTab(name);
   }
 
+  function openFileReplacing(openName: string, closeName: string) {
+    setUploadError(null);
+    const withoutClosed = persistedTabs.filter((tabName) => tabName !== closeName);
+    const nextTabs = withoutClosed.includes(openName)
+      ? withoutClosed
+      : [...withoutClosed, openName];
+    onTabsStateChange({ tabs: nextTabs, active: openName });
+    setActiveTab(openName);
+  }
+
   function closeTab(name: string) {
     const sketchEntry = sketches[name];
     const isPending = sketchEntry && !sketchEntry.persisted;
@@ -1057,6 +1067,7 @@ export function FileWorkspace({
             onRemovePreviewComment={onRemovePreviewComment}
             onSendBoardCommentAttachments={onSendBoardCommentAttachments}
             onFileSaved={onRefreshFiles}
+            onOpenFileReplacing={openFileReplacing}
           />
         ) : (
           <div className="viewer-empty">

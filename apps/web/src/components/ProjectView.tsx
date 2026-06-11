@@ -32,6 +32,7 @@ import {
   fetchProjectFiles,
   fetchSkill,
   patchPreviewCommentStatus,
+  projectRawUrl,
   upsertPreviewComment,
   writeProjectTextFile,
 } from '../providers/registry';
@@ -128,6 +129,7 @@ import {
   useCritiqueTheaterEnabled,
 } from './Theater';
 import { decideAutoOpenAfterWrite } from './auto-open-file';
+import { collectReferencedJsxNames } from '../runtime/jsx-module-refs';
 import { FileWorkspace } from './FileWorkspace';
 import { Icon } from './Icon';
 import {
@@ -996,6 +998,28 @@ export function ProjectView({
   useEffect(() => {
     projectFilesRef.current = projectFiles;
   }, [projectFiles]);
+
+  const htmlContentCacheRef = useRef<Map<string, { mtime: number; text: string | null }>>(
+    new Map(),
+  );
+  const readProjectHtml = useCallback(
+    async (name: string): Promise<string | null> => {
+      const file = projectFilesRef.current.find((entry) => entry.name === name);
+      const mtime = file?.mtime ?? 0;
+      const cached = htmlContentCacheRef.current.get(name);
+      if (cached && cached.mtime === mtime) return cached.text;
+      try {
+        const response = await fetch(projectRawUrl(project.id, name));
+        const text = response.ok ? await response.text() : null;
+        htmlContentCacheRef.current.set(name, { mtime, text });
+        return text;
+      } catch {
+        htmlContentCacheRef.current.set(name, { mtime, text: null });
+        return null;
+      }
+    },
+    [project.id],
+  );
 
   const refreshLiveArtifacts = useCallback(async (): Promise<LiveArtifactSummary[]> => {
     const next = await fetchLiveArtifacts(project.id);
@@ -2227,8 +2251,13 @@ export function ProjectView({
               // Only auto-open if the file actually landed in the project's
               // file list — otherwise an out-of-project Write (e.g. an
               // upstream repo edit) would spawn a permanent placeholder tab.
-              void refreshProjectFiles().then((nextFiles) => {
-                const decision = decideAutoOpenAfterWrite(filePath, nextFiles);
+              void refreshProjectFiles().then(async (nextFiles) => {
+                const moduleFileNames = /\.(jsx|tsx)$/i.test(filePath)
+                  ? await collectReferencedJsxNames(nextFiles, readProjectHtml)
+                  : undefined;
+                const decision = decideAutoOpenAfterWrite(filePath, nextFiles, {
+                  moduleFileNames,
+                });
                 if (decision.shouldOpen && decision.fileName) {
                   requestOpenFile(decision.fileName);
                 }

@@ -98,4 +98,35 @@ describe('decideAutoOpenAfterWrite', () => {
     ]);
     expect(result).toEqual({ shouldOpen: false, fileName: null });
   });
+
+  it('declines to auto-open a .jsx module loaded by a sibling HTML entry', () => {
+    const result = decideAutoOpenAfterWrite(
+      'icons.jsx',
+      [
+        { name: 'icons.jsx', path: 'icons.jsx' },
+        { name: 'Backups Panel.html', path: 'Backups Panel.html' },
+      ],
+      { moduleFileNames: new Set(['icons.jsx']) },
+    );
+    expect(result).toEqual({ shouldOpen: false, fileName: null });
+  });
+
+  it('still auto-opens the same file when no module set is supplied', () => {
+    const result = decideAutoOpenAfterWrite('icons.jsx', [
+      { name: 'icons.jsx', path: 'icons.jsx' },
+    ]);
+    expect(result).toEqual({ shouldOpen: true, fileName: 'icons.jsx' });
+  });
+
+  it('still auto-opens a standalone artifact even when other modules exist', () => {
+    const result = decideAutoOpenAfterWrite(
+      'landing.html',
+      [
+        { name: 'landing.html', path: 'landing.html' },
+        { name: 'icons.jsx', path: 'icons.jsx' },
+      ],
+      { moduleFileNames: new Set(['icons.jsx']) },
+    );
+    expect(result).toEqual({ shouldOpen: true, fileName: 'landing.html' });
+  });
 });

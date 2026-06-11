@@ -21,6 +21,12 @@ interface CandidateFile {
   readonly path?: string;
 }
 
+interface AutoOpenOptions {
+  readonly moduleFileNames?: ReadonlySet<string>;
+}
+
+const NO_MODULES: ReadonlySet<string> = new Set();
+
 function basenameOf(p: string): string {
   return p.split('/').pop() ?? p;
 }
@@ -28,7 +34,14 @@ function basenameOf(p: string): string {
 export function decideAutoOpenAfterWrite(
   filePath: string,
   nextFiles: ReadonlyArray<CandidateFile>,
+  options: AutoOpenOptions = {},
 ): { shouldOpen: boolean; fileName: string | null } {
+  const moduleFileNames = options.moduleFileNames ?? NO_MODULES;
+  const resolve = (fileName: string): { shouldOpen: boolean; fileName: string | null } =>
+    moduleFileNames.has(fileName)
+      ? { shouldOpen: false, fileName: null }
+      : { shouldOpen: true, fileName };
+
   if (!filePath) return { shouldOpen: false, fileName: null };
 
   // 1) Path-suffix match against full project-relative paths.
@@ -48,7 +61,7 @@ export function decideAutoOpenAfterWrite(
     }
   }
   if (suffixMatches.length === 1) {
-    return { shouldOpen: true, fileName: suffixMatches[0]!.name };
+    return resolve(suffixMatches[0]!.name);
   }
   if (suffixMatches.length > 1) {
     // Multiple project files plausibly correspond to this path — refuse
@@ -69,7 +82,7 @@ export function decideAutoOpenAfterWrite(
     return rel ? basenameOf(rel) === filePath : false;
   });
   if (basenameMatches.length === 1) {
-    return { shouldOpen: true, fileName: basenameMatches[0]!.name };
+    return resolve(basenameMatches[0]!.name);
   }
   return { shouldOpen: false, fileName: null };
 }
