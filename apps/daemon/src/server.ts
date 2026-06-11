@@ -11649,6 +11649,21 @@ export async function startServer({
     let server;
     try {
       server = app.listen(port, host, () => {
+        // Widen the between-request idle window so kept-alive sockets
+        // belonging to chat/SSE clients survive the gaps between bursts.
+        //
+        // Node's `keepAliveTimeout` (default 5s) only arms after a
+        // response finishes writing, bounding the idle gap before the next
+        // request on the same socket. It does not fire while an SSE
+        // response is still streaming, but it can force chat clients to
+        // reconnect between routine status polls and run-event requests.
+        //
+        // `headersTimeout` must exceed `keepAliveTimeout` per the Node
+        // docs; otherwise a slow-loris client can stall request parsing.
+        if (server) {
+          server.keepAliveTimeout = 120_000;
+          server.headersTimeout = 125_000;
+        }
         const address = server.address();
         // `address()` can in theory return `string | AddressInfo | null`. For
         // a TCP listener it's always `AddressInfo` with a `.port` — the guard
