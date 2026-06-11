@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -43,6 +44,13 @@ function resolvePackageManagerInvocation() {
 const packageManager = resolvePackageManagerInvocation();
 
 for (const target of buildTargets) {
+  // Partial install contexts can copy only package manifests before sources.
+  // They run the real build later, once each target's tsconfig is present.
+  if (!existsSync(resolve(repoRoot, target, "tsconfig.json"))) {
+    process.stdout.write(`postinstall: skipping ${target} (no tsconfig.json in this context)\n`);
+    continue;
+  }
+
   const result = spawnSync(
     packageManager.command,
     [...packageManager.argsPrefix, "-C", target, "run", "build"],

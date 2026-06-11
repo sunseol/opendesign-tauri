@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -161,4 +163,51 @@ test("postinstall builds workspace packages whose linkable bins delegate to dist
     .filter((directory) => !postinstallBuildTargets().has(directory));
 
   assert.deepEqual(missingBuildTargets, []);
+});
+
+test("every postinstall build target has a checked-in tsconfig.json", () => {
+  const missingTsconfigs = [...postinstallBuildTargets()]
+    .filter((target) => existsSync(join(repoRoot, target, "package.json")))
+    .filter((target) => !existsSync(join(repoRoot, target, "tsconfig.json")));
+
+  assert.deepEqual(missingTsconfigs, []);
+});
+
+test("postinstall skips build targets whose tsconfig.json is absent from the install context", () => {
+  const sandbox = mkdtempSync(join(tmpdir(), "postinstall-test-"));
+  try {
+    mkdirSync(join(sandbox, "scripts"));
+    writeFileSync(
+      join(sandbox, "scripts", "postinstall.mjs"),
+      readFileSync(join(repoRoot, "scripts/postinstall.mjs")),
+    );
+
+    mkdirSync(join(sandbox, "packages/contracts"), { recursive: true });
+    writeFileSync(join(sandbox, "packages/contracts/package.json"), "{}");
+    writeFileSync(join(sandbox, "packages/contracts/tsconfig.json"), "{}");
+
+    mkdirSync(join(sandbox, "apps/daemon"), { recursive: true });
+    writeFileSync(join(sandbox, "apps/daemon/package.json"), "{}");
+
+    const invocationLog = join(sandbox, "invocations.log");
+    writeFileSync(
+      join(sandbox, "pnpm-stub.mjs"),
+      [
+        'import { appendFileSync } from "node:fs";',
+        `appendFileSync(${JSON.stringify(invocationLog)}, process.argv.slice(2).join(" ") + "\\n");`,
+      ].join("\n"),
+    );
+
+    const result = spawnSync(process.execPath, [join(sandbox, "scripts", "postinstall.mjs")], {
+      encoding: "utf8",
+      env: { ...process.env, npm_execpath: join(sandbox, "pnpm-stub.mjs") },
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const invocations = existsSync(invocationLog) ? readFileSync(invocationLog, "utf8") : "";
+    assert.match(invocations, /-C packages\/contracts run build/);
+    assert.doesNotMatch(invocations, /-C apps\/daemon run build/);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
