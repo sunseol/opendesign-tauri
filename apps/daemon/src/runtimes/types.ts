@@ -100,6 +100,9 @@ export type RuntimeAgentDef = {
     | 'opencode-env-content';
   installUrl?: string;
   docsUrl?: string;
+  // When false, Settings hides custom free-text model input for CLIs whose
+  // model selector is a fixed mode/catalog rather than arbitrary model ids.
+  supportsCustomModel?: boolean;
 };
 
 export type DetectedAgent = Omit<

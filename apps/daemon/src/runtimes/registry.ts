@@ -10,6 +10,7 @@ import { cursorAgentDef } from './defs/cursor-agent.js';
 import { qwenAgentDef } from './defs/qwen.js';
 import { qoderAgentDef } from './defs/qoder.js';
 import { copilotAgentDef } from './defs/copilot.js';
+import { ampAgentDef } from './defs/amp.js';
 import { piAgentDef } from './defs/pi.js';
 import { kiroAgentDef } from './defs/kiro.js';
 import { kiloAgentDef } from './defs/kilo.js';
@@ -31,6 +32,7 @@ const BASE_AGENT_DEFS: RuntimeAgentDef[] = [
   qwenAgentDef,
   qoderAgentDef,
   copilotAgentDef,
+  ampAgentDef,
   piAgentDef,
   kiroAgentDef,
   kiloAgentDef,

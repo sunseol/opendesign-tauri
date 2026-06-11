@@ -1,4 +1,5 @@
 const AGENT_LABELS: Record<string, string> = {
+  amp: 'Amp',
   claude: 'Claude',
   codex: 'Codex',
   devin: 'Devin',
@@ -17,6 +18,8 @@ const AGENT_LABELS: Record<string, string> = {
 };
 
 const AGENT_ALIASES: Record<string, string> = {
+  'amp cli': 'amp',
+  'amp-cli': 'amp',
   'claude code': 'claude',
   'codex cli': 'codex',
   'devin for terminal': 'devin',
@@ -72,9 +75,14 @@ function knownAgentLabel(raw: string | null | undefined): string | null {
   if (key.includes('cursor-agent')) return 'Cursor';
   if (key.includes('copilot')) return 'Copilot';
   for (const [agentId, label] of Object.entries(AGENT_LABELS)) {
-    if (key.includes(agentId)) return label;
+    if (containsAgentId(key, agentId)) return label;
   }
   return null;
+}
+
+function containsAgentId(key: string, agentId: string): boolean {
+  if (agentId === 'amp') return /(^|[\s._-])amp($|[\s._-])/.test(key);
+  return key.includes(agentId);
 }
 
 function safeFallbackLabel(raw: string | null | undefined): string | null {

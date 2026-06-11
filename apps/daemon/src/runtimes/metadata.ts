@@ -3,6 +3,10 @@ const AGENT_INSTALL_LINKS: Record<
   string,
   { installUrl?: string; docsUrl?: string }
 > = {
+  amp: {
+    installUrl: 'https://ampcode.com/manual#install',
+    docsUrl: 'https://ampcode.com/manual',
+  },
   claude: {
     installUrl: 'https://docs.anthropic.com/en/docs/claude-code/setup',
     docsUrl: 'https://docs.anthropic.com/en/docs/claude-code',

@@ -35,6 +35,14 @@ describe('api protocol labels', () => {
     expect(agentDisplayName('C:\\Tools\\qodercli.cmd')).toBe('Qoder');
   });
 
+  it('normalizes Amp aliases without matching unrelated words', () => {
+    expect(agentDisplayName('amp')).toBe('Amp');
+    expect(exactAgentDisplayName('Amp CLI')).toBe('Amp');
+    expect(exactAgentDisplayName('amp-cli')).toBe('Amp');
+    expect(agentDisplayName('/opt/homebrew/bin/amp')).toBe('Amp');
+    expect(agentDisplayName('example-agent')).toBe('example-agent');
+  });
+
   it('includes explicit Qoder models but hides the default model', () => {
     expect(agentModelDisplayName('qoder', 'Qoder CLI', 'ultimate')).toBe('Qoder · ultimate');
     expect(agentModelDisplayName('qoder', 'Qoder CLI', 'default')).toBe('Qoder');

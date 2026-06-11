@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import {
-  AGENT_DEFS, assert, chmodSync, codex, cursorAgent, detectAgents, join, mkdtempSync, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
+  AGENT_DEFS, amp, assert, chmodSync, codex, cursorAgent, detectAgents, join, mkdtempSync, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
 import { readLocalAgentProfileDefs } from '../../src/runtimes/registry.js';
 
@@ -396,4 +396,23 @@ test('codex args pass valid extraAllowedDirs with repeatable --add-dir flags', (
     args.filter((arg, index) => arg === '--add-dir' || args[index - 1] === '--add-dir'),
     ['--add-dir', '/repo/skills', '--add-dir', '/tmp/codex/generated_images'],
   );
+});
+
+test('amp uses headless execute mode with the Claude-compatible stream parser', () => {
+  assert.equal(amp.streamFormat, 'claude-stream-json');
+  assert.equal(amp.promptViaStdin, true);
+  assert.notEqual(amp.promptInputFormat, 'stream-json');
+  assert.equal(amp.supportsCustomModel, false);
+
+  const base = amp.buildArgs('', [], [], {});
+  assert.deepEqual(base, ['-x', '--stream-json', '--dangerously-allow-all']);
+
+  const def = amp.buildArgs('', [], [], { model: 'default' });
+  assert.equal(def.includes('--mode'), false);
+
+  const smart = amp.buildArgs('', [], [], { model: 'smart' });
+  assert.deepEqual(smart, ['-x', '--stream-json', '--dangerously-allow-all', '--mode', 'smart']);
+
+  const bogus = amp.buildArgs('', [], [], { model: 'gpt-5' });
+  assert.equal(bogus.includes('--mode'), false);
 });
