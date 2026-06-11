@@ -4984,16 +4984,6 @@ export async function startServer({
     res.json({ ok: true });
   });
 
-  app.get('/api/agents', async (_req, res) => {
-    try {
-      const config = await readAppConfig(RUNTIME_DATA_DIR);
-      const list = await detectAgents(config.agentCliEnv ?? {});
-      res.json({ agents: list });
-    } catch (err) {
-      res.status(500).json({ error: String(err) });
-    }
-  });
-
   app.get('/api/skills', async (_req, res) => {
     try {
       const skills = await listAllSkills();
