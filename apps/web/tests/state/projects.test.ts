@@ -9,6 +9,7 @@ import {
   installGeneratedPluginFolder,
   listPlugins,
   publishGeneratedPluginToGitHub,
+  saveMessage,
 } from '../../src/state/projects';
 
 describe('applyPlugin', () => {
@@ -88,6 +89,37 @@ describe('createProject', () => {
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  });
+});
+
+describe('saveMessage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('passes keepalive through to unload-time message persistence', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await saveMessage(
+      'project-1',
+      'conversation-1',
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: 'last chunk',
+        createdAt: 1,
+      },
+      { keepalive: true },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/project-1/conversations/conversation-1/messages/assistant-1',
+      expect.objectContaining({
+        method: 'PUT',
+        keepalive: true,
       }),
     );
   });

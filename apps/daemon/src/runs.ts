@@ -154,12 +154,18 @@ export function createChatRunService({
   const stream = (run, req, res) => {
     const sse = createSseResponse(res);
     const lastEventId = Number(req.get('Last-Event-ID') || req.query.after || 0);
+    let sent = 0;
     for (const record of run.events) {
       if (!Number.isFinite(lastEventId) || record.id > lastEventId) {
         sse.send(record.event, record.data, record.id);
+        sent++;
       }
     }
     if (TERMINAL_RUN_STATUSES.has(run.status)) {
+      if (sent === 0 && run.events.length > 0) {
+        const last = run.events[run.events.length - 1];
+        sse.send(last.event, last.data, last.id);
+      }
       sse.end();
       return;
     }

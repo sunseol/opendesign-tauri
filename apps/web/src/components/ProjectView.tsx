@@ -1871,6 +1871,7 @@ export function ProjectView({
         const textBuffer = createBufferedTextUpdates({
           updateMessage: (updater) => updateMessageById(message.id, updater),
           persistSoon,
+          flushAndPersistNow: () => persistNow({ keepalive: true }),
           onContentDelta: applyContentDelta,
         });
         reattachTextBuffersRef.current.add(textBuffer);
@@ -1927,16 +1928,16 @@ export function ProjectView({
                   ...prev,
                   content: needsFullReplay ? replayedContent : prev.content,
                   events: needsFullReplay ? replayedEvents : prev.events,
-                  runStatus: 'succeeded',
+                  runStatus: resolveSucceededRunStatus(prev.runStatus),
                   endedAt: prev.endedAt ?? Date.now(),
                 }),
                 true,
                 { telemetryFinalized: true },
               );
               void (async () => {
-                const beforeFiles = await refreshProjectFiles();
-                const beforeFileNames = new Set(beforeFiles.map((f) => f.name));
-                let nextFiles = beforeFiles;
+                const preTurn = message.preTurnFileNames;
+                let nextFiles = await refreshProjectFiles();
+                const beforeFileNames = new Set(preTurn ?? nextFiles.map((f) => f.name));
                 let recoveredExistingArtifact: ProjectFile | null = null;
                 if (parsedArtifact?.html) {
                   const runStartedAt = status.createdAt || message.startedAt || message.createdAt;
@@ -1953,9 +1954,8 @@ export function ProjectView({
                     nextFiles = await refreshProjectFiles();
                   }
                 }
-                const produced = recoveredExistingArtifact
-                  ? [recoveredExistingArtifact]
-                  : nextFiles.filter((f) => !beforeFileNames.has(f.name));
+                const diff = nextFiles.filter((f) => !beforeFileNames.has(f.name));
+                const produced = mergeRecoveredArtifact(diff, recoveredExistingArtifact);
                 if (produced.length > 0) {
                   updateMessageById(
                     message.id,
@@ -2180,6 +2180,7 @@ export function ProjectView({
             )
           : apiProtocolModelLabel(config.apiProtocol, config.model);
       const assistantId = retryTarget?.failedAssistant.id ?? randomUUID();
+      const preTurnFileNames = projectFiles.map((f) => f.name);
       const assistantMsg: ChatMessage = {
         id: assistantId,
         role: 'assistant',
@@ -2190,6 +2191,7 @@ export function ProjectView({
         createdAt: retryTarget?.failedAssistant.createdAt ?? startedAt,
         runStatus: config.mode === 'daemon' ? 'running' : undefined,
         startedAt,
+        preTurnFileNames,
       };
       let latestAssistantMsg: ChatMessage = assistantMsg;
       const updateConversationLatestRun = (
@@ -2283,7 +2285,7 @@ export function ProjectView({
       // Snapshot the file list at turn-start so we can diff after the
       // agent finishes and surface anything new (e.g. a generated .pptx)
       // as download chips on the assistant message.
-      const beforeFileNames = new Set(projectFiles.map((f) => f.name));
+      const beforeFileNames = new Set(preTurnFileNames);
 
       const parser = createArtifactParser();
       let parsedArtifact: Artifact | null = null;
@@ -2307,6 +2309,13 @@ export function ProjectView({
           persistTimer = null;
           persistMessageById(assistantId);
         }, 500);
+      };
+      const persistAssistantNowKeepalive = () => {
+        if (persistTimer) {
+          clearTimeout(persistTimer);
+          persistTimer = null;
+        }
+        persistMessageById(assistantId, { keepalive: true });
       };
       const pushEvent = (ev: AgentEvent) => {
         textBuffer.flush();
@@ -2414,6 +2423,7 @@ export function ProjectView({
       const textBuffer = createBufferedTextUpdates({
         updateMessage: updateAssistant,
         persistSoon: persistAssistantSoon,
+        flushAndPersistNow: persistAssistantNowKeepalive,
         onContentDelta: applyContentDelta,
       });
       sendTextBufferRef.current = textBuffer;
@@ -4139,6 +4149,24 @@ export function resolveSucceededRunStatus(status: ChatMessage['runStatus']): Cha
   return status === 'failed' || status === 'canceled' ? status : 'succeeded';
 }
 
+export function computeProducedFiles(
+  beforeNames: ReadonlySet<string> | readonly string[] | undefined,
+  next: readonly ProjectFile[],
+): ProjectFile[] | undefined {
+  if (!beforeNames) return undefined;
+  const set = beforeNames instanceof Set ? beforeNames : new Set(beforeNames);
+  return next.filter((f) => !set.has(f.name));
+}
+
+export function mergeRecoveredArtifact(
+  diff: readonly ProjectFile[],
+  recovered: ProjectFile | null,
+): ProjectFile[] {
+  if (!recovered) return [...diff];
+  if (diff.some((f) => f.name === recovered.name)) return [...diff];
+  return [...diff, recovered];
+}
+
 export function clearStreamingConversationMarker(
   currentConversationId: string | null,
   completedConversationId?: string | null,
@@ -4185,10 +4213,12 @@ type BufferedTextUpdates = ReturnType<typeof createBufferedTextUpdates>;
 function createBufferedTextUpdates({
   updateMessage,
   persistSoon,
+  flushAndPersistNow,
   onContentDelta,
 }: {
   updateMessage: (updater: (prev: ChatMessage) => ChatMessage) => void;
   persistSoon: () => void;
+  flushAndPersistNow?: () => void;
   onContentDelta?: (delta: string) => void;
 }) {
   let pendingContentDelta = '';
@@ -4199,6 +4229,7 @@ function createBufferedTextUpdates({
   let flushing = false;
   let needsFlush = false;
   const hasDocument = typeof document !== 'undefined';
+  const hasWindow = typeof window !== 'undefined';
 
   const cancelScheduledFlush = () => {
     if (flushFrame !== null) {
@@ -4290,6 +4321,9 @@ function createBufferedTextUpdates({
     if (hasDocument) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     }
+    if (hasWindow) {
+      window.removeEventListener('pagehide', onPageHide);
+    }
   };
 
   function onVisibilityChange() {
@@ -4298,8 +4332,16 @@ function createBufferedTextUpdates({
     }
   }
 
+  function onPageHide() {
+    flush();
+    flushAndPersistNow?.();
+  }
+
   if (hasDocument) {
     document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (hasWindow) {
+    window.addEventListener('pagehide', onPageHide);
   }
 
   return { appendContent, appendTextEvent, appendEvent, flush, cancel };

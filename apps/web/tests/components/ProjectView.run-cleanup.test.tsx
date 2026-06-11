@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProjectView,
   clearStreamingConversationMarker,
+  computeProducedFiles,
   finalizeActiveAssistantMessagesOnStop,
   findExistingArtifactProjectFile,
+  mergeRecoveredArtifact,
   resolveRetryTarget,
   resolveSucceededRunStatus,
   shouldClearActiveRunRefs,
@@ -296,6 +298,27 @@ describe('ProjectView daemon cleanup', () => {
     expect(resolveSucceededRunStatus(undefined)).toBe('succeeded');
     expect(resolveSucceededRunStatus('failed')).toBe('failed');
     expect(resolveSucceededRunStatus('canceled')).toBe('canceled');
+  });
+
+  it('computes produced files from the persisted pre-turn baseline', () => {
+    const files = [
+      { name: 'existing.html', path: '/p/existing.html', size: 1, mtime: 1 },
+      { name: 'new.pptx', path: '/p/new.pptx', size: 2, mtime: 2 },
+    ] as ProjectFile[];
+
+    expect(computeProducedFiles(['existing.html'], files)?.map((f) => f.name))
+      .toEqual(['new.pptx']);
+    expect(computeProducedFiles(undefined, files)).toBeUndefined();
+  });
+
+  it('merges a recovered artifact without dropping other produced files', () => {
+    const helper = { name: 'helper.txt', path: '/p/helper.txt', size: 1, mtime: 1 } as ProjectFile;
+    const artifact = artifactProjectFile('deck.html', 2);
+
+    expect(mergeRecoveredArtifact([helper], artifact).map((f) => f.name))
+      .toEqual(['helper.txt', 'deck.html']);
+    expect(mergeRecoveredArtifact([helper, artifact], artifact).map((f) => f.name))
+      .toEqual(['helper.txt', 'deck.html']);
   });
 
   // Regression: a phantom 'running' row in DB (no runId, no matching active

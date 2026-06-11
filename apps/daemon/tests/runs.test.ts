@@ -115,6 +115,76 @@ describe('chat run service shutdown', () => {
   });
 });
 
+describe('chat run service stream replay', () => {
+  it('replays the final event when a terminal-run cursor is already at the end', () => {
+    const sendCalls: Array<{ event: string; data: unknown; id: number }> = [];
+    const endCalls: number[] = [];
+    const runs = createChatRunService({
+      createSseResponse: () => ({
+        send: vi.fn((event: string, data: unknown, id: number) => {
+          sendCalls.push({ event, data, id });
+          return true;
+        }),
+        end: vi.fn(() => endCalls.push(1)),
+        cleanup: vi.fn(),
+      }),
+      createSseErrorPayload: (code: string, message: string) => ({ error: { code, message } }),
+      shutdownGraceMs: 10,
+      ttlMs: 60_000,
+    });
+
+    const run = runs.create({ projectId: 'p', conversationId: 'c' }) as any;
+    runs.emit(run, 'stdout', { text: 'hello' });
+    runs.finish(run, 'succeeded', 0, null);
+
+    const finalEventId = run.events.at(-1).id;
+    runs.stream(
+      run,
+      { get: () => null, query: { after: String(finalEventId) } } as never,
+      { on: () => {} } as never,
+    );
+
+    expect(sendCalls.length).toBeGreaterThanOrEqual(1);
+    expect(sendCalls.at(-1)?.event).toBe('end');
+    expect(endCalls).toHaveLength(1);
+  });
+
+  it('does not duplicate events when the cursor is before the final event', () => {
+    const sendCalls: Array<{ event: string; data: unknown; id: number }> = [];
+    const runs = createChatRunService({
+      createSseResponse: () => ({
+        send: vi.fn((event: string, data: unknown, id: number) => {
+          sendCalls.push({ event, data, id });
+          return true;
+        }),
+        end: vi.fn(),
+        cleanup: vi.fn(),
+      }),
+      createSseErrorPayload: (code: string, message: string) => ({ error: { code, message } }),
+      shutdownGraceMs: 10,
+      ttlMs: 60_000,
+    });
+
+    const run = runs.create() as any;
+    runs.emit(run, 'stdout', { text: 'a' });
+    runs.emit(run, 'stdout', { text: 'b' });
+    runs.finish(run, 'succeeded', 0, null);
+
+    const cursor = run.events[0].id;
+    runs.stream(
+      run,
+      { get: () => null, query: { after: String(cursor) } } as never,
+      { on: () => {} } as never,
+    );
+
+    expect(sendCalls.map((call) => call.id)).toEqual(
+      run.events
+        .filter((event: { id: number }) => event.id > cursor)
+        .map((event: { id: number }) => event.id),
+    );
+  });
+});
+
 function createRuns() {
   return createChatRunService({
     createSseResponse: () => ({
