@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackChatPanelClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -220,6 +220,10 @@ interface Props {
   hasActiveDesignSystem?: boolean;
   activeDesignSystem?: DesignSystemSummary | null;
   sendDisabled?: boolean;
+  queuedItems?: Array<{ id: string; prompt: string }>;
+  onRemoveQueuedSend?: (id: string) => void;
+  onUpdateQueuedSend?: (id: string, prompt: string) => void;
+  onSendQueuedNow?: (id: string) => void;
   // Names that exist in the project folder. Tool cards and chips use this
   // set to decide whether a path can be opened as a tab.
   projectFileNames?: Set<string>;
@@ -308,6 +312,7 @@ export function ChatPane({
   messages,
   streaming,
   sendDisabled = false,
+  queuedItems = [],
   error,
   projectId,
   projectKindForTracking = null,
@@ -324,6 +329,9 @@ export function ChatPane({
   onSend,
   onRetry,
   onStop,
+  onRemoveQueuedSend,
+  onUpdateQueuedSend,
+  onSendQueuedNow,
   onRequestOpenFile,
   onRequestPluginFolderAgentAction,
   initialDraft,
@@ -363,6 +371,8 @@ export function ChatPane({
   const logRef = useRef<HTMLDivElement | null>(null);
   const historyWrapRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<ChatComposerHandle | null>(null);
+  const pinnedTodoRef = useRef<HTMLDivElement | null>(null);
+  const queuedSendStripRef = useRef<HTMLDivElement | null>(null);
   const didInitialScrollRef = useRef(false);
   // Tracks whether the user is glued close enough to the bottom that
   // streamed content should auto-follow. Distinct from the jump-button
@@ -615,12 +625,49 @@ export function ChatPane({
       }
     };
 
+    // The PinnedTodoSlot renders outside the scroll container. When the todo
+    // card grows, the chat-log's clientHeight shrinks (flex layout) and the
+    // user drifts away from the bottom. Observe the pinned-todo div so
+    // followLatestIfPinned fires whenever the card changes height.
+    let observedPinnedTodo: Element | null = null;
+    let observedQueuedSendStrip: Element | null = null;
+    const syncPinnedTodo = () => {
+      if (!resizeObserver) return;
+      const pinnedEl = pinnedTodoRef.current;
+      if (pinnedEl && observedPinnedTodo !== pinnedEl) {
+        if (observedPinnedTodo) resizeObserver.unobserve(observedPinnedTodo);
+        resizeObserver.observe(pinnedEl);
+        observedPinnedTodo = pinnedEl;
+      } else if (!pinnedEl && observedPinnedTodo) {
+        resizeObserver.unobserve(observedPinnedTodo);
+        observedPinnedTodo = null;
+      }
+    };
+    const syncQueuedSendStrip = () => {
+      if (!resizeObserver) return;
+      const queuedEl = queuedSendStripRef.current;
+      if (queuedEl && observedQueuedSendStrip !== queuedEl) {
+        if (observedQueuedSendStrip) {
+          resizeObserver.unobserve(observedQueuedSendStrip);
+        }
+        resizeObserver.observe(queuedEl);
+        observedQueuedSendStrip = queuedEl;
+      } else if (!queuedEl && observedQueuedSendStrip) {
+        resizeObserver.unobserve(observedQueuedSendStrip);
+        observedQueuedSendStrip = null;
+      }
+    };
+
     syncObservedChildren();
+    syncPinnedTodo();
+    syncQueuedSendStrip();
 
     const mutationObserver =
       typeof MutationObserver !== 'undefined'
         ? new MutationObserver(() => {
             syncObservedChildren();
+            syncPinnedTodo();
+            syncQueuedSendStrip();
             followLatestIfPinned();
           })
         : null;
@@ -629,6 +676,15 @@ export function ChatPane({
       subtree: true,
       characterData: true,
     });
+    // PinnedTodoSlot and QueuedSendStrip live outside the chat-log subtree
+    // (they are siblings of .chat-log-wrap inside .pane). The
+    // MutationObserver above only fires for changes inside el, so it cannot
+    // detect those surfaces mounting or unmounting. Watch the nearest common
+    // ancestor (.pane) with childList-only to keep their observers current.
+    const paneEl = el.parentElement?.parentElement ?? null;
+    if (paneEl && mutationObserver) {
+      mutationObserver.observe(paneEl, { childList: true });
+    }
 
     return () => {
       if (followFrame !== null) cancelAnimationFrame(followFrame);
@@ -949,6 +1005,13 @@ export function ChatPane({
             dismissedKey={dismissedPinnedTodoKey}
             onDismiss={setDismissedPinnedTodoKey}
           />
+          <QueuedSendStrip
+            containerRef={queuedSendStripRef}
+            items={queuedItems}
+            onRemove={onRemoveQueuedSend}
+            onUpdate={onUpdateQueuedSend}
+            onSendNow={onSendQueuedNow}
+          />
           <ChatComposer
             ref={composerRef}
             projectId={projectId}
@@ -1037,6 +1100,163 @@ function PinnedTodoSlot({
       />
     </div>
   );
+}
+
+function QueuedSendStrip({
+  containerRef,
+  items,
+  onRemove,
+  onSendNow,
+  onUpdate,
+}: {
+  containerRef?: MutableRefObject<HTMLDivElement | null>;
+  items: Array<{ id: string; prompt: string }>;
+  onRemove?: (id: string) => void;
+  onSendNow?: (id: string) => void;
+  onUpdate?: (id: string, prompt: string) => void;
+}) {
+  const t = useT();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState('');
+  if (items.length === 0) return null;
+  const visible = items.slice(0, QUEUED_SEND_VISIBLE_LIMIT);
+  const extra = items.length - visible.length;
+  const startEdit = (item: { id: string; prompt: string }) => {
+    setEditingId(item.id);
+    setEditingDraft(item.prompt);
+  };
+  const commitEdit = () => {
+    if (!editingId) return;
+    const next = editingDraft.trim();
+    if (next) onUpdate?.(editingId, next);
+    setEditingId(null);
+    setEditingDraft('');
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingDraft('');
+  };
+  return (
+    <div
+      ref={containerRef}
+      className="chat-queued-send-strip"
+      data-testid="chat-queued-send-strip"
+    >
+      <div className="chat-queued-send-header">
+        <div className="chat-queued-send-heading">
+          <strong>
+            {items.length} {t('chat.queuedHeader')}
+          </strong>
+          <span aria-hidden>↩</span>
+          <span>{t('chat.queuedToSend')}</span>
+        </div>
+      </div>
+      {visible.map((item, index) => (
+        <div
+          className={`chat-queued-send-row${index === 0 ? ' chat-queued-send-row-active' : ''}${
+            editingId === item.id ? ' chat-queued-send-row-editing' : ''
+          }`}
+          key={item.id}
+        >
+          {editingId === item.id ? (
+            <form
+              className="chat-queued-send-edit-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitEdit();
+              }}
+            >
+              <input
+                className="chat-queued-send-edit-input"
+                value={editingDraft}
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                onChange={(event) => setEditingDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelEdit();
+                  }
+                }}
+                aria-label={t('chat.queuedEditQueuedTaskAria')}
+              />
+              <button
+                type="submit"
+                className="chat-queued-send-action"
+                title={t('chat.queuedSave')}
+                aria-label={t('chat.queuedSave')}
+                disabled={!editingDraft.trim()}
+              >
+                <Icon name="check" size={13} />
+              </button>
+              <button
+                type="button"
+                className="chat-queued-send-action"
+                title={t('chat.queuedCancel')}
+                aria-label={t('chat.queuedCancel')}
+                onClick={cancelEdit}
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </form>
+          ) : (
+            <>
+              <span className="chat-queued-send-title">{summarizeQueuedPrompt(item.prompt, t)}</span>
+              <div className="chat-queued-send-actions">
+                {onUpdate ? (
+                  <button
+                    type="button"
+                    className="chat-queued-send-action"
+                    title={t('chat.queuedEdit')}
+                    aria-label={t('chat.queuedEdit')}
+                    onClick={() => startEdit(item)}
+                  >
+                    <Icon name="pencil" size={13} />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="chat-queued-send-action"
+                  title={t('chat.send')}
+                  aria-label={t('chat.send')}
+                  onClick={() => onSendNow?.(item.id)}
+                  disabled={!onSendNow}
+                >
+                  <Icon name="arrow-up" size={13} />
+                </button>
+                {onRemove ? (
+                  <button
+                    type="button"
+                    className="chat-queued-send-action"
+                    onClick={() => onRemove(item.id)}
+                    title={t('chat.comments.remove')}
+                    aria-label={t('chat.comments.remove')}
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+      {extra > 0 ? (
+        <div className="chat-queued-send-overflow">
+          <span className="chat-queued-send-overflow-line" aria-hidden />
+          <span className="chat-queued-send-extra">+{extra}</span>
+          <span>{t('chat.queuedMore')}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const QUEUED_SEND_VISIBLE_LIMIT = 4;
+
+function summarizeQueuedPrompt(prompt: string, t: TranslateFn): string {
+  const normalized = prompt.replace(/\s+/g, ' ').trim();
+  if (!normalized) return t('chat.queuedFollowUpFallback');
+  return normalized.length > 58 ? `${normalized.slice(0, 57)}...` : normalized;
 }
 
 function CommentsPanel({

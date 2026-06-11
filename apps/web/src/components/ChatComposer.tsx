@@ -219,6 +219,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // 2026-05-20 04:08 for the rationale.
     const [staged, setStaged] = useState<ChatAttachment[]>([]);
     const [stagedVisualComments, setStagedVisualComments] = useState<ChatCommentAttachment[]>([]);
+    const streamingAnnotationSendPendingRef = useRef(false);
+    const [streamingAnnotationSendPending, setStreamingAnnotationSendPendingState] = useState(false);
     // Skills the user has @-mentioned for this turn. We dedupe on id and
     // strip the chip when the user removes the corresponding `@<skill>`
     // token from the draft, keeping draft and chips in sync.
@@ -694,6 +696,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       return [...commentAttachments, ...stagedVisualComments, ...extra];
     }
 
+    function setStreamingAnnotationSendPending(value: boolean) {
+      streamingAnnotationSendPendingRef.current = value;
+      setStreamingAnnotationSendPendingState(value);
+    }
+
     function currentRunContextMeta(): ChatSendMeta | undefined {
       const skillIds = stagedSkills.map((s) => s.id);
       const mcpServerIds = stagedMcpServers.map((s) => s.id);
@@ -708,6 +715,19 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         ...(Object.keys(context).length > 0 ? { context } : {}),
       };
       return Object.keys(meta).length > 0 ? meta : undefined;
+    }
+
+    function sendComposedTurn(
+      prompt: string,
+      attachments: ChatAttachment[],
+      nextCommentAttachments: ChatCommentAttachment[],
+      meta?: ChatSendMeta,
+    ): boolean {
+      setStreamingAnnotationSendPending(false);
+      if (!prompt && attachments.length === 0 && nextCommentAttachments.length === 0) return false;
+      onSend(prompt, attachments, nextCommentAttachments, meta);
+      reset();
+      return true;
     }
 
     async function insertSkillMention(skill: SkillSummary) {
@@ -836,6 +856,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 ]);
               }
               if (detail.note) setDraft((d) => (d ? `${d}\n${detail.note}` : detail.note));
+              setStreamingAnnotationSendPending(true);
               textareaRef.current?.focus();
               return;
             }
@@ -848,9 +869,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             const prompt = [draft.trim(), detail.note].filter(Boolean).join('\n');
             const attachments = [...staged, ...uploaded];
             const nextCommentAttachments = currentCommentAttachments(visualAttachment ? [visualAttachment] : []);
-            if (!prompt && attachments.length === 0 && nextCommentAttachments.length === 0) return;
-            onSend(prompt, attachments, nextCommentAttachments, currentRunContextMeta());
-            reset();
+            sendComposedTurn(prompt, attachments, nextCommentAttachments, currentRunContextMeta());
             return;
           }
 
@@ -862,7 +881,37 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       }
       window.addEventListener(ANNOTATION_EVENT, onAnnotation);
       return () => window.removeEventListener(ANNOTATION_EVENT, onAnnotation);
-    }, [commentAttachments, draft, onSend, projectId, staged, stagedSkills, stagedVisualComments, streaming]);
+    }, [
+      commentAttachments,
+      draft,
+      onSend,
+      projectId,
+      staged,
+      stagedConnectors,
+      stagedMcpServers,
+      stagedSkills,
+      stagedVisualComments,
+      streaming,
+    ]);
+
+    useEffect(() => {
+      if (!streamingAnnotationSendPending || !streamingAnnotationSendPendingRef.current) return;
+      if (streaming || sendDisabled) return;
+      const prompt = draft.trim();
+      sendComposedTurn(prompt, staged, currentCommentAttachments(), currentRunContextMeta());
+    }, [
+      commentAttachments,
+      draft,
+      onSend,
+      sendDisabled,
+      staged,
+      stagedConnectors,
+      stagedMcpServers,
+      stagedSkills,
+      stagedVisualComments,
+      streaming,
+      streamingAnnotationSendPending,
+    ]);
 
     function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
       const items = Array.from(e.clipboardData?.items ?? []);
@@ -1064,9 +1113,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         reset();
         return;
       }
-      if ((!prompt && staged.length === 0 && nextCommentAttachments.length === 0) || streaming) return;
-      onSend(prompt, staged, nextCommentAttachments, contextMeta);
-      reset();
+      if (!prompt && staged.length === 0 && nextCommentAttachments.length === 0) return;
+      sendComposedTurn(prompt, staged, nextCommentAttachments, contextMeta);
     }
 
     // The @-picker offers a unified search across context surfaces:
@@ -1140,6 +1188,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
           .filter((s) => skillMatchesQuery(s, mentionQuery))
           .sort((a, b) => skillMentionRank(a, mentionQuery) - skillMentionRank(b, mentionQuery))
       : [];
+    const hasComposerPayload =
+      draft.trim().length > 0 || staged.length > 0 || currentCommentAttachments().length > 0;
+    const showStopButton = streaming && !hasComposerPayload;
+    const showSendButton = !streaming || hasComposerPayload;
 
     return (
       <div
@@ -1565,7 +1617,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             </button>
             {footerAccessory}
             <span className="composer-spacer" />
-            {streaming ? (
+            {showStopButton ? (
               <button
                 type="button"
                 className="composer-send stop"
@@ -1574,7 +1626,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 <Icon name="stop" size={13} />
                 <span>{t('chat.stop')}</span>
               </button>
-            ) : (
+            ) : null}
+            {showSendButton ? (
               <button
                 type="button"
                 className="composer-send"
@@ -1587,15 +1640,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                   });
                   void submit();
                 }}
-                disabled={
-                  sendDisabled ||
-                  (!draft.trim() && staged.length === 0 && currentCommentAttachments().length === 0)
-                }
+                disabled={sendDisabled || !hasComposerPayload}
+                aria-label={t('chat.send')}
+                title={t('chat.send')}
               >
                 <Icon name="send" size={13} />
                 <span>{t('chat.send')}</span>
               </button>
-            )}
+            ) : null}
           </div>
         </div>
         {uploadError ? <span className="composer-hint">{uploadError}</span> : null}
