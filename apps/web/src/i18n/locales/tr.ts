@@ -773,6 +773,7 @@ export const tr: Dict = {
   'chat.newConversation': 'Yeni konuşma',
   'chat.newConversationsTitle': 'Yeni Konuşma',
   'chat.resumeConversation': 'Yeni konuşmada devam et',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'Konuşmalar',
   'chat.new': 'Yeni',
   'chat.emptyConversations': 'Henüz konuşma yok.',

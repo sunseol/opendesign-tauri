@@ -806,6 +806,7 @@ export const fa: Dict = {
   'chat.newConversation': 'مکالمه جدید',
   'chat.newConversationsTitle': 'مکالمه جدید',
   'chat.resumeConversation': 'ادامه در مکالمه جدید',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'مکالمات',
   'chat.new': 'جدید',
   'chat.emptyConversations': 'هنوز هیچ مکالمه‌ای وجود ندارد.',

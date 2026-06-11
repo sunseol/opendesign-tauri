@@ -522,6 +522,38 @@ describe('streamViaDaemon', () => {
     expect(handlers.onDone).not.toHaveBeenCalled();
   });
 
+  it('marks generic end-event failures as resumable when the daemon says they are', async () => {
+    const handlers = createDaemonHandlers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(jsonResponse({ runId: 'run-1' }))
+        .mockResolvedValueOnce(
+          sseResponse(
+            [
+              'event: end',
+              'data: {"code":1,"status":"failed","resumable":true}',
+              '',
+              '',
+            ].join('\n'),
+          ),
+        ),
+    );
+
+    await streamViaDaemon({
+      agentId: 'mock',
+      history: [{ id: '1', role: 'user', content: 'hello' }],
+      systemPrompt: '',
+      signal: new AbortController().signal,
+      handlers,
+    });
+
+    expect(handlers.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'agent exited with code 1', resumable: true }),
+    );
+    expect(handlers.onDone).not.toHaveBeenCalled();
+  });
+
   it('still surfaces an error when the end event has a signal but no status field', async () => {
     // Same regression as above for the signal arm of the safety net. Without
     // explicit `status: 'succeeded'` from the server, a SIGTERM-style signal

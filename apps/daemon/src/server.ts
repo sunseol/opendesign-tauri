@@ -314,6 +314,7 @@ import {
   deletePreviewComment,
   deleteProject as dbDeleteProject,
   deleteTemplate,
+  getAgentSession,
   getConversation,
   getDeployment,
   getDeploymentById,
@@ -348,6 +349,7 @@ import {
   updateRoutine,
   updateRoutineRun,
   upsertDeployment,
+  upsertAgentSession,
   upsertMessage,
   upsertPreviewComment,
 } from './db.js';
@@ -9898,13 +9900,31 @@ export async function startServer({
 
     const agentLaunch = resolveAgentLaunch(def, configuredAgentEnv);
     const resolvedBin = agentLaunch.selectedPath;
+    const storedAgentSession =
+      def.resumesSessionViaCli === true &&
+      typeof conversationId === 'string' &&
+      conversationId
+        ? getAgentSession(db, conversationId, def.id)
+        : null;
+    const agentResumeCtx = {
+      resumeSessionId:
+        typeof storedAgentSession?.sessionId === 'string' &&
+        storedAgentSession.sessionId
+          ? storedAgentSession.sessionId
+          : null,
+      newSessionId: def.resumesSessionViaCli === true ? randomUUID() : undefined,
+    };
 
     const args = def.buildArgs(
       composed,
       safeImages,
       extraAllowedDirs,
       agentOptions,
-      { cwd: effectiveCwd },
+      {
+        cwd: effectiveCwd,
+        resumeSessionId: agentResumeCtx.resumeSessionId,
+        newSessionId: agentResumeCtx.newSessionId,
+      },
     );
 
     // Second-pass budget check that knows about the Windows `.cmd` shim
@@ -9962,7 +9982,81 @@ export async function startServer({
       return design.runs.finish(run, 'failed', 1, null);
     }
 
+    let lastRunErrorCode = null;
+    let lastRunErrorMessage = null;
+    let committedResumeBoundarySeen = false;
+    const noteResumeBoundary = (payload) => {
+      const type = payload?.type ? String(payload.type) : '';
+      if (
+        type === 'tool_use' ||
+        type === 'tool_result' ||
+        type === 'artifact' ||
+        type === 'live_artifact' ||
+        type === 'live_artifact_refresh'
+      ) {
+        committedResumeBoundarySeen = true;
+      }
+    };
+    const readSseError = (payload) => {
+      const body = payload && typeof payload === 'object' ? payload : {};
+      const nested = body.error && typeof body.error === 'object' ? body.error : {};
+      return {
+        code:
+          typeof nested.code === 'string'
+            ? nested.code
+            : typeof body.code === 'string'
+              ? body.code
+              : null,
+        message:
+          typeof nested.message === 'string'
+            ? nested.message
+            : typeof body.message === 'string'
+              ? body.message
+              : null,
+      };
+    };
+    const isTransientResumeFailure = (code, message) => {
+      if (code === 'AGENT_CONNECTION_DROPPED') return true;
+      const text = String(message ?? '').toLowerCase();
+      return (
+        text.includes('stalled without emitting any new output') ||
+        text.includes('inactivity') ||
+        /socket connection was closed/.test(text) ||
+        /closed unexpectedly/.test(text) ||
+        /socket hang up/.test(text) ||
+        /\beconnreset\b/.test(text) ||
+        /\betimedout\b/.test(text) ||
+        /\bepipe\b/.test(text) ||
+        /\bund_err_socket\b/.test(text) ||
+        /premature close/.test(text) ||
+        /other side closed/.test(text) ||
+        /fetch failed/.test(text) ||
+        /\bconnection (error|reset|closed)\b/.test(text)
+      );
+    };
+    const markRunResumableIfEligible = (code, message) => {
+      if (run.cancelRequested || design.runs.isTerminal(run.status)) return;
+      if (def.resumesSessionViaCli !== true) return;
+      if (!committedResumeBoundarySeen) return;
+      if (!run.conversationId) return;
+      if (!isTransientResumeFailure(code, message)) return;
+      const sessionId = agentResumeCtx.resumeSessionId ?? agentResumeCtx.newSessionId;
+      if (!sessionId) return;
+      run.resumable = true;
+      upsertAgentSession(db, {
+        conversationId: run.conversationId,
+        agentId: def.id,
+        sessionId,
+      });
+    };
+
     const send = (event, data) => {
+      if (event === 'agent') noteResumeBoundary(data);
+      if (event === 'error') {
+        const details = readSseError(data);
+        lastRunErrorCode = details.code;
+        lastRunErrorMessage = details.message;
+      }
       persistRunEventToAssistantMessage(db, run, event, data);
       design.runs.emit(run, event, data);
     };
@@ -10014,6 +10108,7 @@ export async function startServer({
         'Retry the turn, pick a different model, or start a new conversation if the prior context is very large.';
       clearInactivityWatchdog();
       send('error', createSseErrorPayload('AGENT_EXECUTION_FAILED', message, { retryable: true }));
+      markRunResumableIfEligible('AGENT_EXECUTION_FAILED', message);
       design.runs.finish(run, 'failed', 1, null);
       if (acpSession?.abort) {
         acpSession.abort();
@@ -10634,6 +10729,7 @@ export async function startServer({
         return design.runs.finish(run, 'failed', code ?? 1, signal ?? null);
       }
       if (agentStreamError) {
+        markRunResumableIfEligible(lastRunErrorCode, lastRunErrorMessage ?? agentStreamError);
         return design.runs.finish(run, 'failed', code === 0 ? 1 : (code ?? 1), signal ?? null);
       }
       if (
@@ -10714,6 +10810,15 @@ export async function startServer({
             diagnostic.message,
             { retryable: diagnostic.retryable, details: { detail: diagnostic.detail } },
           ));
+          markRunResumableIfEligible(
+            diagnostic.code ?? 'AGENT_EXECUTION_FAILED',
+            diagnostic.message,
+          );
+        } else {
+          markRunResumableIfEligible(
+            lastRunErrorCode,
+            lastRunErrorMessage ?? `${agentStderrTail}\n${agentStdoutTail}`,
+          );
         }
       }
       design.runs.finish(run, status, code, signal);

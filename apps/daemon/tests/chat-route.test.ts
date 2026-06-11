@@ -1163,6 +1163,98 @@ process.exit(1);
     );
   });
 
+  it('marks resumable Codebuddy failures and resumes the next run session', async () => {
+    const argsLog = join(tmpdir(), `od-codebuddy-args-${randomUUID()}.jsonl`);
+    tempDirs.push(argsLog);
+    await withFakeAgent(
+      'codebuddy',
+      `
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args.includes('--version')) {
+  console.log('codebuddy 0.0.0-test');
+  process.exit(0);
+}
+if (args.includes('--help')) {
+  console.log('--include-partial-messages\\n--add-dir');
+  process.exit(0);
+}
+fs.appendFileSync(${JSON.stringify(argsLog)}, JSON.stringify(args) + '\\n');
+if (!args.includes('--resume')) {
+  console.log(JSON.stringify({
+    type: 'assistant',
+    message: {
+      id: 'msg_1',
+      content: [
+        { type: 'tool_use', id: 'toolu_1', name: 'Write', input: { file_path: 'index.html' } }
+      ],
+      stop_reason: 'tool_use',
+    },
+  }));
+  console.error('socket connection was closed unexpectedly');
+  process.exit(1);
+}
+console.log(JSON.stringify({
+  type: 'assistant',
+  message: {
+    id: 'msg_2',
+    content: [{ type: 'text', text: 'resumed session' }],
+    stop_reason: 'end_turn',
+  },
+}));
+process.exit(0);
+`,
+      async () => {
+        const conversationId = `conv-${randomUUID()}`;
+        const firstCreate = await fetch(`${baseUrl}/api/runs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: 'codebuddy',
+            message: 'create the file',
+            conversationId,
+          }),
+        });
+        expect(firstCreate.status).toBe(202);
+        const { runId: firstRunId } = await firstCreate.json() as { runId: string };
+        const firstEvents = await fetch(`${baseUrl}/api/runs/${firstRunId}/events`);
+        await readSseUntil(firstEvents, 'event: end');
+        const firstStatus = await waitForRunStatus(baseUrl, firstRunId);
+
+        expect(firstStatus.status).toBe('failed');
+        expect(firstStatus.resumable).toBe(true);
+
+        const firstArgs = JSON.parse((await fsp.readFile(argsLog, 'utf8')).trim().split('\n')[0]!) as string[];
+        const firstSessionId = firstArgs[firstArgs.indexOf('--session-id') + 1];
+        expect(firstArgs).toContain('--session-id');
+        expect(firstArgs).not.toContain('--resume');
+        expect(firstSessionId).toBeTruthy();
+
+        const secondCreate = await fetch(`${baseUrl}/api/runs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: 'codebuddy',
+            message: 'continue',
+            conversationId,
+          }),
+        });
+        expect(secondCreate.status).toBe(202);
+        const { runId: secondRunId } = await secondCreate.json() as { runId: string };
+        const secondEvents = await fetch(`${baseUrl}/api/runs/${secondRunId}/events`);
+        await readSseUntil(secondEvents, 'resumed session');
+        const secondStatus = await waitForRunStatus(baseUrl, secondRunId);
+
+        const argLines = (await fsp.readFile(argsLog, 'utf8')).trim().split('\n');
+        const secondArgs = JSON.parse(argLines[1]!) as string[];
+        expect(secondStatus.status).toBe('succeeded');
+        expect(secondArgs).toContain('--resume');
+        expect(secondArgs[secondArgs.indexOf('--resume') + 1]).toBe(firstSessionId);
+        expect(secondArgs).not.toContain('--session-id');
+      },
+    );
+  });
+
   it('fails Qoder runs when the result reports is_error with exit code 0', async () => {
     const qoderResultLine = JSON.stringify({
       type: 'result',
@@ -1567,11 +1659,11 @@ async function waitForRunStatus(
   baseUrl: string,
   runId: string,
   done: (status: string) => boolean = (status) => status !== 'queued' && status !== 'running',
-): Promise<{ status: string }> {
+): Promise<{ status: string; resumable?: boolean }> {
   let lastStatus = 'unknown';
   for (let attempt = 0; attempt < 500; attempt += 1) {
     const statusResponse = await fetch(`${baseUrl}/api/runs/${runId}`);
-    const statusBody = await statusResponse.json() as { status: string };
+    const statusBody = await statusResponse.json() as { status: string; resumable?: boolean };
     lastStatus = statusBody.status;
     if (done(statusBody.status)) return statusBody;
     await new Promise((resolve) => setTimeout(resolve, 25));

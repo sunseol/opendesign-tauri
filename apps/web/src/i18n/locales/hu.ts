@@ -784,6 +784,7 @@ export const hu: Dict = {
   'chat.newConversation': 'Új beszélgetés',
   'chat.newConversationsTitle': 'Új beszélgetés',
   'chat.resumeConversation': 'Folytatás új beszélgetésben',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'Beszélgetések',
   'chat.new': 'Új',
   'chat.emptyConversations': 'Még nincs beszélgetés.',

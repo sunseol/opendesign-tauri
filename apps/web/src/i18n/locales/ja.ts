@@ -671,6 +671,7 @@ export const ja: Dict = {
   'chat.newConversation': '新しい会話',
   'chat.newConversationsTitle': '新しい会話',
   'chat.resumeConversation': '新しい会話で再開',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': '会話',
   'chat.new': '新規',
   'chat.emptyConversations': 'まだ会話がありません。',

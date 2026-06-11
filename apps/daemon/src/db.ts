@@ -197,6 +197,15 @@ function migrate(db: SqliteDb): void {
 
     CREATE INDEX IF NOT EXISTS idx_routine_runs_routine
       ON routine_runs(routine_id, started_at DESC);
+
+    CREATE TABLE IF NOT EXISTS agent_sessions (
+      conversation_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      stable_prompt_hash TEXT,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY(conversation_id, agent_id)
+    );
   `);
   // Forward-compatible column add for databases created before metadata_json.
   // SQLite has no IF NOT EXISTS for ALTER, so we check pragma_table_info.
@@ -275,6 +284,66 @@ function migrate(db: SqliteDb): void {
   migrateCritique(db);
   migrateMediaTasks(db);
   migratePlugins(db);
+}
+
+// ---------- agent sessions ----------
+
+const AGENT_SESSION_COLS = `conversation_id AS conversationId,
+  agent_id AS agentId,
+  session_id AS sessionId,
+  stable_prompt_hash AS stablePromptHash,
+  updated_at AS updatedAt`;
+
+export function getAgentSession(
+  db: SqliteDb,
+  conversationId: string,
+  agentId: string,
+) {
+  const row = db
+    .prepare(
+      `SELECT ${AGENT_SESSION_COLS}
+         FROM agent_sessions
+        WHERE conversation_id = ? AND agent_id = ?`,
+    )
+    .get(conversationId, agentId) as DbRow | undefined;
+  return row
+    ? {
+        conversationId: row.conversationId,
+        agentId: row.agentId,
+        sessionId: row.sessionId,
+        stablePromptHash: row.stablePromptHash ?? null,
+        updatedAt: Number(row.updatedAt),
+      }
+    : null;
+}
+
+export function upsertAgentSession(
+  db: SqliteDb,
+  session: {
+    conversationId: string;
+    agentId: string;
+    sessionId: string;
+    stablePromptHash?: string | null;
+    updatedAt?: number;
+  },
+) {
+  const updatedAt = session.updatedAt ?? Date.now();
+  db.prepare(
+    `INSERT INTO agent_sessions
+       (conversation_id, agent_id, session_id, stable_prompt_hash, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(conversation_id, agent_id) DO UPDATE SET
+       session_id = excluded.session_id,
+       stable_prompt_hash = excluded.stable_prompt_hash,
+       updated_at = excluded.updated_at`,
+  ).run(
+    session.conversationId,
+    session.agentId,
+    session.sessionId,
+    session.stablePromptHash ?? null,
+    updatedAt,
+  );
+  return getAgentSession(db, session.conversationId, session.agentId);
 }
 
 // ---------- deployments ----------

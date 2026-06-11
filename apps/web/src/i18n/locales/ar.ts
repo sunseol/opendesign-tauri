@@ -784,6 +784,7 @@ export const ar: Dict = {
   'chat.newConversation': 'محادثة جديدة',
   'chat.newConversationsTitle': 'محادثة جديدة',
   'chat.resumeConversation': 'استئناف في محادثة جديدة',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'المحادثات',
   'chat.new': 'جديد',
   'chat.emptyConversations': 'لا توجد محادثات بعد.',

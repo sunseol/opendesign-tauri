@@ -145,6 +145,7 @@ import { useTerminalLaunch } from '../hooks/useTerminalLaunch';
 import { buildContinueInCliToast } from '../lib/build-continue-in-cli-toast';
 import { buildClipboardPrompt } from '../lib/build-clipboard-prompt';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
+import { RESUME_CONTINUE_PROMPT } from '../runtime/resume';
 import {
   buildFinalizeCredentialsMissingToast,
   buildFinalizeRequest,
@@ -1765,7 +1766,12 @@ export function ProjectView({
         if (fallbackRun && !message.runId) {
           updateMessageById(
             message.id,
-            (prev) => ({ ...prev, runId, runStatus: fallbackRun.status }),
+            (prev) => ({
+              ...prev,
+              runId,
+              runStatus: fallbackRun.status,
+              resumable: fallbackRun.resumable === true ? true : prev.resumable,
+            }),
             true,
           );
         }
@@ -1783,7 +1789,11 @@ export function ProjectView({
         }
         updateMessageById(
           message.id,
-          (prev) => ({ ...prev, runStatus: status.status }),
+          (prev) => ({
+            ...prev,
+            runStatus: status.status,
+            resumable: status.resumable === true ? true : prev.resumable,
+          }),
           true,
         );
 
@@ -1970,6 +1980,7 @@ export function ProjectView({
             },
             onError: (err) => {
               const errorCode = (err as Error & { code?: string }).code;
+              const resumable = (err as Error & { resumable?: boolean }).resumable === true;
               // A superseded reattached run must not paint a global failure
               // banner or re-finalize its message over the replacement run.
               const runMayFinalize =
@@ -1985,6 +1996,7 @@ export function ProjectView({
                   (prev) => ({
                     ...prev,
                     runStatus: 'failed',
+                    resumable: resumable ? true : prev.resumable,
                     endedAt: prev.endedAt ?? Date.now(),
                   }),
                   true,
@@ -2554,6 +2566,7 @@ export function ProjectView({
         onError: (err: Error) => {
           const endedAt = Date.now();
           const errorCode = (err as Error & { code?: string }).code;
+          const resumable = (err as Error & { resumable?: boolean }).resumable === true;
           // A run superseded by a "send now" interrupt can still surface a
           // late disconnect error (e.g. a canceled stream that lost its
           // terminal SSE). It must not paint a global failure banner or
@@ -2570,6 +2583,7 @@ export function ProjectView({
             updateAssistant((prev) => ({
               ...prev,
               endedAt,
+              resumable: resumable ? true : prev.resumable,
               runStatus: config.mode === 'api' || prev.runId || isActiveRunStatus(prev.runStatus)
                 ? 'failed'
                 : prev.runStatus,
@@ -2902,6 +2916,14 @@ export function ProjectView({
     (assistantMessage: ChatMessage) => {
       if (currentConversationActionDisabled) return;
       void handleSend('', [], [], { retryOfAssistantId: assistantMessage.id });
+    },
+    [currentConversationActionDisabled, handleSend],
+  );
+
+  const handleResumeRun = useCallback(
+    (_assistantMessage: ChatMessage) => {
+      if (currentConversationActionDisabled) return;
+      void handleSend(RESUME_CONTINUE_PROMPT, [], []);
     },
     [currentConversationActionDisabled, handleSend],
   );
@@ -3893,6 +3915,7 @@ export function ProjectView({
               queuedItems={currentConversationQueuedItems}
               error={conversationLoadError ?? error ?? audioVoiceOptionsError}
               projectId={project.id}
+              currentAgentId={config.mode === 'daemon' ? config.agentId ?? null : null}
               projectKindForTracking={projectKindToTracking(project.metadata?.kind)}
               projectFiles={projectFiles}
               hasActiveDesignSystem={!!project.designSystemId}
@@ -3906,6 +3929,7 @@ export function ProjectView({
               onDetachComment={detachPreviewComment}
               onDeleteComment={(commentId) => void removePreviewComment(commentId)}
               onSend={handleSend}
+              onResumeRun={handleResumeRun}
               onRetry={handleRetry}
               onStop={handleStop}
               onRemoveQueuedSend={removeQueuedChatSend}

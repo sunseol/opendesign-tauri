@@ -1587,6 +1587,7 @@ export interface Dict {
   'chat.newConversation': string;
   'chat.newConversationsTitle': string;
   'chat.resumeConversation': string;
+  'chat.resumeRunCta': string;
   'chat.conversationsHeading': string;
   'chat.new': string;
   'chat.emptyConversations': string;

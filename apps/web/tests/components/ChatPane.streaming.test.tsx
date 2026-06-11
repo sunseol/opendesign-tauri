@@ -6,9 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatPane, retryableAssistantMessage } from '../../src/components/ChatPane';
 import { DESIGN_SYSTEM_WORKSPACE_PROMPT_PREFIX } from '../../src/design-system-auto-prompt';
+import { RESUME_CONTINUE_PROMPT } from '../../src/runtime/resume';
 import type { ChatMessage, Conversation, ProjectMetadata } from '../../src/types';
 
 const translations: Record<string, string> = {
+  'chat.resumeRunCta': 'Continue the run',
+  'promptTemplates.retry': 'Retry',
   'chat.queuedHeader': 'Queued',
   'chat.queuedToSend': 'to Send',
   'chat.queuedEditQueuedTaskAria': 'Edit queued task',
@@ -140,6 +143,49 @@ describe('ChatPane streaming state', () => {
     const bubble = screen.getByText('Generate a simple sign-in page');
     expect(bubble.classList.contains('user-bubble')).toBe(true);
     expect(bubble.closest('.msg.user')).not.toBeNull();
+  });
+
+  it('offers Continue instead of Retry for a resumable failed assistant turn', () => {
+    const onSend = vi.fn();
+    const onRetry = vi.fn();
+    const messages: ChatMessage[] = [
+      { id: 'user-1', role: 'user', content: 'Build a dashboard', createdAt: 0 },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: 'Interrupted after writing files',
+        createdAt: 1,
+        runStatus: 'failed',
+        agentId: 'codebuddy',
+        resumable: true,
+      },
+    ];
+
+    render(
+      <ChatPane
+        messages={messages}
+        streaming={false}
+        error="Connection dropped"
+        projectId="project-1"
+        currentAgentId="codebuddy"
+        projectFiles={[]}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onRetry={onRetry}
+        onStop={vi.fn()}
+        conversations={conversations}
+        activeConversationId="conv-1"
+        onSelectConversation={vi.fn()}
+        onDeleteConversation={vi.fn()}
+        projectMetadata={projectMetadata}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue the run' }));
+
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(onSend).toHaveBeenCalledWith(RESUME_CONTINUE_PROMPT, [], []);
   });
 
   it('summarizes auto-sent design-system workspace prompts', () => {

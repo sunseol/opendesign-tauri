@@ -800,6 +800,7 @@ export const fr: Dict = {
   'chat.newConversation': 'Nouvelle conversation',
   'chat.newConversationsTitle': 'Nouvelle conversation',
   'chat.resumeConversation': 'Reprendre dans une nouvelle conversation',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'Conversations',
   'chat.new': 'Nouvelle',
   'chat.emptyConversations': 'Aucune conversation pour l\'instant.',

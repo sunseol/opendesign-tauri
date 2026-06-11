@@ -806,6 +806,7 @@ export const uk: Dict = {
   'chat.newConversation': 'Нова розмова',
   'chat.newConversationsTitle': 'Нова розмова',
   'chat.resumeConversation': 'Продовжити в новій розмові',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'Розмови',
   'chat.new': 'Нова',
   'chat.emptyConversations': 'Розмов ще немає.',

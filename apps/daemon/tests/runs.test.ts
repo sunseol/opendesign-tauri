@@ -32,6 +32,24 @@ describe('chat run service shutdown', () => {
     });
   });
 
+  it('includes resumable on failed run status and terminal SSE event', () => {
+    const runs = createRuns();
+    const run = runs.create({ projectId: 'project-1', conversationId: 'conv-1' });
+    run.status = 'running';
+    (run as any).resumable = true;
+
+    runs.finish(run, 'failed', 1, null);
+
+    expect(runs.statusBody(run)).toMatchObject({
+      status: 'failed',
+      resumable: true,
+    });
+    expect(run.events.at(-1)).toMatchObject({
+      event: 'end',
+      data: { status: 'failed', resumable: true },
+    });
+  });
+
   it('destroys child stdio streams when a run reaches a terminal state', () => {
     const runs = createRuns();
     const child = new FakeChildProcess({ closeOn: 'SIGTERM', withStdio: true });

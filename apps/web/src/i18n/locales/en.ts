@@ -1277,6 +1277,7 @@ export const en: Dict = {
   'chat.newConversation': 'New conversation',
   'chat.newConversationsTitle': 'New conversation',
   'chat.resumeConversation': 'Resume in new conversation',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': 'Conversations',
   'chat.new': 'New',
   'chat.emptyConversations': 'No conversations yet.',

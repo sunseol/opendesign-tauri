@@ -900,6 +900,7 @@ export const zhTW: Dict = {
   'chat.newConversation': '新建對話',
   'chat.newConversationsTitle': '新建對話',
   'chat.resumeConversation': '在新對話中繼續',
+  'chat.resumeRunCta': 'Continue the run',
   'chat.conversationsHeading': '對話',
   'chat.new': '新建',
   'chat.emptyConversations': '還沒有對話。',

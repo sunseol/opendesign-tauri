@@ -598,7 +598,10 @@ async function consumeDaemonRun({
       }
       const tail = stderrBuf.trim().slice(-400);
       handlers.onError(
-        new Error(`agent exited with ${exitSignal ? `signal ${exitSignal}` : `code ${exitCode}`}${tail ? `\n${tail}` : ''}`),
+        markErrorResumable(
+          new Error(`agent exited with ${exitSignal ? `signal ${exitSignal}` : `code ${exitCode}`}${tail ? `\n${tail}` : ''}`),
+          endResumable,
+        ),
       );
       return;
     }

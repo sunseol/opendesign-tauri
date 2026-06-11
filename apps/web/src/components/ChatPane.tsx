@@ -5,6 +5,7 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { projectRawUrl } from '../providers/registry';
+import { RESUME_CONTINUE_PROMPT } from '../runtime/resume';
 import type { TodoItem } from '../runtime/todos';
 import type { AppliedPluginSnapshot } from '@open-design/contracts';
 import type { TrackingProjectKind } from '@open-design/contracts/analytics';
@@ -211,6 +212,7 @@ interface Props {
   streaming: boolean;
   error: string | null;
   projectId: string | null;
+  currentAgentId?: string | null;
   // Analytics-only — forwarded to AssistantMessage so the feedback
   // events know which project surface the rating applies to. Optional
   // (defaults to null/'prototype') so unit tests can mount ChatPane
@@ -239,6 +241,7 @@ interface Props {
     commentAttachments: ChatCommentAttachment[],
     meta?: ChatSendMeta,
   ) => void;
+  onResumeRun?: (assistantMessage: ChatMessage) => void;
   onRetry?: (assistantMessage: ChatMessage) => void;
   onStop: () => void;
   // Skills available for @-mention assembly. ProjectView filters out the
@@ -315,6 +318,7 @@ export function ChatPane({
   queuedItems = [],
   error,
   projectId,
+  currentAgentId = null,
   projectKindForTracking = null,
   projectFiles,
   hasActiveDesignSystem = false,
@@ -327,6 +331,7 @@ export function ChatPane({
   onDetachComment,
   onDeleteComment,
   onSend,
+  onResumeRun,
   onRetry,
   onStop,
   onRemoveQueuedSend,
@@ -432,6 +437,9 @@ export function ChatPane({
     ? `od:chat-composer:draft:${projectId}:${activeConversationId}`
     : undefined;
   const retryAssistant = retryableAssistantMessage(messages, lastAssistantId, streaming);
+  const canContinueRun =
+    !!retryAssistant?.resumable &&
+    (!retryAssistant.agentId || retryAssistant.agentId === currentAgentId);
   // Only the first user message gets the active-plugin chip — the
   // plugin is project-scoped so re-stamping it on every reply would be
   // noise. Subsequent messages still run under the same snapshot.
@@ -1006,7 +1014,21 @@ export function ChatPane({
               {error ? (
                 <div className="msg error">
                   <span className="chat-error-text">{error}</span>
-                  {retryAssistant && onRetry ? (
+                  {retryAssistant && canContinueRun ? (
+                    <button
+                      type="button"
+                      className="ghost chat-error-retry"
+                      onClick={() => {
+                        if (onResumeRun) {
+                          onResumeRun(retryAssistant);
+                          return;
+                        }
+                        onSend(RESUME_CONTINUE_PROMPT, [], []);
+                      }}
+                    >
+                      {t('chat.resumeRunCta')}
+                    </button>
+                  ) : retryAssistant && onRetry ? (
                     <button
                       type="button"
                       className="ghost chat-error-retry"
