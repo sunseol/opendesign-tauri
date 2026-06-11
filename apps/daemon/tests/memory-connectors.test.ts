@@ -1023,7 +1023,7 @@ process.stdout.write(JSON.stringify({
     }
   });
 
-  it('runs OpenCode Local CLI with a message argument and attached prompt file', async () => {
+  it('runs OpenCode Local CLI with the memory prompt on stdin', async () => {
     await writeMemoryConfig(dataDir, { extraction: null });
     const tempDir = await fsp.mkdtemp(path.join(tmpdir(), 'od-opencode-memory-'));
     const binPath = path.join(tempDir, 'opencode-cli');
@@ -1036,11 +1036,8 @@ process.stdout.write(JSON.stringify({
       `#!/usr/bin/env node
 const fs = require('node:fs');
 const args = process.argv.slice(2);
-const fileIndex = args.indexOf('--file');
-const attachedFile = fileIndex >= 0 ? args[fileIndex + 1] : null;
-const prompt = attachedFile ? fs.readFileSync(attachedFile, 'utf8') : '';
 const stdin = fs.readFileSync(0, 'utf8');
-fs.writeFileSync(process.env.OD_MEMORY_OPENCODE_ARGS_OUT, JSON.stringify({ args, attachedFile, prompt, stdin }));
+fs.writeFileSync(process.env.OD_MEMORY_OPENCODE_ARGS_OUT, JSON.stringify({ args, stdin }));
 process.stdout.write(JSON.stringify({
   type: 'text',
   part: {
@@ -1048,9 +1045,9 @@ process.stdout.write(JSON.stringify({
     text: JSON.stringify({
       entries: [{
         type: 'project',
-        name: 'OpenCode prompt attachment',
-        description: 'OpenCode memory used a prompt file',
-        body: 'OpenDesign connector memory extraction should pass the compacted prompt to OpenCode as an attached file while sending a short message argument.'
+        name: 'OpenCode stdin prompt',
+        description: 'OpenCode memory used stdin',
+        body: 'OpenDesign connector memory extraction should pass the compacted prompt to OpenCode on stdin.'
       }]
     })
   }
@@ -1077,7 +1074,7 @@ process.stdout.write(JSON.stringify({
       expect(result.suggestions).toEqual([
         expect.objectContaining({
           type: 'project',
-          name: 'OpenCode prompt attachment',
+          name: 'OpenCode stdin prompt',
         }),
       ]);
 
@@ -1086,14 +1083,11 @@ process.stdout.write(JSON.stringify({
         'run',
         '--format',
         'json',
-        '--file',
-        'Read the attached OpenDesign memory extraction prompt and return strict JSON only.',
       ]));
+      expect(captured.args).not.toContain('--file');
       expect(captured.args).toContain('openai/gpt-5');
-      expect(captured.prompt).toContain('You are a design-memory extractor');
-      expect(captured.prompt).toContain('OpenDesign connector memory should collect design preferences');
-      expect(captured.stdin).toBe('');
-      await expect(fsp.access(captured.attachedFile)).rejects.toThrow();
+      expect(captured.stdin).toContain('You are a design-memory extractor');
+      expect(captured.stdin).toContain('OpenDesign connector memory should collect design preferences');
     } finally {
       if (previousPath == null) {
         delete process.env.PATH;
