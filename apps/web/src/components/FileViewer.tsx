@@ -6381,7 +6381,10 @@ function HtmlViewer({
                 }}
               />
             ) : null}
-            <div className={manualEditMode ? 'manual-edit-canvas' : 'comment-frame-clip'}>
+            <div
+              className={manualEditMode ? 'manual-edit-canvas' : 'comment-frame-clip'}
+              style={manualEditMode ? { height: '100%' } : undefined}
+            >
               <div
                 style={
                   manualEditMode
