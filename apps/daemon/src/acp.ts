@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { Writable } from 'node:stream';
 import path from 'node:path';
+import { createDsmlArtifactTextSuppressor } from './artifact-text-suppression.js';
 
 const ACP_PROTOCOL_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -447,6 +448,7 @@ export function attachAcpSession({
   let fatal = false;
   let aborted = false;
   let stageTimer: TimerHandle | null = null;
+  const artifactTextSuppressor = createDsmlArtifactTextSuppressor();
 
   const stageWatchdogDisabled = stageTimeoutMs <= 0;
   const resetStageTimer = (label: string) => {
@@ -524,6 +526,23 @@ export function attachAcpSession({
     sendPrompt();
   };
 
+  const emitVisibleTextDelta = (delta: string) => {
+    if (!delta) return;
+    if (!emittedFirstTokenStatus) {
+      emittedFirstTokenStatus = true;
+      send('agent', {
+        type: 'status',
+        label: 'streaming',
+        ttftMs: Date.now() - runStartedAt,
+      });
+    }
+    send('agent', { type: 'text_delta', delta });
+  };
+
+  const emitSuppressedTextDelta = (text: string) => {
+    emitVisibleTextDelta(artifactTextSuppressor.strip(text));
+  };
+
   const parser = createJsonLineStream((raw, rawLine) => {
     if (aborted) return;
     resetStageTimer('response');
@@ -575,15 +594,7 @@ export function attachAcpSession({
       if (update.sessionUpdate === 'agent_message_chunk') {
         const text = asObject(update.content)?.text;
         if (typeof text === 'string' && text.length > 0) {
-          if (!emittedFirstTokenStatus) {
-            emittedFirstTokenStatus = true;
-            send('agent', {
-              type: 'status',
-              label: 'streaming',
-              ttftMs: Date.now() - runStartedAt,
-            });
-          }
-          send('agent', { type: 'text_delta', delta: text });
+          emitSuppressedTextDelta(text);
         }
         return;
       }
@@ -638,6 +649,7 @@ export function attachAcpSession({
       return;
     }
     if (promptRequestId !== null && obj.id === promptRequestId) {
+      emitVisibleTextDelta(artifactTextSuppressor.flush());
       const usage = formatUsage(result.usage);
       if (usage) {
         send('agent', {

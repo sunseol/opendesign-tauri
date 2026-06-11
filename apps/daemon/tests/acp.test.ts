@@ -202,6 +202,66 @@ test('attachAcpSession keeps legacy session/set_model when no model config optio
   assert.equal(requests.some((entry) => entry.method === 'session/set_config_option'), false);
 });
 
+test('attachAcpSession suppresses raw artifact markup from message chunks', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'build page',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  child.stdout.write(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  child.stdout.write(`${JSON.stringify({ id: 2, result: { sessionId: 'session-1' } })}\n`);
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Done\n\n<artifact identifier="page" type="text/html">' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: '\n<!doctype html><html></html>\n</artifact>Tail' },
+  });
+  child.stdout.write(`${JSON.stringify({ id: 3, result: {} })}\n`);
+
+  assert.deepEqual(textDeltas(events), ['Done\n\n', 'Tail']);
+});
+
+test('attachAcpSession suppresses split raw artifact open tags', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'build page',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  child.stdout.write(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  child.stdout.write(`${JSON.stringify({ id: 2, result: { sessionId: 'session-1' } })}\n`);
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Done\n\n<art' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'ifact identifier="page" type="text/html">raw' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: '</artifact>Tail' },
+  });
+  child.stdout.write(`${JSON.stringify({ id: 3, result: {} })}\n`);
+
+  assert.deepEqual(textDeltas(events), ['Done\n\n', 'Tail']);
+});
+
 test('attachAcpSession exposes abort and sends session cancel after session creation', () => {
   const child = new FakeAcpChild();
   const writes: string[] = [];
@@ -244,6 +304,10 @@ function writeAcpResult(child: FakeAcpChild, id: number, result: unknown): void 
   child.stdout.write(`${JSON.stringify({ id, result })}\n`);
 }
 
+function writeAcpUpdate(child: FakeAcpChild, update: unknown): void {
+  child.stdout.write(`${JSON.stringify({ method: 'session/update', params: { update } })}\n`);
+}
+
 function agentModelStatuses(events: Array<{ event: string; payload: unknown }>): unknown[] {
   return events
     .filter((entry) => {
@@ -251,6 +315,15 @@ function agentModelStatuses(events: Array<{ event: string; payload: unknown }>):
       return entry.event === 'agent' && payload.type === 'status' && payload.label === 'model';
     })
     .map((entry) => (entry.payload as { model?: unknown }).model);
+}
+
+function textDeltas(events: Array<{ event: string; payload: unknown }>): unknown[] {
+  return events
+    .filter((entry) => {
+      const payload = entry.payload as { type?: unknown };
+      return entry.event === 'agent' && payload.type === 'text_delta';
+    })
+    .map((entry) => (entry.payload as { delta?: unknown }).delta);
 }
 
 test('attachAcpSession force-terminates the child after a clean prompt completion if it does not exit on stdin.end()', async () => {
