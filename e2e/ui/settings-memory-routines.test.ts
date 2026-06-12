@@ -90,7 +90,7 @@ async function openMemorySettings(page: Page) {
 }
 
 test.describe('Settings Memory and Automations flows', () => {
-  test('creates a memory entry and keeps it visible after reopening settings', async ({ page }) => {
+  test('[P1] creates a memory entry and keeps it visible after reopening settings', async ({ page }) => {
     await seedSettingsBase(page);
 
     let enabled = true;
@@ -190,7 +190,7 @@ test.describe('Settings Memory and Automations flows', () => {
     await expect(reopened.getByText('Persistent rendering preferences')).toBeVisible();
   });
 
-  test('disables memory injection and keeps the disabled banner after reopening settings', async ({ page }) => {
+  test('[P1] disables memory injection and keeps the disabled banner after reopening settings', async ({ page }) => {
     await seedSettingsBase(page);
 
     let enabled = true;
@@ -244,7 +244,7 @@ test.describe('Settings Memory and Automations flows', () => {
     await expect(reopened.locator('.memory-disabled-banner')).toBeVisible();
   });
 
-  test('keeps the memory editor open when creating a memory entry fails', async ({ page }) => {
+  test('[P1] keeps the memory editor open when creating a memory entry fails', async ({ page }) => {
     await seedSettingsBase(page);
 
     await page.route('**/api/memory', async (route) => {
@@ -307,7 +307,7 @@ test.describe('Settings Memory and Automations flows', () => {
     await expect(dialog.getByText('No memory yet.')).toBeVisible();
   });
 
-  test('creates an automation from the main Automations surface and runs it now', async ({ page }) => {
+  test('[P1] creates an automation from the main Automations surface and runs it now', async ({ page }) => {
     await seedSettingsBase(page);
 
     const projects = [{ id: 'proj-1', name: 'Routine Test Project' }];
@@ -416,7 +416,7 @@ test.describe('Settings Memory and Automations flows', () => {
     await expect(page).toHaveURL(/\/projects\/proj-run/);
   });
 
-  test('keeps the automation modal open when creating an automation fails', async ({ page }) => {
+  test('[P1] keeps the automation modal open when creating an automation fails', async ({ page }) => {
     await seedSettingsBase(page);
 
     const projects = [{ id: 'proj-1', name: 'Routine Test Project' }];

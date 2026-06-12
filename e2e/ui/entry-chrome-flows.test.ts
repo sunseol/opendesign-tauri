@@ -157,7 +157,7 @@ test('entry chrome settings dialog opens with brand header and no pet rail', asy
   await expect(settingsDialog.getByRole('button', { name: /show pet picker/i })).toHaveCount(0);
 });
 
-test('entry top navigation matches the current home tab structure', async ({ page }) => {
+test('[P1] entry top navigation matches the current home tab structure', async ({ page }) => {
   await gotoEntryHome(page);
 
   await expect(page.getByTestId('entry-nav-logo')).toBeVisible();
@@ -203,7 +203,7 @@ test('home view exposes the redesigned hero, recent projects, starters, and moda
   await expect(page.getByTestId('entry-nav-projects')).toHaveAttribute('aria-current', 'page');
 });
 
-test('design systems page is reachable from entry nav and supports search, preview, and default selection', async ({ page }) => {
+test('[P1] design systems page is reachable from entry nav and supports search, preview, and default selection', async ({ page }) => {
   const persistedConfigs: Array<{ designSystemId?: string | null }> = [];
   await routeDesignSystems(page);
   await page.route('**/api/app-config', async (route) => {
@@ -465,7 +465,7 @@ test('home topbar overlays close on outside click, Escape, and Settings open', a
   await expect(executionPopover).toHaveCount(0);
 });
 
-test('entry execution pill remains available across secondary entry pages', async ({ page }) => {
+test('[P1] entry execution pill remains available across secondary entry pages', async ({ page }) => {
   await routeDesignSystems(page);
   await gotoEntryHome(page);
 
@@ -816,7 +816,7 @@ test('home starters html details modal shows metadata links, supports copy query
   await expect(shareMenu.getByRole('menuitem', { name: /Open homepage/i })).toBeVisible();
 });
 
-test('home starters Use plugin from the details modal applies the plugin to the home hero', async ({ page }) => {
+test('[P1] home starters Use plugin from the details modal applies the plugin to the home hero', async ({ page }) => {
   const htmlPlugin = makeStarterPlugin({
     id: 'detail-use-plugin',
     title: 'Detail Use Plugin',
@@ -945,7 +945,7 @@ test('[P0] @critical home hero input keeps Shift+Enter as a newline and submits 
   await expect(page).toHaveURL(/\/projects\//);
 });
 
-test('home hero @ mention picker opens and Enter applies the highlighted plugin', async ({ page }) => {
+test('[P1] home hero @ mention picker opens and Enter applies the highlighted plugin', async ({ page }) => {
   await page.route('**/api/plugins', async (route) => {
     await route.fulfill({
       json: {

@@ -139,7 +139,7 @@ test('real daemon run survives a mid-flight reload and restores the delayed arti
   });
 });
 
-test('real daemon run survives reload before the create response reaches the browser', async ({ page }) => {
+test('[P1] real daemon run survives reload before the create response reaches the browser', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Delayed daemon create-response reload smoke', 'claude');
   await expectWorkspaceReady(page);

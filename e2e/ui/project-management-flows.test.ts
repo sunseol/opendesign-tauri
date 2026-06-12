@@ -85,7 +85,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('new project tabs switch visible form sections and preserve drafts', async ({ page }) => {
+test('[P1] new project tabs switch visible form sections and preserve drafts', async ({ page }) => {
   await page.route('**/api/skills', async (route) => {
     await route.fulfill({ json: { skills: TAB_SKILLS } });
   });
@@ -136,7 +136,7 @@ test('new project tabs switch visible form sections and preserve drafts', async 
   await expect(page.getByText('Aspect', { exact: true })).toBeVisible();
 });
 
-test('design system multi-select stores primary and inspiration metadata', async ({ page }) => {
+test('[P1] design system multi-select stores primary and inspiration metadata', async ({ page }) => {
   await page.route('**/api/design-systems', async (route) => {
     await route.fulfill({ json: { designSystems: DESIGN_SYSTEMS } });
   });
@@ -170,7 +170,7 @@ test('design system multi-select stores primary and inspiration metadata', async
   ]);
 });
 
-test('design system picker searches and switches the single selected system', async ({ page }) => {
+test('[P1] design system picker searches and switches the single selected system', async ({ page }) => {
   await page.route('**/api/design-systems', async (route) => {
     await route.fulfill({ json: { designSystems: DESIGN_SYSTEMS } });
   });
@@ -197,7 +197,7 @@ test('design system picker searches and switches the single selected system', as
   expect(project.metadata?.inspirationDesignSystemIds).toBeUndefined();
 });
 
-test('project title rename persists after reload and ignores blank titles', async ({ page }) => {
+test('[P1] project title rename persists after reload and ignores blank titles', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Original rename title');
   await expectWorkspaceReady(page);
@@ -219,7 +219,7 @@ test('project title rename persists after reload and ignores blank titles', asyn
   expect(project.name).toBe('Renamed persistent title');
 });
 
-test('canceling design file deletion keeps the file and open tab', async ({ page }) => {
+test('[P1] canceling design file deletion keeps the file and open tab', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Design file delete cancel flow');
   await expectWorkspaceReady(page);
@@ -245,7 +245,7 @@ test('canceling design file deletion keeps the file and open tab', async ({ page
   expect(files.map((file) => file.name)).toContain(uploadedName);
 });
 
-test('home design card deletion supports cancel and confirm flows', async ({ page }) => {
+test('[P1] home design card deletion supports cancel and confirm flows', async ({ page }) => {
   const projectName = `Home delete design flow ${Date.now()}`;
   await page.goto('/');
   await createProject(page, projectName);
@@ -316,7 +316,7 @@ test('home designs view toggle switches between grid and kanban and persists', a
   await expect(page.getByTestId('designs-view-grid')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('home designs search filters projects and recovers from no results', async ({ page }) => {
+test('[P1] home designs search filters projects and recovers from no results', async ({ page }) => {
   const stamp = Date.now();
   const alphaName = `Home search alpha ${stamp}`;
   const betaName = `Home search beta ${stamp}`;
@@ -417,7 +417,7 @@ test('projects sub tabs switch between Recent and Your designs ordering', async 
   );
 });
 
-test('projects grid card rename updates the card title and persists after reload', async ({ page }) => {
+test('[P1] projects grid card rename updates the card title and persists after reload', async ({ page }) => {
   const originalName = `Projects rename flow ${Date.now()}`;
   const renamedName = `${originalName} renamed`;
   await page.goto('/');
@@ -450,7 +450,7 @@ test('projects grid card rename updates the card title and persists after reload
   expect(project.name).toBe(renamedName);
 });
 
-test('projects select mode supports multi-select delete with cancel and confirm', async ({ page }) => {
+test('[P1] projects select mode supports multi-select delete with cancel and confirm', async ({ page }) => {
   const firstName = `Batch delete A ${Date.now()}`;
   const secondName = `Batch delete B ${Date.now()}`;
   await page.goto('/');
@@ -495,7 +495,7 @@ test('projects select mode supports multi-select delete with cancel and confirm'
   expect(secondResponse.status()).toBe(404);
 });
 
-test('projects kanban cards open projects and support delete cancel and confirm', async ({ page }) => {
+test('[P1] projects kanban cards open projects and support delete cancel and confirm', async ({ page }) => {
   const projectName = `Kanban flow ${Date.now()}`;
   await page.goto('/');
   await createProject(page, projectName);
@@ -702,7 +702,7 @@ test('projects kanban view groups cards into status columns', async ({ page }) =
   );
 });
 
-test('projects page shows live artifact cards, supports search, and opens the live artifact project', async ({ page }) => {
+test('[P1] projects page shows live artifact cards, supports search, and opens the live artifact project', async ({ page }) => {
   const liveProject = makeProjectsTabProject({
     id: 'proj-live',
     name: 'Orbit Daily Digest',

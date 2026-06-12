@@ -89,7 +89,7 @@ async function openExecutionSettingsWithAgents(
   await openSettingsDialogFromEntry(page);
 }
 
-test('legacy known OpenAI provider switches to the matching Anthropic preset', async ({ page }) => {
+test('[P1] legacy known OpenAI provider switches to the matching Anthropic preset', async ({ page }) => {
   await openExecutionSettings(page, {
     mode: 'api',
     apiKey: 'sk-test',
@@ -125,7 +125,7 @@ test('legacy known OpenAI provider switches to the matching Anthropic preset', a
   await expect(modelSelect).toHaveValue('deepseek-chat');
 });
 
-test('legacy custom provider preserves custom baseUrl and model when switching protocols', async ({ page }) => {
+test('[P1] legacy custom provider preserves custom baseUrl and model when switching protocols', async ({ page }) => {
   await openExecutionSettings(page, {
     mode: 'api',
     apiKey: 'sk-test',

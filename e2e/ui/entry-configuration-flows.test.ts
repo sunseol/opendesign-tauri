@@ -98,7 +98,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('prompt template retry preserves the edited body in project metadata', async ({ page }) => {
+test('[P1] prompt template retry preserves the edited body in project metadata', async ({ page }) => {
   let detailRequests = 0;
   await page.route('**/api/prompt-templates', async (route) => {
     await route.fulfill({ json: { promptTemplates: [IMAGE_TEMPLATE] } });
@@ -159,7 +159,7 @@ test('prompt template retry preserves the edited body in project metadata', asyn
   });
 });
 
-test('live artifact empty connector CTA opens the gated connector setup path', async ({ page }) => {
+test('[P1] live artifact empty connector CTA opens the gated connector setup path', async ({ page }) => {
   await routeConnectors(page, []);
   await routeComposioConfig(page, { configured: false, apiKeyTail: '' });
 
@@ -286,7 +286,7 @@ test('[P0] saving a Composio key from Integrations unlocks the connectors gate i
   expect(savedConfig?.composio?.apiKey).toBe('');
 });
 
-test('typing a draft replacement Composio key does not trigger global autosave', async ({ page }) => {
+test('[P1] typing a draft replacement Composio key does not trigger global autosave', async ({ page }) => {
   await routeConnectors(page, CONNECTORS);
   await routeComposioConfig(page, { configured: true, apiKeyTail: '1234' });
   await page.addInitScript((key) => {
