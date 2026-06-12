@@ -23,6 +23,7 @@ import {
   capture,
   getAnalyticsClient,
   getResolvedAnonymousId,
+  setAnalyticsUserId,
   setConfigureGlobals,
 } from './client';
 import type { AnalyticsConfigureGlobals } from '@open-design/contracts/analytics';
@@ -57,6 +58,9 @@ interface AnalyticsContextValue {
   // App.tsx whenever the user's execution-mode config changes (mode
   // switch, agent select, BYOK save, CLI rescan).
   setConfigureGlobals: (next: AnalyticsConfigureGlobals) => void;
+  // Register the signed-in AMR account id as analytics `user_id`. Passing
+  // null clears the join key after sign-out or when status is unknown.
+  setUserId: (userId: string | null) => void;
   anonymousId: string;
   sessionId: string;
   newRequestId: () => string;
@@ -296,6 +300,9 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       setConfigureGlobals: (next: AnalyticsConfigureGlobals) => {
         setConfigureGlobals(next);
       },
+      setUserId: (userId: string | null) => {
+        setAnalyticsUserId(userId);
+      },
       anonymousId: identity.anonymousId,
       sessionId: identity.sessionId,
       newRequestId: () => randomUUID(),
@@ -317,6 +324,7 @@ export function useAnalytics(): AnalyticsContextValue {
       setConsent: () => undefined,
       setIdentity: () => undefined,
       setConfigureGlobals: () => undefined,
+      setUserId: () => undefined,
       anonymousId: 'unmounted',
       sessionId: 'unmounted',
       newRequestId: () => randomUUID(),

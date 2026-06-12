@@ -44,7 +44,9 @@ import {
 import {
   RUNS_CHANGED_EVENT,
   fetchAmrModels,
+  fetchVelaLoginStatus,
   listProjectRuns,
+  type VelaLoginStatus,
 } from './providers/daemon';
 import { navigate, useRoute } from './router';
 import {
@@ -203,6 +205,7 @@ export function App() {
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const amrModelsRef = useRef<AmrModelsResponse | null>(null);
   const [amrPollRestartToken, setAmrPollRestartToken] = useState(0);
+  const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
   // Functional skills (capabilities the agent invokes mid-task) — stays
   // small and lives under the Settings → Skills surface.
   const [skills, setSkills] = useState<SkillSummary[]>([]);
@@ -312,17 +315,53 @@ export function App() {
       agentId: config.agentId,
       agents: agents.map((a) => ({ id: a.id, available: a.available })),
       byokConfigured,
+      amrAuthorized: amrLoginStatus?.loggedIn === true,
     });
     analytics.setConfigureGlobals(globals);
   }, [
     analytics.setConfigureGlobals,
     agentsLoading,
+    amrLoginStatus,
     config.mode,
     config.agentId,
     config.apiKey,
     config.apiProtocolConfigs,
     agents,
   ]);
+
+  useEffect(() => {
+    if (!daemonLive) {
+      setAmrLoginStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const syncAmrLoginStatus = async () => {
+      const status = await fetchVelaLoginStatus();
+      if (!cancelled && status) setAmrLoginStatus(status);
+    };
+    const onFocus = () => {
+      void syncAmrLoginStatus();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void syncAmrLoginStatus();
+      }
+    };
+    void syncAmrLoginStatus();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [daemonLive]);
+
+  useEffect(() => {
+    analytics.setUserId(
+      amrLoginStatus?.loggedIn === true ? amrLoginStatus.user?.id ?? null : null,
+    );
+  }, [analytics.setUserId, amrLoginStatus]);
 
   // Sync theme preference to the <html> element so CSS variables pick it up.
   // useLayoutEffect (vs useEffect) fires before the browser paints, so a
