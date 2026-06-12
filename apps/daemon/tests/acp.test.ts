@@ -419,6 +419,29 @@ test('attachAcpSession exposes abort and sends session cancel after session crea
   const cancelRequest = cancelRequests[0];
   assert.ok(cancelRequest);
   assert.deepEqual(cancelRequest.params, { sessionId: 'session-1' });
+  assert.equal(child.stdin.writableEnded, true);
+});
+
+test('attachAcpSession closes stdin on abort before session creation', () => {
+  const child = new FakeAcpChild();
+  const writes: string[] = [];
+  child.stdin.on('data', (chunk) => writes.push(String(chunk)));
+
+  const session = attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: () => {},
+  });
+
+  assert.equal(typeof session.abort, 'function');
+  session.abort();
+
+  const parsed = parseRpcWrites(writes);
+  assert.equal(parsed.some((entry) => entry.method === 'session/cancel'), false);
+  assert.equal(child.stdin.writableEnded, true);
 });
 
 function parseRpcWrites(writes: string[]): Array<Record<string, unknown>> {

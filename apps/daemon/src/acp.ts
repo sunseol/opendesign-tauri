@@ -1063,12 +1063,19 @@ export function attachAcpSession({
       aborted = true;
       finished = true;
       clearStageTimer();
-      if (!sessionId || !child.stdin || child.stdin.destroyed || child.stdin.writableEnded) return;
+      if (!child.stdin || child.stdin.destroyed || child.stdin.writableEnded) return;
+      if (sessionId) {
+        try {
+          sendRpc(child.stdin, nextId, 'session/cancel', { sessionId });
+          nextId += 1;
+        } catch {
+          // The caller owns process-signal fallback if the ACP transport is gone.
+        }
+      }
       try {
-        sendRpc(child.stdin, nextId, 'session/cancel', { sessionId });
-        nextId += 1;
+        child.stdin.end();
       } catch {
-        // The caller owns process-signal fallback if the ACP transport is gone.
+        // Best effort; the caller still owns the SIGTERM/SIGKILL fallback.
       }
     },
   };
