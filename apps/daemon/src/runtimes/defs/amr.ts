@@ -179,7 +179,23 @@ function isRetriableVelaModelsError(error: unknown): boolean {
   ].some((pattern) => message.includes(pattern));
 }
 
-async function fetchVelaRemoteModelsWithRetry(
+export async function fetchVelaPresetModels(
+  resolvedBin: string,
+  env: NodeJS.ProcessEnv,
+): Promise<RuntimeModelOption[]> {
+  const { stdout } = await execAgentFile(
+    resolvedBin,
+    ['model', 'preset', '--format', 'json'],
+    {
+      env,
+      timeout: AMR_MODELS_TIMEOUT_MS,
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  return parseVelaModelJson(String(stdout), 'preset');
+}
+
+export async function fetchVelaRemoteModelsWithRetry(
   resolvedBin: string,
   env: NodeJS.ProcessEnv,
 ): Promise<RuntimeModelOption[]> {
@@ -212,12 +228,23 @@ async function fetchVelaRemoteModelsWithRetry(
     : new Error(velaModelsErrorMessage(lastError));
 }
 
+async function fetchVelaModelsForDetection(
+  resolvedBin: string,
+  env: NodeJS.ProcessEnv,
+): Promise<RuntimeModelOption[]> {
+  try {
+    return await fetchVelaRemoteModelsWithRetry(resolvedBin, env);
+  } catch {
+    return await fetchVelaPresetModels(resolvedBin, env);
+  }
+}
+
 export const amrAgentDef = {
   id: 'amr',
   name: 'AMR',
   bin: 'vela',
   versionArgs: ['--version'],
-  fetchModels: fetchVelaRemoteModelsWithRetry,
+  fetchModels: fetchVelaModelsForDetection,
   fallbackModels: [],
   buildArgs: () => ['agent', 'run', '--runtime', 'opencode'],
   streamFormat: 'acp-json-rpc',

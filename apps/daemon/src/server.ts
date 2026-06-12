@@ -39,6 +39,11 @@ import {
   sanitizeCustomModel,
   spawnEnvForAgent,
 } from './agents.js';
+import { amrModelLoadingCache } from './runtimes/amr-model-cache.js';
+import {
+  fetchVelaPresetModels,
+  fetchVelaRemoteModelsWithRetry,
+} from './runtimes/defs/amr.js';
 import { migrateLegacyDataDirSync } from './legacy-data-migrator.js';
 import {
   consumedImportNonces,
@@ -3462,6 +3467,51 @@ export async function startServer({
       return detectAgents(config.agentCliEnv ?? {});
     })
     .catch(() => detectAgents().catch(() => {}));
+
+  async function resolveAmrModelProbe() {
+    const appConfig = await readAppConfig(RUNTIME_DATA_DIR);
+    const configuredEnv = agentCliEnvForAgent(appConfig.agentCliEnv, 'amr');
+    const def = getAgentDef('amr');
+    if (!def) throw new Error('AMR runtime definition is missing');
+    const agentLaunch = resolveAgentLaunch(def, configuredEnv);
+    const launchPath = agentLaunch.launchPath ?? agentLaunch.selectedPath;
+    if (!launchPath) throw new Error('AMR vela binary could not be resolved');
+    const env = applyAgentLaunchEnv(
+      spawnEnvForAgent(
+        def.id,
+        {
+          ...createAgentRuntimeEnv(process.env, daemonUrl),
+          ...(def.env || {}),
+        },
+        configuredEnv,
+      ),
+      agentLaunch,
+    );
+    const cacheKey = JSON.stringify({
+      launchPath,
+      home: env.HOME ?? env.USERPROFILE ?? '',
+      openDesignAmrProfile: env.OPEN_DESIGN_AMR_PROFILE ?? '',
+      velaProfile: env.VELA_PROFILE ?? '',
+      velaLinkUrl: env.VELA_LINK_URL ?? '',
+      velaRuntimeKey: env.VELA_RUNTIME_KEY ?? '',
+      velaOpencodeBin: env.VELA_OPENCODE_BIN ?? '',
+      opencodeTestHome: env.OPENCODE_TEST_HOME ?? '',
+    });
+    return { launchPath, env, cacheKey };
+  }
+
+  app.get('/api/amr/models', async (_req, res) => {
+    try {
+      const probe = await resolveAmrModelProbe();
+      const response = await amrModelLoadingCache.get(probe.cacheKey, {
+        fetchPreset: () => fetchVelaPresetModels(probe.launchPath, probe.env),
+        fetchRemote: () => fetchVelaRemoteModelsWithRetry(probe.launchPath, probe.env),
+      });
+      res.json(response);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
   await recoverStaleLiveArtifactRefreshes({ projectsRoot: PROJECTS_DIR }).catch((error) => {
     console.warn('[od] Failed to recover stale live artifact refreshes:', error);

@@ -19,6 +19,7 @@ import type {
   ChatSseEvent,
   ChatSseStartPayload,
   DaemonAgentPayload,
+  AmrModelsResponse,
   ResearchOptions,
   RunContextSelection,
   SseErrorPayload,
@@ -42,6 +43,16 @@ function detectClientType(): 'desktop' | 'web' | 'unknown' {
   return 'unknown';
 }
 import { parseSseFrame } from './sse';
+
+export async function fetchAmrModels(): Promise<AmrModelsResponse | null> {
+  try {
+    const resp = await fetch('/api/amr/models', { cache: 'no-store' });
+    if (!resp.ok) return null;
+    return (await resp.json()) as AmrModelsResponse;
+  } catch {
+    return null;
+  }
+}
 
 const MAX_TRANSCRIPT_MESSAGE_CHARS = 12_000;
 const LARGE_TOOL_RESULT_CHARS = 8_000;

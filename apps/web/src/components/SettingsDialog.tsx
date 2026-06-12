@@ -2569,7 +2569,9 @@ export function SettingsDialog({
                 const reasoningValue =
                   choice.reasoning ??
                   selected.reasoningOptions?.[0]?.id ?? '';
+                const supportsCustomModel = selected.supportsCustomModel !== false;
                 const customActive =
+                  supportsCustomModel &&
                   hasModels &&
                   shouldShowCustomModelInput(
                     modelValue,
@@ -2627,9 +2629,11 @@ export function SettingsDialog({
                               }}
                             >
                               {renderModelOptions(selected.models!)}
-                              <option value={CUSTOM_MODEL_SENTINEL}>
-                                {t('settings.modelCustom')}
-                              </option>
+                              {supportsCustomModel ? (
+                                <option value={CUSTOM_MODEL_SENTINEL}>
+                                  {t('settings.modelCustom')}
+                                </option>
+                              ) : null}
                             </select>
                             <Icon
                               name="chevron-down"

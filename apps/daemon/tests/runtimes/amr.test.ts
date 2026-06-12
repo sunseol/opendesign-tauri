@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from './helpers/test-helpers.js';
 import {
+  fetchVelaPresetModels,
   normalizeVelaModelId,
   parseVelaModelJson,
 } from '../../src/runtimes/defs/amr.js';
@@ -64,6 +65,54 @@ test('amr parses remote Vela model JSON, filters media models, and orders chat d
   ]);
 });
 
+test('amr parses preset Vela model JSON', () => {
+  const models = parseVelaModelJson(
+    JSON.stringify({
+      source: 'preset',
+      data: [
+        { id: 'gemini-2.5-flash' },
+        { id: 'gpt-image-2' },
+        { id: 'deepseek-v4-flash' },
+      ],
+    }),
+    'preset',
+  );
+
+  assert.deepEqual(models.map((model) => model.id), [
+    'deepseek-v4-flash',
+    'gemini-2.5-flash',
+  ]);
+});
+
+test('fetchVelaPresetModels calls vela model preset JSON', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'od-amr-preset-'));
+  try {
+    const vela = join(dir, 'vela');
+    writeFileSync(
+      vela,
+      [
+        '#!/bin/sh',
+        'if [ "$1" = "model" ] && [ "$2" = "preset" ]; then',
+        '  echo \'{"source":"preset","data":[{"id":"glm-5.1"},{"id":"deepseek-v4-flash"}]}\'',
+        '  exit 0',
+        'fi',
+        'exit 1',
+        '',
+      ].join('\n'),
+    );
+    chmodSync(vela, 0o755);
+
+    const models = await fetchVelaPresetModels(vela, {});
+
+    assert.deepEqual(models.map((model) => model.id), [
+      'deepseek-v4-flash',
+      'glm-5.1',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('detectAgents exposes AMR install metadata when Vela is missing', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'od-amr-missing-'));
   try {
@@ -82,6 +131,48 @@ test('detectAgents exposes AMR install metadata when Vela is missing', async () 
         'https://github.com/nexu-io/open-design/blob/main/docs/new-agent-runtime-acp.md',
       );
       assert.deepEqual(detected.models, []);
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectAgents falls back to AMR preset models when the remote catalog fails', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'od-amr-preset-fallback-'));
+  try {
+    return await withEnvSnapshot(['PATH', 'OD_AGENT_HOME'], async () => {
+      const vela = join(dir, 'vela');
+      writeFileSync(
+        vela,
+        [
+          '#!/bin/sh',
+          'if [ "$1" = "--version" ]; then echo "vela 0.0.16"; exit 0; fi',
+          'if [ "$1" = "model" ] && [ "$2" = "list" ]; then',
+          '  echo "deadline exceeded" >&2',
+          '  exit 1',
+          'fi',
+          'if [ "$1" = "model" ] && [ "$2" = "preset" ]; then',
+          '  echo \'{"source":"preset","data":[{"id":"glm-5.1"},{"id":"deepseek-v4-flash"}]}\'',
+          '  exit 0',
+          'fi',
+          'exit 1',
+          '',
+        ].join('\n'),
+      );
+      chmodSync(vela, 0o755);
+      process.env.PATH = dir;
+      process.env.OD_AGENT_HOME = dir;
+
+      const agents = await detectAgents();
+      const detected = agents.find((agent) => agent.id === 'amr');
+
+      assert.ok(detected);
+      assert.equal(detected.available, true);
+      assert.equal(detected.modelsSource, 'live');
+      assert.deepEqual(detected.models.map((model) => model.id), [
+        'deepseek-v4-flash',
+        'glm-5.1',
+      ]);
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
