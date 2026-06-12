@@ -50,7 +50,7 @@ describe("packaged smoke workflow", () => {
     expectReleaseLinuxTauriSmokeReusesEvidence(workflow, "Smoke beta linux Tauri packaged runtime");
   });
 
-  it("preserves stable linux AppImage smoke reports for release publication", async () => {
+  it("[P2] preserves stable linux AppImage smoke reports for release publication", async () => {
     const workflow = await readFile(releaseStableWorkflowPath, "utf8");
     const linuxBuildStep = workflow.match(/- name: Build release linux artifacts\n[\s\S]+?(?=\n      - name: Smoke release linux AppImage runtime)/m);
     expect(linuxBuildStep?.[0]).toBeDefined();
