@@ -170,6 +170,27 @@ const LIVE_ARTIFACT_PLUGIN = {
   },
 };
 
+const META_INSTRUCTION_PLUGIN = {
+  ...DEFAULT_PLUGIN,
+  id: 'example-meta-landing',
+  title: 'Meta Landing',
+  source: '/tmp/meta-landing',
+  fsPath: '/tmp/meta-landing',
+  manifest: {
+    ...DEFAULT_PLUGIN.manifest,
+    name: 'example-meta-landing',
+    title: 'Meta Landing',
+    description: 'Cinematic parallax landing page.',
+    od: {
+      kind: 'scenario',
+      taskKind: 'new-generation',
+      useCase: {
+        query: 'Follow the en field verbatim; start from the bundled example.html.',
+      },
+    },
+  },
+};
+
 const AUTHORING_DEFAULT_SCENARIO_INPUTS = {
   artifactKind: 'Open Design plugin',
   audience: 'Open Design plugin authors',
@@ -740,6 +761,41 @@ describe('HomeView prompt handoff', () => {
     });
     expect(screen.queryByRole('dialog', { name: /replace current prompt/i })).toBeNull();
     expect(screen.getByTestId('home-hero-context-plugin-example-web-prototype')).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+  });
+
+  it('seeds plugin-use handoff with the curated description instead of a raw meta query', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      if (typeof url === 'string' && url === '/api/plugins') {
+        return new Response(JSON.stringify({ plugins: [META_INSTRUCTION_PLUGIN] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubAnimationFrame();
+
+    render(
+      <HomeView
+        projects={[]}
+        onSubmit={() => undefined}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+        promptHandoff={createPluginUseHandoff(3, 'example-meta-landing', {
+          action: 'use-with-query',
+        })}
+      />,
+    );
+
+    const input = await screen.findByTestId('home-hero-input');
+    await waitFor(() => {
+      expect((input as HTMLTextAreaElement).value).toBe('Cinematic parallax landing page.');
+    });
+    expect((input as HTMLTextAreaElement).value).not.toContain('verbatim');
+    expect((input as HTMLTextAreaElement).value).not.toContain('example.html');
+    expect(screen.getByTestId('home-hero-context-plugin-example-meta-landing')).toBeTruthy();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
   });
 

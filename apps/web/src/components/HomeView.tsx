@@ -67,6 +67,10 @@ import { PluginDetailsModal } from './PluginDetailsModal';
 import { PluginsHomeSection } from './PluginsHomeSection';
 import type { PluginLoopSubmit } from './PluginLoopHome';
 import type { FacetSelection } from './plugins-home/facets';
+import {
+  examplePresetSeedPrompt,
+  pluginPresetQuery,
+} from './plugins-home/presetSeedPrompt';
 import type { PluginUseAction } from './plugins-home/useActions';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 
@@ -823,8 +827,15 @@ export function HomeView({
     record: InstalledPluginRecord,
     inputs?: Record<string, unknown>,
   ): string | null {
-    const query = resolvePluginQueryFallback(record.manifest?.od?.useCase?.query, locale);
-    if (!query) return null;
+    const seed = examplePresetSeedPrompt(
+      record,
+      locale,
+      () => record.manifest?.description?.trim() || record.title,
+    );
+    if (!seed.text) return null;
+    if (!seed.fromRenderedQuery) return seed.text;
+    const query = pluginPresetQuery(record, locale);
+    if (!query) return seed.text;
     return renderPluginBriefTemplate(
       query,
       hydratePluginInputs(record.manifest?.od?.inputs ?? [], inputs),

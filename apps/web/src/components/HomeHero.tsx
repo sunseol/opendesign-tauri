@@ -47,6 +47,7 @@ import { useI18n, useT } from '../i18n';
 import type { Locale } from '../i18n/types';
 import { PreviewSurface } from './plugins-home/cards/PreviewSurface';
 import { inferPluginPreview } from './plugins-home/preview';
+import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
 
 export interface HomeHeroSubmitHandler {
   (): void;
@@ -1225,7 +1226,11 @@ function PluginPromptPresetCard({
   record: InstalledPluginRecord;
 }) {
   const preview = useMemo(() => inferPluginPreview(record), [record]);
-  const promptPreview = pluginPresetPromptPreview(record, locale, chipId);
+  const promptPreview = examplePresetSeedPrompt(
+    record,
+    locale,
+    () => pluginPresetPromptPreview(record, locale, chipId),
+  ).text;
   return (
     <button
       type="button"
