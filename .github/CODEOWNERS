@@ -1,0 +1,11 @@
+# Repository governance, CI, release, packaging, and local runtime boundaries.
+/.github/ @sunseol
+/scripts/ @sunseol
+/tools/pack/ @sunseol
+/tools/dev/ @sunseol
+/tools/serve/ @sunseol
+/apps/packaged/ @sunseol
+/apps/desktop/ @sunseol
+/packages/platform/ @sunseol
+/packages/sidecar/ @sunseol
+/packages/sidecar-proto/ @sunseol
