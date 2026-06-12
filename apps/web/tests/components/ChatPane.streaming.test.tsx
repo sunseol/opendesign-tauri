@@ -88,6 +88,7 @@ class MockResizeObserver {
 beforeEach(() => {
   vi.clearAllMocks();
   MockResizeObserver.instances = [];
+  window.localStorage.clear();
   window.sessionStorage.clear();
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -244,7 +245,12 @@ describe('ChatPane streaming state', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to AMR' }));
 
-    expect(startVelaLogin).toHaveBeenCalledTimes(1);
+    expect(startVelaLogin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceProduct: 'open_design',
+        sourceDetail: 'chat_error_authorize_retry',
+      }),
+    );
   });
 
   it('opens the sourced AMR wallet and keeps retry for balance errors', () => {
@@ -294,10 +300,11 @@ describe('ChatPane streaming state', () => {
     expect(screen.getByText('AMR Cloud reported insufficient balance for this model. Recharge your AMR wallet, then retry this run.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Recharge AMR' }));
     expect(open).toHaveBeenCalledWith(
-      'https://open-design.ai/amr/wallet?source=open_design',
+      expect.stringContaining('https://open-design.ai/amr/wallet?source=open_design&od_origin=open_design'),
       '_blank',
       'noopener,noreferrer',
     );
+    expect(open.mock.calls[0]?.[0]).toContain('od_entry_source=chat_error_recharge');
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(onRetry).toHaveBeenCalledWith(failed);

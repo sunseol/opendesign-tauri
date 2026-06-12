@@ -9,9 +9,13 @@ import {
   cancelVelaLogin,
   forgetVelaLogin,
   mergeVelaEnv,
+  mirrorAmrEntryAnalytics,
+  parseAmrEntryAnalyticsPayload,
+  parseVelaLoginAttribution,
   readVelaLoginStatus,
   spawnVelaLogin,
 } from './integrations/vela.js';
+import { readAnalyticsContext } from './analytics.js';
 import { amrModelLoadingCache } from './runtimes/amr-model-cache.js';
 import type { RouteDeps } from './server-context.js';
 
@@ -76,9 +80,11 @@ export function registerVelaRoutes(app: Express, ctx: RegisterVelaRoutesDeps) {
     }
     try {
       const configuredEnv = await readConfiguredAmrEnv();
+      const attribution = parseVelaLoginAttribution(req.body);
       const result = await spawnVelaLogin({
         baseEnv: process.env,
         configuredEnv,
+        attribution,
       });
       amrModelLoadingCache.reset();
       res.status(202).json(result);
@@ -86,6 +92,33 @@ export function registerVelaRoutes(app: Express, ctx: RegisterVelaRoutesDeps) {
       const message = errorMessage(err);
       const status = /already running/i.test(message) ? 409 : 500;
       res.status(status).json({ error: message });
+    }
+  });
+
+  app.post('/api/integrations/vela/analytics-entry', async (req, res) => {
+    if (!isLocalSameOrigin(req, getResolvedPort())) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    try {
+      const payload = parseAmrEntryAnalyticsPayload(req.body);
+      if (!payload) {
+        return res.status(400).json({ error: 'invalid_amr_entry_analytics' });
+      }
+      const analyticsContext = readAnalyticsContext(req);
+      if (!analyticsContext) {
+        return res.status(202).json({ mirrored: false });
+      }
+      const appConfig = await readAppConfig(RUNTIME_DATA_DIR);
+      if (appConfig.telemetry?.metrics !== true) {
+        return res.status(202).json({ mirrored: false });
+      }
+      const result = await mirrorAmrEntryAnalytics(payload, {
+        analyticsContext,
+        env: process.env,
+      });
+      return res.status(202).json(result);
+    } catch (err) {
+      return res.status(500).json({ error: errorMessage(err) });
     }
   });
 

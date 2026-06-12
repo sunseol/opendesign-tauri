@@ -39,6 +39,7 @@ let configureGlobals: AnalyticsConfigureGlobals = {
 // after every reset()/identify() so every subsequent event keeps the
 // v2 schema contract.
 let lastRegisterPayload: Record<string, unknown> | null = null;
+let registeredUserId: string | null = null;
 
 // Returns the installationId the daemon stamped on /api/analytics/config
 // after the user opted in via Privacy → "Share usage data". The provider
@@ -82,6 +83,29 @@ export function setConfigureGlobals(next: AnalyticsConfigureGlobals): void {
     client.register(configureGlobals as unknown as Record<string, unknown>);
   } catch {
     // best-effort — capture should never throw out of this path.
+  }
+}
+
+export function setAnalyticsUserId(userId: string | null): void {
+  if (registeredUserId === userId) return;
+  registeredUserId = userId;
+  if (lastRegisterPayload) {
+    if (userId) {
+      lastRegisterPayload = { ...lastRegisterPayload, user_id: userId };
+    } else {
+      const { user_id: _dropped, ...rest } = lastRegisterPayload;
+      lastRegisterPayload = rest;
+    }
+  }
+  if (!client) return;
+  try {
+    if (userId) {
+      client.register({ user_id: userId });
+    } else {
+      client.unregister('user_id');
+    }
+  } catch {
+    // Best-effort; analytics failures must not affect product behavior.
   }
 }
 
@@ -177,6 +201,7 @@ export async function getAnalyticsClient(
             // installationId / local-UUID fallback.
             device_id: distinctId,
             ...(configureGlobals as unknown as Record<string, unknown>),
+            ...(registeredUserId ? { user_id: registeredUserId } : {}),
           };
           instance.register(lastRegisterPayload);
         },

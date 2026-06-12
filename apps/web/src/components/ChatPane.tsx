@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { useAnalytics } from '../analytics/provider';
+import { attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
 import { trackChatPanelClick } from '../analytics/events';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
@@ -1051,7 +1052,11 @@ export function ChatPane({
                           type="button"
                           className="chat-error-action"
                           onClick={() => {
-                            void startVelaLogin().then((result) => {
+                            const attribution = recordAmrEntry(
+                              analytics.track,
+                              'chat_error_authorize_retry',
+                            );
+                            void startVelaLogin(attribution).then((result) => {
                               if (!result.ok) onOpenSettings?.();
                             });
                           }}
@@ -1064,8 +1069,15 @@ export function ChatPane({
                           type="button"
                           className="chat-error-action"
                           onClick={() => {
+                            const attribution = recordAmrEntry(
+                              analytics.track,
+                              'chat_error_recharge',
+                            );
                             window.open(
-                              amrRechargeUrlForProfile(null),
+                              attributedAmrUrl(
+                                amrRechargeUrlForProfile(null),
+                                attribution,
+                              ),
                               '_blank',
                               'noopener,noreferrer',
                             );

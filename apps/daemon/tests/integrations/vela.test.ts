@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -269,6 +269,52 @@ describe('spawnVelaLogin', () => {
     const next = JSON.parse(readFileSync(file, 'utf8'));
     expect(next.profiles.test.user.email).toBe('spawn-login@example.com');
     expect(next.profiles.prod).toBeUndefined();
+  });
+
+  it('passes Open Design AMR attribution env to vela login', async () => {
+    const envOut = path.join(tmpHome, 'vela-env.json');
+    const script = path.join(tmpHome, 'record-vela-env.mjs');
+    writeFileSync(
+      script,
+      `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+
+writeFileSync(process.env.FAKE_VELA_ENV_OUT, JSON.stringify({
+  entryId: process.env.OPEN_DESIGN_AMR_ENTRY_ID,
+  source: process.env.OPEN_DESIGN_AMR_ENTRY_SOURCE,
+  occurredAt: process.env.OPEN_DESIGN_AMR_ENTRY_AT,
+  origin: process.env.OPEN_DESIGN_AMR_ORIGIN,
+}), 'utf8');
+`,
+      'utf8',
+    );
+    chmodSync(script, 0o755);
+
+    const result = await spawnVelaLogin({
+      baseEnv: {
+        ...process.env,
+        HOME: tmpHome,
+        FAKE_VELA_ENV_OUT: envOut,
+      },
+      configuredEnv: {
+        VELA_BIN: script,
+      },
+      attribution: {
+        entryId: 'od-amr-entry-env',
+        sourceProduct: 'open_design',
+        sourceDetail: 'chat_error_authorize_retry',
+        occurredAt: '2026-06-03T12:00:00.000Z',
+      },
+    });
+
+    expect(result.pid).toBeGreaterThan(0);
+    await waitFor(() => existsSync(envOut));
+    expect(JSON.parse(readFileSync(envOut, 'utf8'))).toEqual({
+      entryId: 'od-amr-entry-env',
+      source: 'chat_error_authorize_retry',
+      occurredAt: '2026-06-03T12:00:00.000Z',
+      origin: 'open_design',
+    });
   });
 });
 

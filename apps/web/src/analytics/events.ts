@@ -54,6 +54,8 @@ import type {
   ShareOptionPopoverClickProps,
   AssistantFeedbackButtonClickProps,
   AssistantFeedbackReasonSubmitClickProps,
+  AmrAuthResultProps,
+  AmrEntryClickProps,
   SettingsSidebarClickProps,
   SettingsExecutionModeTabClickProps,
   SettingsLocalCliClickProps,
@@ -529,6 +531,14 @@ export function trackSettingsPrivacyClick(
   send(track, 'ui_click', props);
 }
 
+export function trackAmrEntryClick(
+  track: Track,
+  props: AmrEntryClickProps,
+  options?: TrackOptions,
+): void {
+  send(track, 'ui_click', props, options);
+}
+
 // ---- Result events -------------------------------------------------------
 
 export function trackProjectCreateResult(
@@ -615,4 +625,11 @@ export function trackSettingsConnectorAuthResult(
   props: SettingsConnectorAuthResultProps,
 ): void {
   send(track, 'settings_connector_auth_result', props);
+}
+
+export function trackAmrAuthResult(
+  track: Track,
+  props: AmrAuthResultProps,
+): void {
+  send(track, 'amr_auth_result', props);
 }
