@@ -216,16 +216,16 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
   const pluginMatches = useMemo(
     () =>
       mentionActive
-        ? pluginOptions.filter((plugin) => pluginMatchesQuery(plugin, mentionQuery)).slice(0, 6)
+        ? pluginOptions.filter((plugin) => pluginMatchesQuery(plugin, mentionQuery, locale))
         : [],
-    [mentionActive, mentionQuery, pluginOptions],
+    [locale, mentionActive, mentionQuery, pluginOptions],
   );
   const skillMatches = useMemo(
     () =>
       mentionActive
-        ? skillOptions.filter((skill) => skillMatchesQuery(skill, mentionQuery)).slice(0, 6)
+        ? skillOptions.filter((skill) => skillMatchesQuery(skill, mentionQuery, locale))
         : [],
-    [mentionActive, mentionQuery, skillOptions],
+    [locale, mentionActive, mentionQuery, skillOptions],
   );
   const mcpMatches = useMemo(
     () =>
@@ -287,8 +287,8 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
           options: pluginMatches.map((plugin) => ({
             id: `plugin-${plugin.id}`,
             icon: 'sparkles',
-            title: plugin.title,
-            description: plugin.manifest?.description ?? plugin.id,
+            title: localizedPluginTitle(plugin, locale),
+            description: localizedPluginDescription(plugin, locale) || plugin.id,
             meta: pendingPluginId === plugin.id ? t('homeHero.applying') : getPluginSourceLabel(plugin),
             pluginRecord: plugin,
             disabled: pendingPluginId !== null,
@@ -303,8 +303,8 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
           options: skillMatches.map((skill) => ({
             id: `skill-${skill.id}`,
             icon: skill.id === activeSkillId ? 'check' : 'file',
-            title: skill.name,
-            description: skill.description || skill.id,
+            title: localizedSkillName(skill, locale),
+            description: localizedSkillDescription(skill, locale) || skill.id,
             meta: skill.id === activeSkillId ? t('common.active') : skill.mode,
             onPick: () => pickSkill(skill),
           })),
@@ -2328,14 +2328,16 @@ function isImeComposing(event: ReactKeyboardEvent<HTMLTextAreaElement>, composin
   return composing || nativeEvent.isComposing || nativeEvent.keyCode === 229;
 }
 
-function pluginMatchesQuery(plugin: InstalledPluginRecord, query: string): boolean {
+function pluginMatchesQuery(plugin: InstalledPluginRecord, query: string, locale: Locale): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   return [
     plugin.title,
+    localizedPluginTitle(plugin, locale),
     plugin.id,
     plugin.sourceKind,
     plugin.manifest?.description ?? '',
+    localizedPluginDescription(plugin, locale),
     ...(plugin.manifest?.tags ?? []),
   ]
     .join(' ')
@@ -2343,13 +2345,15 @@ function pluginMatchesQuery(plugin: InstalledPluginRecord, query: string): boole
     .includes(q);
 }
 
-function skillMatchesQuery(skill: SkillSummary, query: string): boolean {
+function skillMatchesQuery(skill: SkillSummary, query: string, locale: Locale): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   return [
     skill.id,
     skill.name,
+    localizedSkillName(skill, locale),
     skill.description,
+    localizedSkillDescription(skill, locale),
     skill.mode,
     skill.surface ?? '',
     ...skill.triggers,
@@ -2357,6 +2361,33 @@ function skillMatchesQuery(skill: SkillSummary, query: string): boolean {
     .join(' ')
     .toLowerCase()
     .includes(q);
+}
+
+function localizedPluginTitle(plugin: InstalledPluginRecord, locale: Locale): string {
+  return localizedRecordValue(plugin.manifest?.title_i18n, locale)
+    || plugin.manifest?.title
+    || plugin.title;
+}
+
+function localizedPluginDescription(plugin: InstalledPluginRecord, locale: Locale): string {
+  return localizedRecordValue(plugin.manifest?.description_i18n, locale)
+    || plugin.manifest?.description
+    || '';
+}
+
+function localizedSkillName(skill: SkillSummary, locale: Locale): string {
+  return localizedRecordValue(skill.displayName, locale) || skill.name;
+}
+
+function localizedSkillDescription(skill: SkillSummary, locale: Locale): string {
+  return localizedRecordValue(skill.descriptionI18n, locale) || skill.description;
+}
+
+function localizedRecordValue(
+  values: Record<string, string> | undefined,
+  locale: Locale,
+): string {
+  return values?.[locale] ?? values?.[locale.split('-')[0] ?? locale] ?? '';
 }
 
 function mcpServerMatchesQuery(server: McpServerConfig, query: string): boolean {

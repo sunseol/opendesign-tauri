@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   InputFieldSpec,
@@ -11,6 +11,7 @@ import type {
   TrustTier,
 } from '@open-design/contracts';
 import { HomeHero } from '../../src/components/HomeHero';
+import { I18nProvider } from '../../src/i18n';
 
 function makePlugin(
   id: string,
@@ -105,6 +106,97 @@ describe('HomeHero plugin picker', () => {
       expect.objectContaining({ id: 'sample-user-plugin' }),
       'Make @Sample User Plugin',
     );
+  });
+
+  it('does not truncate home @ plugin results to six entries', () => {
+    const pluginOptions = Array.from({ length: 9 }, (_, index) =>
+      makePlugin(`catalog-plugin-${index}`, `Catalog Plugin ${index + 1}`),
+    );
+
+    render(
+      <HomeHero
+        prompt="@catalog"
+        onPromptChange={() => undefined}
+        onSubmit={() => undefined}
+        activePluginTitle={null}
+        activeChipId={null}
+        onClearActivePlugin={() => undefined}
+        pluginOptions={pluginOptions}
+        pluginsLoading={false}
+        pendingPluginId={null}
+        pendingChipId={null}
+        onPickPlugin={() => undefined}
+        onPickChip={() => undefined}
+        contextItemCount={0}
+        error={null}
+      />,
+    );
+
+    const picker = screen.getByTestId('home-hero-plugin-picker');
+    expect(within(picker).getAllByRole('option')).toHaveLength(9);
+    expect(within(picker).getByText('Catalog Plugin 9')).toBeTruthy();
+    expect(within(picker).getByRole('tab', { name: /plugins/i }).textContent).toContain('9');
+  });
+
+  it('matches localized plugin and skill text in the home @ picker', () => {
+    const localizedPlugin = makePlugin('localized-plugin', 'Localized Plugin');
+    localizedPlugin.manifest.title_i18n = { 'zh-CN': '官方看板' };
+    localizedPlugin.manifest.description_i18n = { 'zh-CN': '内置官方插件。' };
+    const localizedSkill = makeSkill('localized-skill', 'Localized Skill');
+    localizedSkill.displayName = { 'zh-CN': '杂志文章' };
+    localizedSkill.descriptionI18n = { 'zh-CN': '中文能力描述' };
+
+    const { rerender } = render(
+      <I18nProvider initial="zh-CN">
+        <HomeHero
+          prompt="@看板"
+          onPromptChange={() => undefined}
+          onSubmit={() => undefined}
+          activePluginTitle={null}
+          activeChipId={null}
+          onClearActivePlugin={() => undefined}
+          pluginOptions={[localizedPlugin]}
+          pluginsLoading={false}
+          skillOptions={[localizedSkill]}
+          skillsLoading={false}
+          pendingPluginId={null}
+          pendingChipId={null}
+          onPickPlugin={() => undefined}
+          onPickSkill={() => undefined}
+          onPickChip={() => undefined}
+          contextItemCount={0}
+          error={null}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('option', { name: /官方看板/i })).toBeTruthy();
+
+    rerender(
+      <I18nProvider initial="zh-CN">
+        <HomeHero
+          prompt="@中文能力"
+          onPromptChange={() => undefined}
+          onSubmit={() => undefined}
+          activePluginTitle={null}
+          activeChipId={null}
+          onClearActivePlugin={() => undefined}
+          pluginOptions={[localizedPlugin]}
+          pluginsLoading={false}
+          skillOptions={[localizedSkill]}
+          skillsLoading={false}
+          pendingPluginId={null}
+          pendingChipId={null}
+          onPickPlugin={() => undefined}
+          onPickSkill={() => undefined}
+          onPickChip={() => undefined}
+          contextItemCount={0}
+          error={null}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('option', { name: /杂志文章/i })).toBeTruthy();
   });
 
   it('renders selected @ plugins inside the prompt and opens their details', () => {
