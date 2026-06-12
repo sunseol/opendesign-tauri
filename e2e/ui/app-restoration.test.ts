@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 });
-test('workspace restores the last manually selected file tab after reload instead of jumping back to the generated artifact', async ({ page }) => {
+test('[P0] @critical workspace restores the last manually selected file tab after reload instead of jumping back to the generated artifact', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -154,7 +154,7 @@ test('workspace restores the last manually selected file tab after reload instea
   await expect(restoredManualFileTab).toHaveAttribute('aria-selected', 'true');
 });
 
-test('switching between projects restores each project workspace to its last active file tab', async ({ page }) => {
+test('[P0] switching between projects restores each project workspace to its last active file tab', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -264,7 +264,7 @@ test('switching between projects restores each project workspace to its last act
   await expect(tabBySuffix(page, 'beta-secondary.png')).toHaveAttribute('aria-selected', 'false');
 });
 
-test('visiting an uploaded design file route restores its tab and file workspace surface', async ({ page }) => {
+test('[P0] @critical visiting an uploaded design file route restores its tab and file workspace surface', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -319,7 +319,7 @@ test('visiting an uploaded design file route restores its tab and file workspace
   await expect(page.getByTestId('design-files-tab')).toHaveAttribute('aria-selected', 'false');
 });
 
-test('returning from an uploaded design file route to the project root keeps the uploaded file tab active', async ({ page }) => {
+test('[P0] returning from an uploaded design file route to the project root keeps the uploaded file tab active', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -461,7 +461,7 @@ test('returning from an artifact file route to the project root keeps the artifa
   ).toBeVisible();
 });
 
-test('returning from an older conversation route to the project root keeps the composer available while the route is selected', async ({ page }) => {
+test('[P0] @critical returning from an older conversation route to the project root keeps the composer available while the route is selected', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -538,7 +538,7 @@ test('returning from an older conversation route to the project root keeps the c
   await expect(page.getByTestId('chat-composer')).toBeVisible();
 });
 
-test('switching between conversations keeps the composer usable while navigating history', async ({ page }) => {
+test('[P0] @critical switching between conversations keeps the composer usable while navigating history', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -645,7 +645,7 @@ test('switching between conversations keeps the composer usable while navigating
   await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('reloading an older conversation route keeps the composer visible on that route', async ({ page }) => {
+test('[P0] @critical reloading an older conversation route keeps the composer visible on that route', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -728,7 +728,7 @@ test('reloading an older conversation route keeps the composer visible on that r
   await expect(reloadedHistoryList.locator('.chat-conv-item').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('switching between conversations keeps staged attachments UI available', async ({ page }) => {
+test('[P0] @critical switching between conversations keeps staged attachments UI available', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -840,7 +840,7 @@ test('switching between conversations keeps staged attachments UI available', as
   await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt }).first()).toBeVisible();
 });
 
-test('reloading an older conversation route keeps the composer available after staging attachments', async ({ page }) => {
+test('[P0] @critical reloading an older conversation route keeps the composer available after staging attachments', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -926,7 +926,7 @@ test('reloading an older conversation route keeps the composer available after s
   await expect(page.getByTestId('chat-composer')).toBeVisible();
 });
 
-test('reloading the project keeps the latest conversation selected in history', async ({ page }) => {
+test('[P0] @critical reloading the project keeps the latest conversation selected in history', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1012,7 +1012,7 @@ test('reloading the project keeps the latest conversation selected in history', 
   await expect(historyList.locator('.chat-conv-item')).toHaveCount(2);
 });
 
-test('deleting the active conversation selects the remaining conversation in history', async ({ page }) => {
+test('[P0] @critical deleting the active conversation selects the remaining conversation in history', async ({ page }) => {
   page.on('dialog', async (dialog: Dialog) => {
     await dialog.accept();
   });
@@ -1103,7 +1103,7 @@ test('deleting the active conversation selects the remaining conversation in his
   await expect(historyList.locator('.chat-conv-item.active').first()).toContainText(firstPrompt);
 });
 
-test('returning from workspace surfaces keeps the older conversation reachable from history', async ({ page }) => {
+test('[P0] returning from workspace surfaces keeps the older conversation reachable from history', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1207,7 +1207,7 @@ test('returning from workspace surfaces keeps the older conversation reachable f
   await expect(historyList.locator('.chat-conv-item').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('reloading the project root keeps conversation history accessible', async ({ page }) => {
+test('[P0] reloading the project root keeps conversation history accessible', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1290,7 +1290,7 @@ test('reloading the project root keeps conversation history accessible', async (
   await expect(historyList.locator('.chat-conv-item').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('opening an uploaded file route keeps the older conversation present in history', async ({ page }) => {
+test('[P0] opening an uploaded file route keeps the older conversation present in history', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1398,7 +1398,7 @@ test('opening an uploaded file route keeps the older conversation present in his
   await expect(historyList.locator('.chat-conv-item').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('opening an artifact file route keeps the older conversation present in history', async ({ page }) => {
+test('[P0] opening an artifact file route keeps the older conversation present in history', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1512,7 +1512,7 @@ test('opening an artifact file route keeps the older conversation present in his
   await expect(historyList.locator('.chat-conv-item').filter({ hasText: firstPrompt }).first()).toBeVisible();
 });
 
-test('returning from a file deep-link to the project root keeps the chosen file tab active', async ({ page }) => {
+test('[P0] returning from a file deep-link to the project root keeps the chosen file tab active', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1611,7 +1611,7 @@ test('returning from a file deep-link to the project root keeps the chosen file 
   await expect(page.getByTestId('design-files-tab')).toHaveAttribute('aria-selected', 'false');
 });
 
-test('returning from an artifact deep-link to the project root keeps the artifact tab reachable after returning to the project root', async ({ page }) => {
+test('[P0] returning from an artifact deep-link to the project root keeps the artifact tab reachable after returning to the project root', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       json: {
@@ -1796,7 +1796,7 @@ test('a later completed run updates the workspace to the newest artifact tab and
   ).toBeVisible();
 });
 
-test('reloading a project keeps the Design Files entry reachable when it was the last active workspace surface', async ({ page }) => {
+test('[P0] reloading a project keeps the Design Files entry reachable when it was the last active workspace surface', async ({ page }) => {
   const pngBytes = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5W6McAAAAASUVORK5CYII=',
     'base64',
@@ -1833,7 +1833,7 @@ test('reloading a project keeps the Design Files entry reachable when it was the
   await expect(page.getByTestId('design-files-tab')).toBeVisible();
 });
 
-test('daemon error details persist between failed sends', async ({ page }) => {
+test('[P0] @critical daemon error details persist between failed sends', async ({ page }) => {
   const entry = automatedUiScenarios().find((scenario) => scenario.id === 'prototype-basic');
   if (!entry) throw new Error('prototype-basic scenario missing');
 

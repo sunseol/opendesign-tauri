@@ -231,7 +231,7 @@ test('connectors search supports empty results and keyboard-closeable details', 
   await expect(page.getByTestId('connector-drawer')).toHaveCount(0);
 });
 
-test('saving a Composio key from Integrations unlocks the connectors gate immediately', async ({ page }) => {
+test('[P0] saving a Composio key from Integrations unlocks the connectors gate immediately', async ({ page }) => {
   const { accountLabel: _unusedAccountLabel, ...slackConnector } = CONNECTORS[1]!;
   await routeConnectors(page, [
     {

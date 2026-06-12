@@ -295,7 +295,7 @@ test('entry chrome avoids horizontal overflow on compact desktop width', async (
   expect(pageOverflow).toBeLessThanOrEqual(2);
 });
 
-test('entry execution pill opens the Local CLI and BYOK switcher from Home', async ({ page }) => {
+test('[P0] @critical entry execution pill opens the Local CLI and BYOK switcher from Home', async ({ page }) => {
   await page.addInitScript((key) => {
     window.localStorage.setItem(
       key,
@@ -916,7 +916,7 @@ test('home starters Use with query hydrates the prompt and keeps plugin context 
   await expect(input).toHaveValue('Make a design systems brief.');
 });
 
-test('home hero input keeps Shift+Enter as a newline and submits on Enter', async ({ page }) => {
+test('[P0] @critical home hero input keeps Shift+Enter as a newline and submits on Enter', async ({ page }) => {
   await gotoEntryHome(page);
 
   const input = page.getByTestId('home-hero-input');
@@ -970,7 +970,7 @@ test('home hero @ mention picker opens and Enter applies the highlighted plugin'
   await expect(input).toHaveValue('@Localized Plugin');
 });
 
-test('home hero attachment input stages files, enables submit, and supports removal', async ({ page }) => {
+test('[P0] @critical home hero attachment input stages files, enables submit, and supports removal', async ({ page }) => {
   await gotoEntryHome(page);
 
   const input = page.getByTestId('home-hero-file-input');
@@ -993,7 +993,7 @@ test('home hero attachment input stages files, enables submit, and supports remo
   await expect(submit).toBeDisabled();
 });
 
-test('home hero attachment-only submit uploads the file and sends it with the first message', async ({ page }) => {
+test('[P0] @critical home hero attachment-only submit uploads the file and sends it with the first message', async ({ page }) => {
   await gotoEntryHome(page);
 
   const uploadResponse = page.waitForResponse(

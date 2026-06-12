@@ -159,7 +159,7 @@ test('legacy custom provider preserves custom baseUrl and model when switching p
   await expect(customModelInput).toHaveValue('my-custom-model');
 });
 
-test('BYOK quick fill provider updates fields and saved settings persist after closing and reopening', async ({ page }) => {
+test('[P0] @critical BYOK quick fill provider updates fields and saved settings persist after closing and reopening', async ({ page }) => {
   await openExecutionSettings(page, {
     mode: 'api',
     apiKey: '',
@@ -222,7 +222,7 @@ test('BYOK quick fill provider updates fields and saved settings persist after c
   await expect(reopenedDialog.getByLabel('API key')).toHaveValue('sk-openai-test');
 });
 
-test('BYOK save stays disabled until required fields are valid', async ({ page }) => {
+test('[P0] BYOK save stays disabled until required fields are valid', async ({ page }) => {
   await openExecutionSettings(page, {
     mode: 'api',
     apiKey: '',
@@ -328,7 +328,7 @@ test('BYOK fetch models hydrates model options and reuses cached results', async
   await expect.poll(() => providerModelRequests.length).toBe(1);
 });
 
-test('saving Local CLI updates the entry status pill with the selected agent', async ({ page }) => {
+test('[P0] @critical saving Local CLI updates the entry status pill with the selected agent', async ({ page }) => {
   await openExecutionSettingsWithAgents(
     page,
     {

@@ -53,7 +53,7 @@ test.afterEach(async ({ page }) => {
   await resetDaemonAppConfig(page);
 });
 
-test('real daemon run streams, persists, and previews an artifact', async ({ page }) => {
+test('[P0] real daemon run streams, persists, and previews an artifact', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Real daemon run smoke');
   await expectWorkspaceReady(page);
@@ -69,7 +69,7 @@ test('real daemon run streams, persists, and previews an artifact', async ({ pag
   await expectProjectFileToContain(page, projectId, GENERATED_FILE, GENERATED_HEADING);
 });
 
-test('real daemon run persists an artifact streamed across multiple chunks', async ({ page }) => {
+test('[P0] real daemon run persists an artifact streamed across multiple chunks', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Chunked daemon run smoke');
   await expectWorkspaceReady(page);
@@ -84,7 +84,7 @@ test('real daemon run persists an artifact streamed across multiple chunks', asy
   await expectProjectFileToContain(page, projectId, CHUNKED_FILE, CHUNKED_HEADING);
 });
 
-test('real daemon run surfaces process/parser errors in chat', async ({ page }) => {
+test('[P0] real daemon run surfaces process/parser errors in chat', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Daemon error smoke');
   await expectWorkspaceReady(page);
@@ -95,7 +95,7 @@ test('real daemon run surfaces process/parser errors in chat', async ({ page }) 
   await expect(page.locator('.status-pill', { hasText: 'intentional fake codex failure' })).toBeVisible();
 });
 
-test('real daemon run supports a follow-up turn in the same project', async ({ page }) => {
+test('[P0] real daemon run supports a follow-up turn in the same project', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Daemon follow-up smoke');
   await expectWorkspaceReady(page);
@@ -159,7 +159,7 @@ test('real daemon run survives reload before the create response reaches the bro
   });
 });
 
-test('empty daemon output fails cleanly, persists after reload, and does not leave ghost files', async ({ page }) => {
+test('[P0] empty daemon output fails cleanly, persists after reload, and does not leave ghost files', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Empty daemon failure smoke');
   await expectWorkspaceReady(page);
@@ -184,7 +184,7 @@ test('empty daemon output fails cleanly, persists after reload, and does not lea
   expect(await listProjectFiles(page, projectId)).toEqual([]);
 });
 
-test('separate projects keep daemon artifacts isolated across recent-project navigation', async ({ page }) => {
+test('[P0] separate projects keep daemon artifacts isolated across recent-project navigation', async ({ page }) => {
   await page.goto('/');
   await createProject(page, 'Real daemon isolation alpha');
   await expectWorkspaceReady(page);
@@ -221,7 +221,7 @@ test('separate projects keep daemon artifacts isolated across recent-project nav
   expect((await listProjectFiles(page, beta.projectId)).map((file) => file.name)).toEqual([FOLLOW_UP_FILE]);
 });
 
-test('real daemon run previews an artifact from a fake OpenCode runtime', async ({ page }) => {
+test('[P0] real daemon run previews an artifact from a fake OpenCode runtime', async ({ page }) => {
   await createProject(page, 'Fake OpenCode runtime smoke', 'opencode');
   await expectWorkspaceReady(page);
 
@@ -238,7 +238,7 @@ test('real daemon run previews an artifact from a fake OpenCode runtime', async 
   await expectProjectFileToContain(page, projectId, fileName, heading);
 });
 
-test('real daemon run supports fake non-Codex runtime protocols', async ({ page }) => {
+test('[P0] real daemon run supports fake non-Codex runtime protocols', async ({ page }) => {
   test.setTimeout(180_000);
 
   for (const agentId of FAKE_AGENT_RUNTIME_IDS) {

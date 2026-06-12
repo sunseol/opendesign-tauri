@@ -277,7 +277,7 @@ test.describe('Settings connectors auth recovery', () => {
       .toBe(null);
   });
 
-  test('keeps a pending authorization visible when the connector enters authorization-pending state', async ({ page }) => {
+  test('[P0] keeps a pending authorization visible when the connector enters authorization-pending state', async ({ page }) => {
     const { dialog } = await openConnectorsSettings(page, {
       pendingAuthorization: pendingAuthorizationStorage(),
     });
@@ -346,7 +346,7 @@ test.describe('Settings connectors auth recovery', () => {
     await expect(reloadedGithubCard.getByRole('button', { name: 'Connect' })).toHaveCount(0);
   });
 
-  test('settles a pending authorization into Disconnect when status polling reports the connector as connected', async ({ page }) => {
+  test('[P0] settles a pending authorization into Disconnect when status polling reports the connector as connected', async ({ page }) => {
     let statusRequests = 0;
     const { dialog } = await openConnectorsSettings(page, {
       pendingAuthorization: pendingAuthorizationStorage(),
@@ -384,7 +384,7 @@ test.describe('Settings connectors auth recovery', () => {
       .toBe(null);
   });
 
-  test('returns a pending authorization to Connect and clears session storage after a successful cancel', async ({ page }) => {
+  test('[P0] returns a pending authorization to Connect and clears session storage after a successful cancel', async ({ page }) => {
     const { dialog } = await openConnectorsSettings(page, {
       pendingAuthorization: pendingAuthorizationStorage(),
       onCancel: () => ({

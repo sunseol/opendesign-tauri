@@ -14,6 +14,26 @@ const shards: Record<string, Shard> = {
     grep: String.raw`\[P0\].*settings dialog`,
     files: ['ui/critical-smoke.test.ts'],
   },
+  'entry-onboarding': {
+    grep: String.raw`\[P0\]`,
+    files: ['ui/entry-chrome-flows.test.ts', 'ui/entry-configuration-flows.test.ts', 'ui/api-empty-response.test.ts'],
+  },
+  'project-workspace': {
+    grep: String.raw`\[P0\]`,
+    files: ['ui/app-restoration.test.ts', 'ui/app-manual-edit.test.ts'],
+  },
+  'runtime-recovery': {
+    grep: String.raw`\[P0\]`,
+    files: ['ui/real-daemon-run.test.ts', 'ui/settings-local-cli-codex-fallback.test.ts'],
+  },
+  'settings-connectors': {
+    grep: String.raw`\[P0\]`,
+    files: [
+      'ui/settings-api-protocol.test.ts',
+      'ui/settings-connectors-auth-happy-path.test.ts',
+      'ui/settings-connectors-auth-recovery.test.ts',
+    ],
+  },
 };
 
 const commandName = process.argv[2] ?? 'help';

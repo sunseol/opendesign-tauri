@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('manual edit inspector previews and persists page and selected element styles', async ({ page }) => {
+test('[P0] manual edit inspector previews and persists page and selected element styles', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Manual edit smoke');
   await seedHtmlArtifact(page, projectId, 'manual-edit.html', manualEditHtml());
@@ -147,7 +147,7 @@ test('manual edit inspector previews and persists page and selected element styl
   await expect(page.getByRole('menuitem', { name: /Export as PDF/ })).toBeVisible();
 });
 
-test('manual edit mode preserves preview actions after style edits', async ({ page }) => {
+test('[P0] manual edit mode preserves preview actions after style edits', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Manual edit smoke');
   await seedHtmlArtifact(page, projectId, 'manual-edit.html', manualEditHtml());
@@ -189,7 +189,7 @@ async function selectStyleRowInput(
   return row;
 }
 
-test('manual edit mode keeps deck navigation available for deck-shaped HTML', async ({ page }) => {
+test('[P0] manual edit mode keeps deck navigation available for deck-shaped HTML', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Manual edit deck smoke');
   await seedDeckArtifact(page, projectId, 'manual-deck.html', 'Manual Deck', ['Slide One', 'Slide Two']);

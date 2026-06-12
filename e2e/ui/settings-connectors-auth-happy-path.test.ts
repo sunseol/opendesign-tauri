@@ -220,7 +220,7 @@ async function openConnectorsSettings(
 }
 
 test.describe('Settings connectors auth happy path', () => {
-  test('shows an inline connector error when connect fails', async ({ page }) => {
+  test('[P0] shows an inline connector error when connect fails', async ({ page }) => {
     const dialog = await openConnectorsSettings(page, {
       onConnect: () => ({
         status: 500,
@@ -237,7 +237,7 @@ test.describe('Settings connectors auth happy path', () => {
     await expect(githubCard.getByRole('button', { name: 'Connect' })).toBeVisible();
   });
 
-  test('clears the inline error when the user retries and the connector succeeds', async ({ page }) => {
+  test('[P0] clears the inline error when the user retries and the connector succeeds', async ({ page }) => {
     let connectAttempts = 0;
     const dialog = await openConnectorsSettings(page, {
       onConnect: () => {
@@ -276,7 +276,7 @@ test.describe('Settings connectors auth happy path', () => {
     await expect(dialog.getByText('Composio provider is not configured')).toHaveCount(0);
   });
 
-  test('switches from Connect to Disconnect on success, then returns to Connect after a successful disconnect', async ({ page }) => {
+  test('[P0] switches from Connect to Disconnect on success, then returns to Connect after a successful disconnect', async ({ page }) => {
     let disconnectRequests = 0;
     const dialog = await openConnectorsSettings(page, {
       onConnect: () => ({
