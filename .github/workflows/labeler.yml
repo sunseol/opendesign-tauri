@@ -1,0 +1,31 @@
+name: labeler
+
+# Auto-applies the `tutorials` label to PRs that touch the tutorials content
+# directory, so tutorial review and digest workflows can list community tutorial
+# contributions without manually scanning every PR.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  # actions/labeler needs issue-label write to create the `tutorials` label if
+  # it does not yet exist before applying it.
+  issues: write
+
+concurrency:
+  group: labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    if: github.repository == 'sunseol/opendesign-tauri'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          # Keep the `tutorials` label in sync with the live diff: remove it if a
+          # PR no longer touches the tutorials content dir, so the query never
+          # lists stale, non-tutorial PRs.
+          sync-labels: true

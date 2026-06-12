@@ -1,0 +1,59 @@
+name: Submit a tutorial
+description: Share an Open Design Tauri tutorial video for review.
+title: "[Tutorial]: "
+labels: ["tutorials"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Made or found a useful Open Design Tauri tutorial on YouTube? Share the video link below. A maintainer can review it and decide whether it belongs in the tutorials catalog.
+
+  - type: input
+    id: video_url
+    attributes:
+      label: YouTube video URL
+      description: Paste the full link, e.g. https://www.youtube.com/watch?v=XXXXXXXXXXX
+      placeholder: https://www.youtube.com/watch?v=...
+    validations:
+      required: true
+
+  - type: input
+    id: author
+    attributes:
+      label: Creator / channel name
+      description: Who made the video? Leave blank to use the YouTube channel name.
+      placeholder: e.g. Your channel name
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Pick the closest fit. A maintainer can adjust it later.
+      options:
+        - Getting started
+        - Tutorial
+        - Demo
+        - Review
+        - Community
+      default: 1
+    validations:
+      required: false
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What does it cover?
+      description: One or two sentences on what the video shows.
+      placeholder: A quick walkthrough of installing Open Design Tauri and shipping a first design.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This video is actually about Open Design, the Tauri migration fork, or compatible Open Design workflows.
+          required: true

@@ -1,0 +1,5 @@
+# Auto-label PRs that contribute a tutorial entry, so tutorial review and
+# digest workflows can surface community tutorial contributions.
+tutorials:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/landing-page/app/content/tutorials/**'
