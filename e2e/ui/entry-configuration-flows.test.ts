@@ -185,7 +185,7 @@ test('[P1] live artifact empty connector CTA opens the gated connector setup pat
   await expect(page.getByTestId('connectors-search-input')).toBeDisabled();
 });
 
-test('connectors search supports empty results and keyboard-closeable details', async ({ page }) => {
+test('[P2] connectors search supports empty results and keyboard-closeable details', async ({ page }) => {
   await routeConnectors(page, CONNECTORS);
   await routeComposioConfig(page, { configured: true, apiKeyTail: '1234' });
   await page.addInitScript((key) => {

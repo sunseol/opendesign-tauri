@@ -271,7 +271,7 @@ test('[P1] design systems page is reachable from entry nav and supports search, 
     .toBe('airbnb');
 });
 
-test('entry chrome avoids horizontal overflow on compact desktop width', async ({ page }) => {
+test('[P2] entry chrome avoids horizontal overflow on compact desktop width', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 900 });
   await gotoEntryHome(page);
   await expect(page.locator('.entry-main__topbar')).toBeVisible();
@@ -407,7 +407,7 @@ test('[P0] @critical entry execution pill opens the Local CLI and BYOK switcher 
   await expect(page.getByRole('tab', { name: LOCAL_CLI_LABEL })).toBeVisible();
 });
 
-test('entry help menu exposes community links and topbar routes Use everywhere', async ({ page }) => {
+test('[P2] entry help menu exposes community links and topbar routes Use everywhere', async ({ page }) => {
   await gotoEntryHome(page);
 
   await page.getByTestId('entry-help-trigger').click();
@@ -437,7 +437,7 @@ test('entry help menu exposes community links and topbar routes Use everywhere',
   await expect(menu).toHaveCount(0);
 });
 
-test('home topbar overlays close on outside click, Escape, and Settings open', async ({ page }) => {
+test('[P2] home topbar overlays close on outside click, Escape, and Settings open', async ({ page }) => {
   await gotoEntryHome(page);
 
   const pill = page.getByTestId('inline-model-switcher-chip');
@@ -576,7 +576,7 @@ test('home starters can browse registry and use a starter query from Home', asyn
   await expect(input).toHaveValue('Make a design systems brief.');
 });
 
-test('home starters shows the empty catalog state when no plugins are available', async ({ page }) => {
+test('[P2] home starters shows the empty catalog state when no plugins are available', async ({ page }) => {
   await page.route('**/api/plugins', async (route) => {
     await route.fulfill({
       json: {
@@ -589,7 +589,7 @@ test('home starters shows the empty catalog state when no plugins are available'
   await expect(page.getByTestId('plugins-home-section')).toContainText('Catalog is empty.');
 });
 
-test('home starters search and facet filters narrow the visible gallery', async ({ page }) => {
+test('[P2] home starters search and facet filters narrow the visible gallery', async ({ page }) => {
   await page.route('**/api/plugins', async (route) => {
     await route.fulfill({
       json: {
@@ -633,7 +633,7 @@ test('home starters search and facet filters narrow the visible gallery', async 
   await expect(page.locator('[data-plugin-id="figma-importer"]')).toHaveCount(0);
 });
 
-test('home starters search can enter a no-results state and recover with clear', async ({ page }) => {
+test('[P2] home starters search can enter a no-results state and recover with clear', async ({ page }) => {
   await page.route('**/api/plugins', async (route) => {
     await route.fulfill({
       json: {
@@ -654,7 +654,7 @@ test('home starters search can enter a no-results state and recover with clear',
   await expect(page.locator('[data-plugin-id="deck-writer"]')).toBeVisible();
 });
 
-test('home starters details modal opens from a gallery card and closes on Escape', async ({ page }) => {
+test('[P2] home starters details modal opens from a gallery card and closes on Escape', async ({ page }) => {
   await page.route('**/api/plugins', async (route) => {
     await route.fulfill({
       json: {
@@ -679,7 +679,7 @@ test('home starters details modal opens from a gallery card and closes on Escape
   await expect(dialog).toHaveCount(0);
 });
 
-test('home starters html details modal exposes header actions and closes from the close button', async ({ page }) => {
+test('[P2] home starters html details modal exposes header actions and closes from the close button', async ({ page }) => {
   const htmlPlugin = makeStarterPlugin({
     id: 'html-details-plugin',
     title: 'HTML Details Plugin',

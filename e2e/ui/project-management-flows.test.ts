@@ -283,7 +283,7 @@ test('[P1] home design card deletion supports cancel and confirm flows', async (
   expect(response.status()).toBe(404);
 });
 
-test('home designs view toggle switches between grid and kanban and persists', async ({ page }) => {
+test('[P2] home designs view toggle switches between grid and kanban and persists', async ({ page }) => {
   const projectName = `Home view toggle flow ${Date.now()}`;
   await page.goto('/');
   await createProject(page, projectName);
@@ -358,7 +358,7 @@ test('[P1] home designs search filters projects and recovers from no results', a
   );
 });
 
-test('projects sub tabs switch between Recent and Your designs ordering', async ({ page }) => {
+test('[P2] projects sub tabs switch between Recent and Your designs ordering', async ({ page }) => {
   const now = Date.now();
   const projects = [
     makeProjectsTabProject({
@@ -538,7 +538,7 @@ test('[P1] projects kanban cards open projects and support delete cancel and con
   expect(response.status()).toBe(404);
 });
 
-test('projects page shows the empty state when there are no projects', async ({ page }) => {
+test('[P2] projects page shows the empty state when there are no projects', async ({ page }) => {
   await page.route('**/api/projects', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ json: { projects: [] } });
@@ -555,7 +555,7 @@ test('projects page shows the empty state when there are no projects', async ({ 
   await expect(page.locator('.design-kanban-board')).toHaveCount(0);
 });
 
-test('projects page shows the no-results state and recovers when search is cleared', async ({ page }) => {
+test('[P2] projects page shows the no-results state and recovers when search is cleared', async ({ page }) => {
   const projects = [
     makeProjectsTabProject({
       id: 'proj-search-1',
@@ -590,7 +590,7 @@ test('projects page shows the no-results state and recovers when search is clear
   await expect(homeDesignCard(page, 'Searchable Prototype')).toBeVisible();
 });
 
-test('projects grid overflow menu closes on outside click and Escape', async ({ page }) => {
+test('[P2] projects grid overflow menu closes on outside click and Escape', async ({ page }) => {
   const projects = [
     makeProjectsTabProject({
       id: 'proj-menu-1',
@@ -630,7 +630,7 @@ test('projects grid overflow menu closes on outside click and Escape', async ({ 
   await expect(menu).toHaveCount(0);
 });
 
-test('projects kanban view groups cards into status columns', async ({ page }) => {
+test('[P2] projects kanban view groups cards into status columns', async ({ page }) => {
   const now = Date.now();
   const projects = [
     makeProjectsTabProject({
@@ -791,7 +791,7 @@ test('[P1] projects page shows live artifact cards, supports search, and opens t
   await expect(page.getByTestId('project-title')).toContainText('Orbit Daily Digest');
 });
 
-test('change pet opens pet settings and updates the custom companion draft', async ({ page }) => {
+test('[P2] change pet opens pet settings and updates the custom companion draft', async ({ page }) => {
   await seedAdoptedPet(page);
   await page.route('**/api/codex-pets', async (route) => {
     await route.fulfill({ json: { pets: [], rootDir: '' } });

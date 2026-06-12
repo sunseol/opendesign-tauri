@@ -145,7 +145,7 @@ const THEMES: Theme[] = ['dark', 'light'];
 
 test.describe('Settings hover contrast (regression guard for #1795)', () => {
   for (const theme of THEMES) {
-    test(`Pets source tabs hover stays readable in ${theme} theme`, async ({ page }) => {
+    test(`[P2] Pets source tabs hover stays readable in ${theme} theme`, async ({ page }) => {
       await openSettings(page, theme);
       const petsNav = page
         .locator('.settings-nav-item', { has: page.locator('strong', { hasText: /^Pets$/i }) })
@@ -164,7 +164,7 @@ test.describe('Settings hover contrast (regression guard for #1795)', () => {
       ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
     });
 
-    test(`seg-btn surfaces (BYOK / Appearance / Notifications) hover stays readable in ${theme} theme`, async ({
+    test(`[P2] seg-btn surfaces (BYOK / Appearance / Notifications) hover stays readable in ${theme} theme`, async ({
       page,
     }) => {
       await openSettings(page, theme);
