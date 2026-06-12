@@ -1,3 +1,6 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { amrVelaProfileEnv } from '../integrations/vela-profile.js';
 import { expandConfiguredEnv } from './paths.js';
 
 type RuntimeEnvMap = NodeJS.ProcessEnv | Record<string, string>;
@@ -37,6 +40,24 @@ export function spawnEnvForAgent(
     ...baseEnv,
     ...expandConfiguredEnv(configuredEnv),
   };
+  if (agentId === 'amr') {
+    Object.assign(env, amrVelaProfileEnv(env));
+    if (!env.HOME?.trim()) {
+      const home = homedir();
+      if (home) env.HOME = home;
+    }
+    if (!env.AMR_CLIENT_SOURCE?.trim()) {
+      env.AMR_CLIENT_SOURCE = 'open_design';
+    }
+    if (!env.OPENCODE_TEST_HOME?.trim() && env.OD_DATA_DIR?.trim()) {
+      env.OPENCODE_TEST_HOME = join(
+        env.OD_DATA_DIR.trim(),
+        'amr',
+        'opencode-home',
+      );
+    }
+    return env;
+  }
   if (agentId === 'opencode') {
     stripKeysCaseInsensitive(env, [
       'OPENCODE',
@@ -61,6 +82,30 @@ export function spawnEnvForAgent(
     return env;
   }
   return env;
+}
+
+export function openDesignAmrTraceEnv(input: {
+  agentId: string;
+  runId: string;
+  conversationId?: string | null;
+  runAttempt: number;
+}): NodeJS.ProcessEnv {
+  if (input.agentId !== 'amr') return {};
+
+  const runId = input.runId.trim();
+  if (!runId) {
+    throw new Error('OPEN_DESIGN_RUN_ID requires a non-empty run id for AMR runs');
+  }
+  if (!Number.isFinite(input.runAttempt) || input.runAttempt < 0) {
+    throw new Error('OPEN_DESIGN_RUN_ATTEMPT requires a non-negative finite attempt index');
+  }
+
+  const conversationId = input.conversationId?.trim();
+  return {
+    OPEN_DESIGN_RUN_ID: runId,
+    OPEN_DESIGN_RUN_ATTEMPT: String(Math.floor(input.runAttempt)),
+    ...(conversationId ? { OPEN_DESIGN_SESSION_ID: conversationId } : {}),
+  };
 }
 
 // Remove `secretKeys` from `env` unless `baseUrlKey` is set to a non-empty

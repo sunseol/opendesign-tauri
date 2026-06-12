@@ -266,6 +266,15 @@ describe('app-config', () => {
             CODEX_BIN: '~/bin/codex-next',
             OPENAI_API_KEY: '  sk-proxy-openai  ',
           },
+          amr: {
+            VELA_BIN: '  ~/bin/vela  ',
+            VELA_LINK_URL: '  https://openrouter.example/v1  ',
+            VELA_RUNTIME_KEY: '  rt-amr-secret  ',
+            VELA_OPENCODE_BIN: '  ~/bin/opencode  ',
+            OPEN_DESIGN_AMR_PROFILE: '  local  ',
+            OPENCODE_TEST_HOME: '  ~/.cache/open-design/amr-opencode  ',
+            AMR_CLIENT_SOURCE: 'should-not-persist',
+          },
           'trae-cli': {
             TRAE_CLI_BIN: '  ~/bin/traecli-public  ',
           },
@@ -283,6 +292,14 @@ describe('app-config', () => {
       expect(cfg.agentCliEnv).toEqual({
         claude: { CLAUDE_CONFIG_DIR: '~/.claude-2', ANTHROPIC_API_KEY: 'sk-proxy-anthropic' },
         codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next', OPENAI_API_KEY: 'sk-proxy-openai' },
+        amr: {
+          VELA_BIN: '~/bin/vela',
+          VELA_LINK_URL: 'https://openrouter.example/v1',
+          VELA_RUNTIME_KEY: 'rt-amr-secret',
+          VELA_OPENCODE_BIN: '~/bin/opencode',
+          OPEN_DESIGN_AMR_PROFILE: 'local',
+          OPENCODE_TEST_HOME: '~/.cache/open-design/amr-opencode',
+        },
         'trae-cli': { TRAE_CLI_BIN: '~/bin/traecli-public' },
       });
     });

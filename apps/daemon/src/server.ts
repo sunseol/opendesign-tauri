@@ -33,6 +33,7 @@ import {
   detectAgents,
   getAgentDef,
   isKnownModel,
+  openDesignAmrTraceEnv,
   applyAgentLaunchEnv,
   resolveAgentLaunch,
   sanitizeCustomModel,
@@ -10216,6 +10217,12 @@ export async function startServer({
           configuredAgentEnv,
         ),
         ...odMediaEnv,
+        ...openDesignAmrTraceEnv({
+          agentId: def.id,
+          runId: run.id,
+          conversationId: run.conversationId,
+          runAttempt: 0,
+        }),
         // OpenCode external-MCP injection (issue #2142). Layered AFTER
         // spawnEnvForAgent / odMediaEnv / configuredAgentEnv so the
         // daemon-built MCP config wins over a stale value the user
