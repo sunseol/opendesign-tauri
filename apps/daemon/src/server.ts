@@ -153,6 +153,7 @@ import {
 } from './memory-connectors.js';
 import { attachAcpSession } from './acp.js';
 import { attachPiRpcSession } from './pi-rpc.js';
+import { stageAmrImagePaths } from './amr-image-staging.js';
 import {
   applyAutomationProposal,
   createAutomationProposal,
@@ -1853,6 +1854,10 @@ async function copyPluginContextDir(src, dest, rootReal) {
 
 function shouldSkipPluginContextEntry(name) {
   return PLUGIN_CONTEXT_SKIP_DIRS.has(name) || PLUGIN_CONTEXT_SKIP_FILES.has(name);
+}
+
+export function selectPromptImagePaths(agentId, safeImages, amrStagedImages) {
+  return agentId === 'amr' ? amrStagedImages : safeImages;
 }
 
 async function ensureGhReady() {
@@ -9465,6 +9470,10 @@ export async function startServer({
         resolved.startsWith(UPLOAD_DIR + path.sep) && fs.existsSync(resolved)
       );
     });
+    const amrStagedImages =
+      def.id === 'amr'
+        ? await stageAmrImagePaths(cwd ?? PROJECT_ROOT, safeImages, UPLOAD_DIR)
+        : safeImages;
 
     // Project-scoped attachments: project-relative paths inside cwd. Each
     // is run through the same path-traversal guard the file CRUD endpoints
@@ -9723,6 +9732,11 @@ export async function startServer({
     // guard while preserving the single-user-message shape expected by agent CLIs.
     const ECHO_GUARD =
       '\n\n(Do not quote, restate, or echo the # Instructions block above in your reply. Begin your response with the answer to the # User request below.)';
+    const promptImagePaths = selectPromptImagePaths(
+      def.id,
+      safeImages,
+      amrStagedImages,
+    );
     const composed = [
       instructionPrompt
         ? `# Instructions (read first)\n\n${instructionPrompt}${cwdHint}${linkedDirsHint}${ECHO_GUARD}\n\n---\n`
@@ -9732,8 +9746,8 @@ export async function startServer({
             ? `# Instructions${linkedDirsHint}${ECHO_GUARD}\n\n---\n`
             : '',
       `# User request\n\n${userRequestPrompt}${attachmentHint}${commentHint}`,
-      safeImages.length
-        ? `\n\n${safeImages.map((p) => `@${p}`).join(' ')}`
+      promptImagePaths.length
+        ? `\n\n${promptImagePaths.map((p) => `@${p}`).join(' ')}`
         : '',
     ].join('');
     // Per-agent model + reasoning the user picked in the model menu.
@@ -10693,7 +10707,7 @@ export async function startServer({
             send(channel, payload);
           }
         },
-        imagePaths: def.supportsImagePaths ? safeImages : [],
+        imagePaths: def.supportsImagePaths ? amrStagedImages : [],
         uploadRoot: UPLOAD_DIR,
       });
     } else if (def.streamFormat === 'acp-json-rpc') {
@@ -10703,6 +10717,7 @@ export async function startServer({
         prompt: composed,
         cwd: effectiveCwd,
         model: safeModel,
+        imagePaths: def.supportsImagePaths ? amrStagedImages : [],
         mcpServers,
         envFormat: def.acpMcpEnvFormat ?? 'array',
         send: (event, data) => {
@@ -10710,6 +10725,7 @@ export async function startServer({
           if (event === 'error') flushVisibleAgentStderr();
           send(event, data);
         },
+        ...(def.id === 'amr' ? { modelUnavailableErrorCode: 'AMR_MODEL_UNAVAILABLE' } : {}),
         ...(acpStageTimeoutMs !== undefined ? { stageTimeoutMs: acpStageTimeoutMs } : {}),
       });
     } else if (def.streamFormat === 'json-event-stream') {

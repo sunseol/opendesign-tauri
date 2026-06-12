@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
+import os from 'node:os';
 import { PassThrough } from 'node:stream';
 import path from 'node:path';
 import { test, vi } from 'vitest';
@@ -237,6 +239,39 @@ test('attachAcpSession keeps legacy session/set_model when no model config optio
   assert.equal(requests.some((entry) => entry.method === 'session/set_config_option'), false);
 });
 
+test('attachAcpSession includes image attachments as ACP resource links', () => {
+  const child = new FakeAcpChild();
+  const writes: string[] = [];
+  child.stdin.on('data', (chunk) => writes.push(String(chunk)));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-acp-image-'));
+  const imagePath = path.join(tmpDir, 'screenshot.png');
+  fs.writeFileSync(imagePath, 'png');
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'describe this image',
+    cwd: '/tmp/od-project',
+    model: null,
+    imagePaths: [imagePath],
+    mcpServers: [],
+    send: () => {},
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpResult(child, 3, {});
+
+  const requests = parseRpcWrites(writes);
+  const promptRequest = requests.find((entry) => entry.method === 'session/prompt');
+  assert.deepEqual(promptRequest?.params, {
+    sessionId: 'session-1',
+    prompt: [
+      { type: 'text', text: 'describe this image' },
+      { type: 'resource_link', uri: imagePath },
+    ],
+  });
+});
+
 test('attachAcpSession suppresses raw artifact markup from message chunks', () => {
   const child = new FakeAcpChild();
   const events: Array<{ event: string; payload: unknown }> = [];
@@ -297,6 +332,66 @@ test('attachAcpSession suppresses split raw artifact open tags', () => {
   assert.deepEqual(textDeltas(events), ['Done\n\n', 'Tail']);
 });
 
+test('attachAcpSession converts cumulative ACP message snapshots into deltas', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'describe the project',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Open Design' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Open Design - visual agent workspace' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Open Design - visual agent workspace' },
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  assert.deepEqual(textDeltas(events), ['Open Design', ' - visual agent workspace']);
+});
+
+test('attachAcpSession keeps incremental ACP message chunks unchanged', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'describe the project',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Open Design' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: ' - visual agent workspace' },
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  assert.deepEqual(textDeltas(events), ['Open Design', ' - visual agent workspace']);
+});
+
 test('attachAcpSession exposes abort and sends session cancel after session creation', () => {
   const child = new FakeAcpChild();
   const writes: string[] = [];
@@ -339,6 +434,10 @@ function writeAcpResult(child: FakeAcpChild, id: number, result: unknown): void 
   child.stdout.write(`${JSON.stringify({ id, result })}\n`);
 }
 
+function writeAcpError(child: FakeAcpChild, id: number, error: unknown): void {
+  child.stdout.write(`${JSON.stringify({ id, error })}\n`);
+}
+
 function writeAcpUpdate(child: FakeAcpChild, update: unknown): void {
   child.stdout.write(`${JSON.stringify({ method: 'session/update', params: { update } })}\n`);
 }
@@ -360,6 +459,162 @@ function textDeltas(events: Array<{ event: string; payload: unknown }>): unknown
     })
     .map((entry) => (entry.payload as { delta?: unknown }).delta);
 }
+
+test('attachAcpSession accepts pretty-printed ACP startup responses', () => {
+  const child = new FakeAcpChild();
+  const writes: string[] = [];
+  const events: Array<{ event: string; payload: unknown }> = [];
+  child.stdin.on('data', (chunk) => writes.push(String(chunk)));
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  child.stdout.write('{\n  "id": 1,\n  "result":\n  {}\n}\n');
+  child.stdout.write('{\n  "id": 2,\n  "result":\n  {\n    "sessionId": "session-1"\n  }\n}\n');
+
+  const methods = parseRpcWrites(writes)
+    .map((entry) => entry.method)
+    .filter(Boolean);
+  assert.deepEqual(methods, ['initialize', 'session/new', 'session/prompt']);
+  assert.equal(events.some((entry) => entry.event === 'error'), false);
+});
+
+test('attachAcpSession recovers when bracket-prefixed logs precede JSON frames', () => {
+  const child = new FakeAcpChild();
+  const writes: string[] = [];
+  const events: Array<{ event: string; payload: unknown }> = [];
+  child.stdin.on('data', (chunk) => writes.push(String(chunk)));
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  child.stdout.write('[vela] starting OpenCode bridge\n');
+  writeAcpResult(child, 1, {});
+  child.stdout.write('{not json but looks like an object log\n');
+  child.stdout.write('more startup text after the bad object log\n');
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+
+  const methods = parseRpcWrites(writes)
+    .map((entry) => entry.method)
+    .filter(Boolean);
+  assert.deepEqual(methods, ['initialize', 'session/new', 'session/prompt']);
+  assert.equal(events.some((entry) => entry.event === 'error'), false);
+});
+
+test('attachAcpSession does not fail a tool-only AMR turn that emits no assistant text', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'change all card backgrounds to gray',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    modelUnavailableErrorCode: 'AMR_MODEL_UNAVAILABLE',
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'tool_call',
+    toolCallId: 'tc-1',
+    title: 'edit',
+    status: 'pending',
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'tc-1',
+    status: 'completed',
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  const errorEvents = events.filter((entry) => entry.event === 'error');
+  assert.deepEqual(errorEvents, []);
+});
+
+test('attachAcpSession still fails an AMR turn that produces no text and no tool calls', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'do something',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    modelUnavailableErrorCode: 'AMR_MODEL_UNAVAILABLE',
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpResult(child, 3, {});
+
+  const errorEvents = events.filter((entry) => entry.event === 'error');
+  assert.equal(errorEvents.length, 1);
+  assert.match(
+    (errorEvents[0]?.payload as { message?: string }).message ?? '',
+    /without producing any assistant text/,
+  );
+});
+
+test('attachAcpSession preserves structured OpenCode session error details from ACP failures', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  const details = {
+    kind: 'opencode_session_error',
+    source: 'opencode',
+    message: 'Not Found',
+    statusCode: 404,
+    retryable: false,
+    url: 'https://example.invalid/v1/chat/completions',
+    suggestion: 'Check the configured AMR Link URL or model route.',
+  };
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpError(child, 3, {
+    code: -32600,
+    message: 'OpenCode session failed: Not Found',
+    data: details,
+  });
+
+  const errorEvents = events.filter((entry) => entry.event === 'error');
+  assert.equal(errorEvents.length, 1);
+  assert.deepEqual(errorEvents[0]?.payload, {
+    message: 'json-rpc id 3: OpenCode session failed: Not Found',
+    error: {
+      code: 'AGENT_EXECUTION_FAILED',
+      message: 'json-rpc id 3: OpenCode session failed: Not Found',
+      retryable: false,
+      details,
+    },
+  });
+});
 
 test('attachAcpSession force-terminates the child after a clean prompt completion if it does not exit on stdin.end()', async () => {
   vi.useFakeTimers();
