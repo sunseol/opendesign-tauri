@@ -23,6 +23,13 @@ on:
         required: true
         type: boolean
         default: false
+      desktop_runtime:
+        description: "Desktop runtime to package for beta artifacts."
+        required: true
+        type: choice
+        options:
+          - tauri
+        default: tauri
 permissions:
   actions: write
   contents: read
