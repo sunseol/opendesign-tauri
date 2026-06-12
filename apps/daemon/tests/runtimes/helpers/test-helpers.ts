@@ -89,6 +89,7 @@ export const qwen = requireAgent('qwen');
 export const opencode = requireAgent('opencode');
 export const reasonix = requireAgent('reasonix');
 export const aider = requireAgent('aider');
+export const amr = requireAgent('amr');
 export const deepseekMaxPromptArgBytes = (() => {
   assert.ok(
     deepseek.maxPromptArgBytes !== undefined,

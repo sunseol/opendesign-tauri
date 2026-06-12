@@ -119,6 +119,7 @@ test('inspectAgentExecutableResolution reports configured and PATH Codex binarie
 test('resolveAgentExecutable supports configured binary overrides for non-Codex adapters', () => {
   const cases: Array<[string, string, string]> = [
     ['aider', 'aider', 'AIDER_BIN'],
+    ['amr', 'vela', 'VELA_BIN'],
     ['claude', 'claude', 'CLAUDE_BIN'],
     ['gemini', 'gemini', 'GEMINI_BIN'],
     ['opencode', 'opencode', 'OPENCODE_BIN'],
