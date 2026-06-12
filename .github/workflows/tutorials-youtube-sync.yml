@@ -44,10 +44,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Discover candidates and post Feishu digest
         working-directory: apps/landing-page
@@ -62,7 +60,7 @@ jobs:
           DAYS_OVERRIDE: ${{ github.event.inputs.days }}
         run: |
           if [ -n "$DAYS_OVERRIDE" ]; then
-            npx --yes tsx@4.22.3 scripts/youtube-tutorials/notify-candidates.ts --days "$DAYS_OVERRIDE"
+            pnpm exec tsx scripts/youtube-tutorials/notify-candidates.ts --days "$DAYS_OVERRIDE"
           else
-            npx --yes tsx@4.22.3 scripts/youtube-tutorials/notify-candidates.ts
+            pnpm exec tsx scripts/youtube-tutorials/notify-candidates.ts
           fi
