@@ -1891,6 +1891,27 @@ a.avatar-item:visited {
   gap: 10px;
 }
 .chat-error-text { min-width: 0; }
+.chat-error-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+.chat-error-action {
+  flex: 0 0 auto;
+  border: 1px solid var(--red-border);
+  background: var(--red);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chat-error-action:hover {
+  filter: brightness(0.95);
+}
 .chat-error-retry {
   flex: 0 0 auto;
   border-color: var(--red-border);

@@ -6,11 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatPane, retryableAssistantMessage } from '../../src/components/ChatPane';
 import { DESIGN_SYSTEM_WORKSPACE_PROMPT_PREFIX } from '../../src/design-system-auto-prompt';
+import { startVelaLogin } from '../../src/providers/daemon';
 import { RESUME_CONTINUE_PROMPT } from '../../src/runtime/resume';
 import type { ChatMessage, Conversation, ProjectMetadata } from '../../src/types';
 
 const translations: Record<string, string> = {
   'chat.resumeRunCta': 'Continue the run',
+  'chat.amrError.authMessage': 'AMR sign-in is required. Sign in to AMR Cloud, then retry this run.',
+  'chat.amrError.balanceMessage': 'AMR Cloud reported insufficient balance for this model. Recharge your AMR wallet, then retry this run.',
+  'chat.amrError.authorizeCta': 'Sign in to AMR',
+  'chat.amrError.rechargeCta': 'Recharge AMR',
   'promptTemplates.retry': 'Retry',
   'chat.queuedHeader': 'Queued',
   'chat.queuedToSend': 'to Send',
@@ -48,6 +53,10 @@ vi.mock('../../src/components/ChatComposer', () => ({
   )),
 }));
 
+vi.mock('../../src/providers/daemon', () => ({
+  startVelaLogin: vi.fn(async () => ({ ok: true, status: 200 })),
+}));
+
 class MockResizeObserver {
   static instances: MockResizeObserver[] = [];
 
@@ -77,6 +86,7 @@ class MockResizeObserver {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   MockResizeObserver.instances = [];
   window.sessionStorage.clear();
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
@@ -186,6 +196,111 @@ describe('ChatPane streaming state', () => {
 
     expect(onRetry).not.toHaveBeenCalled();
     expect(onSend).toHaveBeenCalledWith(RESUME_CONTINUE_PROMPT, [], []);
+  });
+
+  it('uses persisted AMR auth errors to start Vela login', () => {
+    const messages: ChatMessage[] = [
+      { id: 'user-1', role: 'user', content: 'Use AMR', createdAt: 0 },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '',
+        createdAt: 1,
+        runStatus: 'failed',
+        agentId: 'amr',
+        events: [
+          {
+            kind: 'status',
+            label: 'error',
+            detail: 'raw auth failure',
+            code: 'AMR_AUTH_REQUIRED',
+          },
+        ],
+      },
+    ];
+
+    render(
+      <ChatPane
+        messages={messages}
+        streaming={false}
+        error={null}
+        projectId="project-1"
+        currentAgentId="amr"
+        projectFiles={[]}
+        onEnsureProject={async () => 'project-1'}
+        onSend={vi.fn()}
+        onRetry={vi.fn()}
+        onStop={vi.fn()}
+        conversations={conversations}
+        activeConversationId="conv-1"
+        onSelectConversation={vi.fn()}
+        onDeleteConversation={vi.fn()}
+        projectMetadata={projectMetadata}
+      />,
+    );
+
+    expect(screen.getByText('AMR sign-in is required. Sign in to AMR Cloud, then retry this run.')).toBeTruthy();
+    expect(screen.queryByText('raw auth failure')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to AMR' }));
+
+    expect(startVelaLogin).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the sourced AMR wallet and keeps retry for balance errors', () => {
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    const onRetry = vi.fn();
+    const failed: ChatMessage = {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      createdAt: 1,
+      runStatus: 'failed',
+      agentId: 'amr',
+      events: [
+        {
+          kind: 'status',
+          label: 'error',
+          detail: 'insufficient wallet balance',
+          code: 'AMR_INSUFFICIENT_BALANCE',
+        },
+      ],
+    };
+
+    render(
+      <ChatPane
+        messages={[
+          { id: 'user-1', role: 'user', content: 'Use AMR', createdAt: 0 },
+          failed,
+        ]}
+        streaming={false}
+        error={null}
+        projectId="project-1"
+        currentAgentId="amr"
+        projectFiles={[]}
+        onEnsureProject={async () => 'project-1'}
+        onSend={vi.fn()}
+        onRetry={onRetry}
+        onStop={vi.fn()}
+        conversations={conversations}
+        activeConversationId="conv-1"
+        onSelectConversation={vi.fn()}
+        onDeleteConversation={vi.fn()}
+        projectMetadata={projectMetadata}
+      />,
+    );
+
+    expect(screen.getByText('AMR Cloud reported insufficient balance for this model. Recharge your AMR wallet, then retry this run.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Recharge AMR' }));
+    expect(open).toHaveBeenCalledWith(
+      'https://open-design.ai/amr/wallet?source=open_design',
+      '_blank',
+      'noopener,noreferrer',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledWith(failed);
   });
 
   it('summarizes auto-sent design-system workspace prompts', () => {

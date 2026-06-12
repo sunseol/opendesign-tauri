@@ -4,7 +4,9 @@ import { trackChatPanelClick } from '../analytics/events';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
+import { startVelaLogin } from '../providers/daemon';
 import { projectRawUrl } from '../providers/registry';
+import { amrRechargeUrlForProfile, resolveRunFailureUi } from '../runtime/amr-guidance';
 import { RESUME_CONTINUE_PROMPT } from '../runtime/resume';
 import type { TodoItem } from '../runtime/todos';
 import type { AppliedPluginSnapshot } from '@open-design/contracts';
@@ -437,6 +439,20 @@ export function ChatPane({
     ? `od:chat-composer:draft:${projectId}:${activeConversationId}`
     : undefined;
   const retryAssistant = retryableAssistantMessage(messages, lastAssistantId, streaming);
+  const failedRunErrorEvent = (() => {
+    const events = retryAssistant?.events ?? [];
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (event?.kind === 'status' && event.label === 'error') return event;
+    }
+    return null;
+  })();
+  const runFailureUi = retryAssistant
+    ? resolveRunFailureUi(failedRunErrorEvent?.code, retryAssistant.agentId)
+    : null;
+  const displayError = runFailureUi?.messageKey
+    ? t(runFailureUi.messageKey)
+    : error ?? failedRunErrorEvent?.detail ?? null;
   const canContinueRun =
     !!retryAssistant?.resumable &&
     (!retryAssistant.agentId || retryAssistant.agentId === currentAgentId);
@@ -1011,9 +1027,9 @@ export function ChatPane({
                   </Fragment>
                 );
               })}
-              {error ? (
+              {displayError ? (
                 <div className="msg error">
-                  <span className="chat-error-text">{error}</span>
+                  <span className="chat-error-text">{displayError}</span>
                   {retryAssistant && canContinueRun ? (
                     <button
                       type="button"
@@ -1028,14 +1044,50 @@ export function ChatPane({
                     >
                       {t('chat.resumeRunCta')}
                     </button>
-                  ) : retryAssistant && onRetry ? (
-                    <button
-                      type="button"
-                      className="ghost chat-error-retry"
-                      onClick={() => onRetry(retryAssistant)}
-                    >
-                      {t('promptTemplates.retry')}
-                    </button>
+                  ) : retryAssistant ? (
+                    <span className="chat-error-actions">
+                      {runFailureUi?.primaryAction === 'authorize' ? (
+                        <button
+                          type="button"
+                          className="chat-error-action"
+                          onClick={() => {
+                            void startVelaLogin().then((result) => {
+                              if (!result.ok) onOpenSettings?.();
+                            });
+                          }}
+                        >
+                          {t('chat.amrError.authorizeCta')}
+                        </button>
+                      ) : null}
+                      {runFailureUi?.primaryAction === 'recharge' ? (
+                        <button
+                          type="button"
+                          className="chat-error-action"
+                          onClick={() => {
+                            window.open(
+                              amrRechargeUrlForProfile(null),
+                              '_blank',
+                              'noopener,noreferrer',
+                            );
+                          }}
+                        >
+                          {t('chat.amrError.rechargeCta')}
+                        </button>
+                      ) : null}
+                      {onRetry && (
+                        !runFailureUi ||
+                        runFailureUi.primaryAction === 'retry' ||
+                        runFailureUi.secondaryRetry
+                      ) ? (
+                        <button
+                          type="button"
+                          className="ghost chat-error-retry"
+                          onClick={() => onRetry(retryAssistant)}
+                        >
+                          {t('promptTemplates.retry')}
+                        </button>
+                      ) : null}
+                    </span>
                   ) : null}
                 </div>
               ) : null}

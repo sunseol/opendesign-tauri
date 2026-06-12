@@ -1588,6 +1588,10 @@ export interface Dict {
   'chat.newConversationsTitle': string;
   'chat.resumeConversation': string;
   'chat.resumeRunCta': string;
+  'chat.amrError.authMessage': string;
+  'chat.amrError.balanceMessage': string;
+  'chat.amrError.authorizeCta': string;
+  'chat.amrError.rechargeCta': string;
   'chat.conversationsHeading': string;
   'chat.new': string;
   'chat.emptyConversations': string;
