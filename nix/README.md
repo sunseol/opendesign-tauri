@@ -220,18 +220,25 @@ Never inline a secret with `pkgs.writeText` or `home.file`.
 
 ## First-build hash pinning
 
-`nix/pnpm-deps.nix` is the single source of truth for the vendored pnpm
-store hash used by both `nix/package-daemon.nix` and
-`nix/package-web.nix`. If `pnpm-lock.yaml` changes, run:
+`nix/pnpm-deps.nix` is the generated source of truth for the vendored pnpm
+store hash used by `nix/package-daemon.nix` and `nix/package-web.nix`.
+Treat it like a lock artifact, not a hand-edited source file. If
+`pnpm-lock.yaml` changes and you are intentionally maintaining the Nix
+packaging, run:
 
 ```bash
 pnpm nix:update-hash
 ```
 
-The script temporarily swaps one consumer to `lib.fakeHash`, runs
-`nix build .#web --print-build-logs`, extracts the expected hash from the
-failure output, writes it back into `nix/pnpm-deps.nix`, and restores the
-consumer file.
+The script temporarily swaps the matching consumer to `lib.fakeHash`, runs
+`nix build .#<consumer> --print-build-logs`, extracts the expected hash
+from the failure output, writes it back into `nix/pnpm-deps.nix`, and
+restores the consumer file. It supports both the current Tauri fork's
+single shared `hash` field and upstream's split `daemonHash` / `webHash`
+fields, so a later source-filtered Nix packaging pass can reuse the same
+maintenance command after the new fixed-output hashes are computed. The
+script runs via `node --experimental-strip-types`, so CI can invoke it
+without first installing the workspace.
 
 ## CI
 
