@@ -125,6 +125,8 @@ const residualAllowedExactPaths = new Set([
   "apps/web/public/od-notifications-sw.js",
   // PostCSS loads Tailwind through a web-local .mjs compatibility config entry.
   "apps/web/postcss.config.mjs",
+  // Subprocess fixture executed directly through spawn() to cover Vela CLI login behavior.
+  "apps/daemon/tests/fixtures/fake-vela.mjs",
   "scripts/bake-html-ppt-examples.mjs",
   "scripts/scaffold-html-ppt-skills.mjs",
   "scripts/sync-hyperframes-skill.mjs",

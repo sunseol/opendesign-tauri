@@ -380,6 +380,7 @@ import { registerConnectorRoutes } from './connectors/routes.js';
 import { registerActiveContextRoutes } from './active-context-routes.js';
 import { registerHostToolsRoutes } from './host-tools-routes.js';
 import { registerMcpRoutes } from './mcp-routes.js';
+import { registerVelaRoutes } from './vela-routes.js';
 import { registerXaiRoutes } from './xai-routes.js';
 import { registerLiveArtifactRoutes } from './live-artifact-routes.js';
 import { registerDesignSystemToolRoutes } from './design-system-tool-routes.js';
@@ -4600,6 +4601,11 @@ export async function startServer({
   registerXaiRoutes(app, {
     http: httpDeps,
     paths: pathDeps,
+  });
+  registerVelaRoutes(app, {
+    http: httpDeps,
+    paths: pathDeps,
+    appConfig: appConfigDeps,
   });
   // Project workspace
   registerActiveContextRoutes(app, {
