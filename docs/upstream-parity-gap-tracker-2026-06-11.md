@@ -42,7 +42,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Release, CI, tools, fixtures | `.github` 88 files, `tools/pack` 87 files, `tools/pr` 20 files, `tools/serve` 10 files | [#12](https://github.com/sunseol/opendesign-tauri/issues/12), [#28](https://github.com/sunseol/opendesign-tauri/issues/28), [#36](https://github.com/sunseol/opendesign-tauri/issues/36), [#45](https://github.com/sunseol/opendesign-tauri/issues/45), [#52](https://github.com/sunseol/opendesign-tauri/issues/52), [#53](https://github.com/sunseol/opendesign-tauri/issues/53) | In progress - tools-serve updater/release fixture parity verified |
 | Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, prompt-stack diagnostics, and deploy docs covered |
 | Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | Not started |
-| Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path covered |
+| Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path and integrity guard covered |
 
 ## Priority Queue
 
@@ -125,5 +125,9 @@ protect against unsafe parity claims.
   `pnpm tools-serve start updater --channel beta --platform win --include-payload`
   smoke now verify deterministic metadata, rangeable installer bytes, checksum
   serving, and payload HEAD responses for packaged-updater testing.
+- Curated data #54 has upstream-identical `data/` assets and a root guard test
+  for contributor/event/card linkage, plugin preview manifest shape, and the
+  documented remote-only preview id set. Runtime/community rendering remains
+  tracked under #23/#47.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.
