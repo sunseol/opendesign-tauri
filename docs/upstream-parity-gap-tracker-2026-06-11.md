@@ -33,7 +33,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - AMR onboarding skeleton, BYOK model persistence, #4080 annotation capture fallback, and #4202 persisted-artifact transcript summaries covered |
 | Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, and sandbox runtime isolation wired |
 | Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle and integrations analytics contract drift covered |
-| Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | Not started |
+| Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - shared React primitive package imported with build/typecheck and root guard coverage |
 | Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | Not started |
 | Plugins and marketplace | `plugins` 596 files | [#5](https://github.com/sunseol/opendesign-tauri/issues/5), [#21](https://github.com/sunseol/opendesign-tauri/issues/21), [#22](https://github.com/sunseol/opendesign-tauri/issues/22), [#47](https://github.com/sunseol/opendesign-tauri/issues/47) | In progress - Hallmark and the #4127 community slide/deck plugin pack are registered with folder-backed marketplace coverage |
 | Skills/templates/prompts | `skills` 94 files, `design-templates` 23 files, `prompt-templates` 5 files | [#49](https://github.com/sunseol/opendesign-tauri/issues/49), [#38](https://github.com/sunseol/opendesign-tauri/issues/38), [#21](https://github.com/sunseol/opendesign-tauri/issues/21) | In progress - community skill-to-plugin slide/deck pack imported; broader skills/templates/prompts parity still open |
@@ -191,6 +191,11 @@ protect against unsafe parity claims.
   clone URLs retained. Docker-backed installer integration and live Helm lint
   remain environment-dependent because Docker, Helm, and ShellCheck are not
   available in this workspace.
+- Shared UI package #44 now has the upstream `@open-design/components`
+  workspace package, including Button, form controls, visually hidden, shared
+  styles, build/typecheck scripts, lockfile importer, and a root guard test for
+  the package contract. App-wide token harmonization and visual smoke coverage
+  remain tracked under #9/#26/#35/#44.
 - Daemon runtime #7 now stages Grok Build prompts through daemon-owned temp
   files for chat runs and Settings connection tests, with cleanup on spawn
   failures, cancellations, critique runs, and child exit. The sensitive PDF
