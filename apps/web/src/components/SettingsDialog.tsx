@@ -54,6 +54,14 @@ import {
   SUGGESTED_MODELS_BY_PROTOCOL,
 } from '../state/apiProtocols';
 import {
+  mergeProviderModelOptions,
+  providerModelsCacheKey,
+} from './providerModelsCache';
+export {
+  mergeProviderModelOptions,
+  providerModelsCacheKey,
+} from './providerModelsCache';
+import {
   MAX_MAX_TOKENS,
   MIN_MAX_TOKENS,
   modelMaxTokensDefault,
@@ -316,20 +324,6 @@ function missingByokModelFetchFields(
   return missing;
 }
 
-export function providerModelsCacheKey(
-  protocol: ApiProtocol,
-  baseUrl: string,
-  apiKey: string,
-  apiVersion = '',
-): string {
-  return [
-    protocol,
-    baseUrl.trim().replace(/\/+$/, ''),
-    apiKey,
-    protocol === 'azure' ? apiVersion.trim() : '',
-  ].join('\n');
-}
-
 function providerConnectionTestKey(
   protocol: ApiProtocol,
   config: Pick<AppConfig, 'apiKey' | 'baseUrl' | 'model' | 'apiVersion'>,
@@ -421,23 +415,6 @@ function cleanAgentVersionLabel(
     .replace(new RegExp(`\\s*\\(${escapedName}\\)\\s*$`, 'i'), '')
     .replace(new RegExp(`\\s+${escapedName}\\s*$`, 'i'), '')
     .trim();
-}
-
-export function mergeProviderModelOptions(
-  fetchedModels: readonly ProviderModelOption[],
-  suggestedModelIds: readonly string[],
-): ProviderModelOption[] {
-  const seen = new Set<string>();
-  const out: ProviderModelOption[] = [];
-  const add = (model: ProviderModelOption) => {
-    const id = model.id.trim();
-    if (!id || seen.has(id)) return;
-    seen.add(id);
-    out.push({ id, label: model.label.trim() || id });
-  };
-  for (const model of fetchedModels) add(model);
-  for (const id of suggestedModelIds) add({ id, label: id });
-  return out;
 }
 
 const AGENT_CLI_ENV_FIELDS = [

@@ -135,6 +135,9 @@ protect against unsafe parity claims.
   selected provider's own model list instead of the broad protocol fallback.
   Stale saved AMR model ids now normalize to the first live AMR model before
   display/submission.
+  Provider model cache helpers are now split out of SettingsDialog and
+  fingerprint API keys before building cache keys, avoiding raw secret
+  retention while preserving URL/version cache partitioning.
   Media picker readiness now shares a guarded provider/model predicate so
   OpenAI OAuth-only auth does not masquerade as a configured media key while
   daemon-restored key markers still enable supported media models.
