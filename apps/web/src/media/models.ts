@@ -600,6 +600,11 @@ export function findProvider(id: MediaProviderId): MediaProvider | null {
   return MEDIA_PROVIDERS.find((p) => p.id === id) ?? null;
 }
 
+export function mediaModelProviderId(id: string): MediaProviderId | 'aihubmix' | undefined {
+  if (id.startsWith('aihubmix-')) return 'aihubmix';
+  return findMediaModel(id)?.provider;
+}
+
 /** All model IDs grouped by surface, used for prompt-side disclosure. */
 export function modelIdsBySurface(): {
   image: string[];
