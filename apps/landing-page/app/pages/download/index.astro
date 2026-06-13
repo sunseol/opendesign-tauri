@@ -292,8 +292,11 @@ const jsonLd = [
 
       const artifactMap = (metadata) => ({
         'mac-arm64-dmg': metadata?.platforms?.mac?.artifacts?.dmg,
+        'mac-arm64-zip': metadata?.platforms?.mac?.artifacts?.zip,
         'mac-x64-dmg': metadata?.platforms?.macIntel?.artifacts?.dmg,
+        'mac-x64-zip': metadata?.platforms?.macIntel?.artifacts?.zip,
         'win-setup': metadata?.platforms?.win?.artifacts?.installer,
+        'win-portable': metadata?.platforms?.win?.artifacts?.portableZip,
         'linux-appimage': metadata?.platforms?.linux?.artifacts?.appImage,
       });
 
