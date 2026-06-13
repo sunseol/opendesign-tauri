@@ -126,6 +126,9 @@ protect against unsafe parity claims.
   color declarations can seed design-system swatches without exposing local
   paths. Chat composer paperclip uploads now emit `file_upload_result` telemetry
   for success, partial failure, and rejected upload attempts.
+- AMR/BYOK/model-provider parity #4/#29/#30 now carries project-screen BYOK
+  model changes from the avatar menu into the saved app config, using the
+  selected provider's own model list instead of the broad protocol fallback.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

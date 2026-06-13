@@ -192,6 +192,7 @@ interface Props {
     id: string,
     choice: { model?: string; reasoning?: string },
   ) => void;
+  onApiModelChange?: (model: string) => void;
   onRefreshAgents: () => void;
   onOpenSettings: () => void;
   onOpenMcpSettings?: () => void;
@@ -472,6 +473,7 @@ export function ProjectView({
   onModeChange,
   onAgentChange,
   onAgentModelChange,
+  onApiModelChange,
   onRefreshAgents,
   onOpenSettings,
   onOpenMcpSettings,
@@ -3852,6 +3854,7 @@ export function ProjectView({
               onModeChange={onModeChange}
               onAgentChange={onAgentChange}
               onAgentModelChange={onAgentModelChange}
+              onApiModelChange={onApiModelChange}
               onOpenSettings={onOpenSettings}
               onRefreshAgents={onRefreshAgents}
             />

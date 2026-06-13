@@ -3,6 +3,7 @@ import { useT } from '../i18n';
 import { AgentIcon } from './AgentIcon';
 import { Icon } from './Icon';
 import { renderModelOptions } from './modelOptions';
+import { KNOWN_PROVIDERS } from '../state/config';
 import type { AgentInfo, AppConfig, ExecMode } from '../types';
 import { apiProtocolLabel } from '../utils/apiProtocol';
 import { isMacPlatform } from '../utils/platform';
@@ -17,6 +18,7 @@ interface Props {
     id: string,
     choice: { model?: string; reasoning?: string },
   ) => void;
+  onApiModelChange?: (model: string) => void;
   onOpenSettings: () => void;
   onRefreshAgents: () => void;
   onBack?: () => void;
@@ -34,6 +36,7 @@ export function AvatarMenu({
   onModeChange,
   onAgentChange,
   onAgentModelChange,
+  onApiModelChange,
   onOpenSettings,
   onRefreshAgents,
   onBack,
@@ -78,6 +81,19 @@ export function AvatarMenu({
   const currentModelLabel = currentAgent?.models?.find(
     (m) => m.id === currentModelId,
   )?.label;
+  const apiProtocol = config.apiProtocol ?? 'anthropic';
+  const byokProvider = useMemo(
+    () =>
+      KNOWN_PROVIDERS.find(
+        (provider) =>
+          provider.protocol === apiProtocol &&
+          (config.apiProviderBaseUrl
+            ? provider.baseUrl === config.apiProviderBaseUrl
+            : provider.baseUrl === config.baseUrl),
+      ) ?? KNOWN_PROVIDERS.find((provider) => provider.protocol === apiProtocol),
+    [apiProtocol, config.apiProviderBaseUrl, config.baseUrl],
+  );
+  const byokModelOptions = byokProvider?.models ?? [];
 
   return (
     <div className="avatar-menu" ref={wrapRef}>
@@ -146,6 +162,35 @@ export function AvatarMenu({
               <span className="avatar-item-meta">{t('avatar.metaActive')}</span>
             ) : null}
           </button>
+          {config.mode === 'api' && byokModelOptions.length > 0 ? (
+            <div className="avatar-model-section">
+              <div className="avatar-section-label">
+                {t('avatar.modelSection')}
+              </div>
+              <label className="avatar-select-row">
+                <span className="avatar-select-label">
+                  {t('avatar.modelLabel')}
+                </span>
+                <select
+                  className="avatar-select"
+                  data-testid="avatar-byok-model-select"
+                  value={config.model}
+                  onChange={(e) => onApiModelChange?.(e.target.value)}
+                >
+                  {byokModelOptions.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                  {config.model && !byokModelOptions.includes(config.model) ? (
+                    <option value={config.model}>
+                      {config.model} {t('avatar.customSuffix')}
+                    </option>
+                  ) : null}
+                </select>
+              </label>
+            </div>
+          ) : null}
 
           {config.mode === 'daemon' && installedAgents.length > 0 ? (
             <>
