@@ -18,6 +18,7 @@ import {
 } from 'react';
 import type {
   ClipboardEvent as ReactClipboardEvent,
+  CSSProperties,
   DragEvent as ReactDragEvent,
   ForwardedRef,
   KeyboardEvent as ReactKeyboardEvent,
@@ -43,6 +44,7 @@ import {
   inlineMentionToken,
   type InlineMentionEntity,
 } from '../utils/inlineMentions';
+import { connectorBrandColor, resolveBrandTheme } from '../utils/connectorBrandColor';
 import { useI18n, useT } from '../i18n';
 import type { Locale } from '../i18n/types';
 import { PreviewSurface } from './plugins-home/cards/PreviewSurface';
@@ -1617,6 +1619,7 @@ function InlineMentionToken({
         className="home-hero__prompt-mention"
         data-plugin-id={pluginRecord.id}
         data-testid={`home-hero-prompt-plugin-${pluginRecord.id}`}
+        style={inlineMentionHueStyle(entity)}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => onOpenPluginDetails(pluginRecord)}
         title={entity.title ?? `Plugin: ${pluginRecord.title}`}
@@ -1629,11 +1632,22 @@ function InlineMentionToken({
     <span
       className="home-hero__prompt-mention home-hero__prompt-mention--static"
       data-mention-kind={entity.kind}
+      style={inlineMentionHueStyle(entity)}
       title={entity.title ?? text}
     >
       {text}
     </span>
   );
+}
+
+function inlineMentionHueStyle(entity: InlineMentionEntity): CSSProperties | undefined {
+  if (entity.kind !== 'connector') return undefined;
+  return {
+    ['--m-hue' as string]: connectorBrandColor(
+      { id: entity.id, name: entity.label },
+      resolveBrandTheme(),
+    ),
+  };
 }
 
 interface InlinePromptInputProps {

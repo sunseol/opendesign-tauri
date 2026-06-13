@@ -507,10 +507,10 @@
   min-height: 24px;
   margin: -2px 1px;
   padding: 1px 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--m-hue, var(--accent)) 16%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
-  color: color-mix(in srgb, var(--accent) 68%, var(--text));
+  background: color-mix(in srgb, var(--m-hue, var(--accent)) 10%, var(--bg-panel));
+  color: color-mix(in srgb, var(--m-hue, var(--accent)) 68%, var(--text));
   font: inherit;
   font-size: inherit;
   font-weight: 650;
@@ -526,9 +526,9 @@
 }
 .home-hero__prompt-mention:hover,
 .home-hero__prompt-mention:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-panel));
-  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  border-color: color-mix(in srgb, var(--m-hue, var(--accent)) 24%, transparent);
+  background: color-mix(in srgb, var(--m-hue, var(--accent)) 14%, var(--bg-panel));
+  color: color-mix(in srgb, var(--m-hue, var(--accent)) 70%, var(--text));
   outline: none;
 }
 .home-hero__prompt-mention--static {

@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { useT } from '../i18n';
@@ -41,6 +42,7 @@ import {
   inlineMentionToken,
   type InlineMentionEntity,
 } from '../utils/inlineMentions';
+import { connectorBrandColor, resolveBrandTheme } from '../utils/connectorBrandColor';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
@@ -1372,6 +1374,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                         <span
                           key={`${part.entity.kind}-${part.entity.id}-${index}`}
                           className={`composer-inline-mention composer-inline-mention--${part.entity.kind}`}
+                          style={inlineMentionHueStyle(part.entity)}
                           title={part.entity.title ?? part.text}
                         >
                           {part.text}
@@ -1712,6 +1715,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     );
   }
 );
+
+function inlineMentionHueStyle(entity: InlineMentionEntity): CSSProperties | undefined {
+  if (entity.kind !== 'connector') return undefined;
+  return {
+    ['--m-hue' as string]: connectorBrandColor(
+      { id: entity.id, name: entity.label },
+      resolveBrandTheme(),
+    ),
+  };
+}
 
 function buildComposerMentionEntities({
   connectors,

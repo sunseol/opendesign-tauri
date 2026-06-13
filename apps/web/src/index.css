@@ -2018,11 +2018,11 @@ a.avatar-item:visited {
   padding: 0;
   border: 0;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--m-hue, var(--accent)) 8%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--m-hue, var(--accent)) 12%, transparent);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  color: color-mix(in srgb, var(--accent) 62%, var(--text));
+  color: color-mix(in srgb, var(--m-hue, var(--accent)) 62%, var(--text));
   font: inherit;
   font-size: inherit;
   font-weight: inherit;
