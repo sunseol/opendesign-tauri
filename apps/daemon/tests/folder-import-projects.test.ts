@@ -4,7 +4,26 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { detectEntryFile, listFiles, resolveProjectDir } from '../src/projects.js';
+import {
+  SandboxImportedProjectError,
+  detectEntryFile,
+  listFiles,
+  resolveProjectDir,
+} from '../src/projects.js';
+
+async function withSandboxMode<T>(run: () => T | Promise<T>): Promise<T> {
+  const previous = process.env.OD_SANDBOX_MODE;
+  process.env.OD_SANDBOX_MODE = '1';
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.OD_SANDBOX_MODE;
+    } else {
+      process.env.OD_SANDBOX_MODE = previous;
+    }
+  }
+}
 
 describe('resolveProjectDir', () => {
   const projectsRoot = '/var/od/projects';
@@ -27,6 +46,17 @@ describe('resolveProjectDir', () => {
     expect(
       resolveProjectDir(projectsRoot, projectId, { kind: 'prototype', baseDir }),
     ).toBe(path.normalize(baseDir));
+  });
+
+  it('rejects metadata.baseDir when sandbox mode is enabled', async () => {
+    await withSandboxMode(async () => {
+      expect(() =>
+        resolveProjectDir(projectsRoot, projectId, {
+          kind: 'prototype',
+          baseDir: '/Users/me/projects/site',
+        }),
+      ).toThrow(SandboxImportedProjectError);
+    });
   });
 
   it('falls back to the standard path when baseDir is relative', () => {
@@ -127,6 +157,16 @@ describe('listFiles with metadata.baseDir', () => {
     expect(paths).toContain('index.html');
     expect(paths).toContain('app.css');
     expect(paths).toContain('src/app.ts');
+  });
+
+  it('rejects metadata.baseDir when sandbox mode is enabled', async () => {
+    await withSandboxMode(async () => {
+      await expect(
+        listFiles('/unused/projects', 'unused-id', {
+          metadata: { kind: 'prototype', baseDir },
+        }),
+      ).rejects.toThrow(SandboxImportedProjectError);
+    });
   });
 
   // Regression: callers that pass the metadata object directly as opts

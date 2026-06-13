@@ -45,6 +45,20 @@ describe('POST /api/import/folder', () => {
     });
   }
 
+  async function withSandboxMode<T>(run: () => T | Promise<T>): Promise<T> {
+    const previous = process.env.OD_SANDBOX_MODE;
+    process.env.OD_SANDBOX_MODE = '1';
+    try {
+      return await run();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.OD_SANDBOX_MODE;
+      } else {
+        process.env.OD_SANDBOX_MODE = previous;
+      }
+    }
+  }
+
   it('creates a project rooted at the submitted folder', async () => {
     const folder = makeFolder();
     await writeFile(path.join(folder, 'index.html'), '<!doctype html>');
@@ -60,6 +74,18 @@ describe('POST /api/import/folder', () => {
     expect(body.project.metadata?.importedFrom).toBe('folder');
     expect(body.conversationId).toBeTruthy();
     expect(body.entryFile).toBe('index.html');
+  });
+
+  it('rejects folder imports when sandbox mode is enabled', async () => {
+    const folder = makeFolder();
+    await writeFile(path.join(folder, 'index.html'), '<!doctype html>');
+
+    await withSandboxMode(async () => {
+      const resp = await importFolder({ baseDir: folder });
+      expect(resp.status).toBe(400);
+      const body = (await resp.json()) as { error?: { message?: string } };
+      expect(body.error?.message).toMatch(/folder imports are disabled/i);
+    });
   });
 
   it('auto-detects the entry file when present', async () => {

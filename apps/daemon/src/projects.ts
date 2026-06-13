@@ -27,6 +27,7 @@ import {
 } from './artifact-publication-guard.js';
 import { normalizeArtifactRuntimeImports } from './artifact-runtime-compat.js';
 import { isIgnoredProjectDirName } from './project-ignored-dirs.js';
+import { isSandboxModeEnabled } from './sandbox-mode.js';
 
 const FORBIDDEN_SEGMENT = /^$|^\.\.?$/;
 const RESERVED_PROJECT_FILE_SEGMENTS = new Set(['.live-artifacts']);
@@ -48,13 +49,42 @@ export function projectDir(projectsRoot, projectId) {
   return path.join(projectsRoot, projectId);
 }
 
+export class SandboxImportedProjectError extends Error {
+  code = 'SANDBOX_IMPORTED_PROJECT_UNAVAILABLE';
+
+  constructor() {
+    super(
+      'Imported-folder projects are not available in OD_SANDBOX_MODE until their files are mirrored into the managed project directory.',
+    );
+    this.name = 'SandboxImportedProjectError';
+  }
+}
+
+function hasExternalProjectRoot(metadata?) {
+  if (typeof metadata?.baseDir !== 'string') return false;
+  return path.isAbsolute(path.normalize(metadata.baseDir));
+}
+
+export function assertSandboxProjectRootAvailable(metadata?) {
+  if (isSandboxModeEnabled(process.env) && hasExternalProjectRoot(metadata)) {
+    throw new SandboxImportedProjectError();
+  }
+}
+
+function usesExternalProjectRoot(metadata?) {
+  if (isSandboxModeEnabled(process.env)) return false;
+  return hasExternalProjectRoot(metadata);
+}
+
 // Returns the folder a project's files live in. For git-linked projects
 // (metadata.baseDir set), this is the user's own folder. Otherwise falls
 // back to the standard computed path under projectsRoot.
-export function resolveProjectDir(projectsRoot, projectId, metadata?) {
-  if (typeof metadata?.baseDir === 'string') {
-    const p = path.normalize(metadata.baseDir);
-    if (path.isAbsolute(p)) return p;
+export function resolveProjectDir(projectsRoot, projectId, metadata?, opts = {}) {
+  if (!opts.allowUnavailableSandboxImportedProject) {
+    assertSandboxProjectRootAvailable(metadata);
+  }
+  if (usesExternalProjectRoot(metadata)) {
+    return path.normalize(metadata.baseDir);
   }
   if (!isSafeId(projectId)) throw new Error('invalid project id');
   return path.join(projectsRoot, projectId);
@@ -63,7 +93,7 @@ export function resolveProjectDir(projectsRoot, projectId, metadata?) {
 export async function ensureProject(projectsRoot, projectId, metadata?) {
   const dir = resolveProjectDir(projectsRoot, projectId, metadata);
   // Git-linked folders already exist; skip mkdir to avoid side-effects.
-  if (typeof metadata?.baseDir !== 'string') {
+  if (!usesExternalProjectRoot(metadata)) {
     await mkdir(dir, { recursive: true });
   }
   return dir;
