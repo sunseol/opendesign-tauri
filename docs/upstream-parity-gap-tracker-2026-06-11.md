@@ -143,6 +143,9 @@ protect against unsafe parity claims.
   AIHubMix selections while dropping mismatched provider defaults.
   AIHubMix also has static media provider metadata and seed image/speech models,
   giving the pickers a credential-gated fallback before live catalogues load.
+  Live AIHubMix media catalogue fetch/merge helpers now map image, video, and
+  speech catalogue rows into media models and replace static AIHubMix seeds only
+  after a live catalogue arrives.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Anthropic-compatible fallback routing is now centralized in
