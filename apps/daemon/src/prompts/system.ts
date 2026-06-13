@@ -5,8 +5,7 @@
  *
  *   1. The discovery + planning + huashu-philosophy layer (./discovery.ts)
  *      — interactive question-form syntax, direction-picker fork,
- *      brand-spec extraction, TodoWrite reinforcement, 5-dim critique,
- *      and the embedded `directions.ts` library.
+ *      brand-spec extraction, TodoWrite reinforcement, and 5-dim critique.
  *   2. The active design system's DESIGN.md (if any) — palette, typography,
  *      spacing rules treated as authoritative tokens.
  *   3. The active skill's SKILL.md (if any) — workflow specific to the
@@ -30,7 +29,8 @@
  * the Anthropic path sends as `system`.
  */
 import { OFFICIAL_DESIGNER_PROMPT } from './official-system.js';
-import { DISCOVERY_AND_PHILOSOPHY } from './discovery.js';
+import { DISCOVERY_AND_PHILOSOPHY, renderSharedFramesBlock } from './discovery.js';
+import { renderDirectionSpecBlock } from './directions.js';
 import { DECK_FRAMEWORK_DIRECTIVE } from './deck-framework.js';
 import { MEDIA_GENERATION_CONTRACT } from './media-contract.js';
 import { IMAGE_MODELS } from '../media-models.js';
@@ -444,11 +444,18 @@ export function composeSystemPrompt({
     parts.push('\n\n---\n\n');
   }
 
-  parts.push(
-    DISCOVERY_AND_PHILOSOPHY,
-    '\n\n---\n\n# Identity and workflow charter (background)\n\n',
-    BASE_SYSTEM_PROMPT,
-  );
+  parts.push(DISCOVERY_AND_PHILOSOPHY, '\n\n---\n\n');
+  if (!activeDesignSystemBody) {
+    parts.push(renderDirectionSpecBlock(), '\n\n---\n\n');
+  }
+  const isMultiTargetProject =
+    metadata?.platform === 'responsive' ||
+    metadata?.platformTargets?.includes('responsive') ||
+    (metadata?.platformTargets?.length ?? 0) > 1;
+  if (isMultiTargetProject) {
+    parts.push(renderSharedFramesBlock(), '\n\n---\n\n');
+  }
+  parts.push('# Identity and workflow charter (background)\n\n', BASE_SYSTEM_PROMPT);
 
   if (memoryBody && memoryBody.trim().length > 0) {
     parts.push(
@@ -831,7 +838,7 @@ function renderMetadataBlock(
   }
   if (metadata.platform === 'responsive' || metadata.platformTargets?.includes('responsive')) {
     lines.push(
-      '- **responsive web contract**: `responsive` means one web product experience that adapts across modern browser/device ranges, not only legacy desktop/tablet/mobile buckets. It is not an iOS app, Android app, or native tablet app target. Show responsive behavior through real product layout changes; do not render viewport labels as user-facing product content. Cover 2025–2026 breakpoints: mobile compact 360px, mobile standard 390–430px, foldable/small tablet 600–744px, tablet portrait 768–834px, tablet landscape/large tablet 1024–1180px, laptop 1280–1366px, desktop 1440–1536px, and wide 1920px. Use fluid `clamp()` scales, container queries where useful, and explicit layout changes at semantic thresholds. Verify no horizontal scroll at 360px, 390px, 430px, 768px, 820px, 1024px, 1366px, 1440px, and 1920px unless the brief explicitly asks for a pan/board canvas.',
+      '- **responsive web contract**: `responsive` means one web product experience that adapts across modern browser/device ranges, not only legacy desktop/tablet/mobile buckets. It is not an iOS app, Android app, or native tablet app target. Show responsive behavior through real product layout changes; do not render viewport labels as user-facing product content. Cover 2025–2026 breakpoints: mobile compact 360px, mobile standard 390–430px, foldable/small tablet 600–744px, tablet portrait 768–834px, tablet landscape/large tablet 1024–1180px, laptop 1280–1366px, desktop 1440–1536px, and wide 1920px. Use fluid `clamp()` scales, container queries where useful, and explicit layout changes at semantic thresholds. Verify no horizontal scroll at 360px, 390px, 430px, 600px, 768px, 820px, 1024px, 1366px, 1440px, and 1920px unless the brief explicitly asks for a pan/board canvas.',
     );
   }
   if ((metadata.platformTargets?.length ?? 0) > 1) {

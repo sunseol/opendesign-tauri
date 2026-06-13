@@ -158,9 +158,37 @@ describe('composeSystemPrompt', () => {
     expect(prompt).toContain('Do not emit a direction question-form');
     expect(prompt).not.toContain('<question-form id="direction"');
     expect(prompt).not.toContain('Pick a visual direction');
+    expect(prompt).not.toContain('## Direction library');
     expect(prompt.indexOf('## Active design system visual direction')).toBeGreaterThan(
       prompt.indexOf('### direction-picker'),
     );
+  });
+
+  it('injects shared frames only for responsive or multi-target projects', () => {
+    const singleSurface = composeSystemPrompt({
+      metadata: { kind: 'prototype', platform: 'desktop' },
+    });
+    const responsive = composeSystemPrompt({
+      metadata: { kind: 'prototype', platform: 'responsive' },
+    });
+    const multiTarget = composeSystemPrompt({
+      metadata: { kind: 'prototype', platformTargets: ['desktop', 'ios'] },
+    });
+
+    expect(singleSurface).not.toContain('## Multi-device / multi-screen — shared frames');
+    expect(responsive).toContain('## Multi-device / multi-screen — shared frames');
+    expect(responsive).toContain('/frames/iphone-15-pro.html');
+    expect(multiTarget).toContain('## Multi-device / multi-screen — shared frames');
+  });
+
+  it('injects the converged verification policy', () => {
+    const prompt = composeSystemPrompt({});
+
+    expect(prompt).toContain('## Verification — converge at the end, in one pass');
+    expect(prompt).toContain('One render check is the budget');
+    expect(prompt).toContain('Do not loop');
+    expect(prompt).toContain('these justify ONE rendered look');
+    expect(prompt).toContain('Do NOT launch your own browser to do this');
   });
 
   it('uses stable brand option values for discovery-form branching', () => {
