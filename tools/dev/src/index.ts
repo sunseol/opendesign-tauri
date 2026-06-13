@@ -44,6 +44,7 @@ import {
   resolveStopApps,
   resolveTargetApps,
   resolveToolDevConfig,
+  WORKSPACE_ROOT,
   type ToolDevAppName,
   type ToolDevConfig,
   type ToolDevOptions,
@@ -66,6 +67,8 @@ import {
   waitForWebRuntime,
 } from "./sidecar-client.js";
 import { ensureDaemonGateForDesktop } from "./desktop-auth-gate.js";
+import { loadWorkspaceLocalEnv } from "./local-env.js";
+import { resolveSharedPortsFromRunningState } from "./shared-ports.js";
 
 type CliOptions = ToolDevOptions & {
   expr?: string;
@@ -89,6 +92,8 @@ function exitWithError(error: unknown): never {
 
 process.on("uncaughtException", exitWithError);
 process.on("unhandledRejection", exitWithError);
+
+loadWorkspaceLocalEnv({ workspaceRoot: WORKSPACE_ROOT });
 
 function printJson(payload: unknown): void {
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
@@ -863,6 +868,10 @@ async function status(config: ToolDevConfig, appName: string | undefined) {
 async function restartTargets(config: ToolDevConfig, appName: string | undefined, options: CliOptions) {
   const stopTargets = resolveStopApps(appName);
   const startTargets = resolveStartApps(appName);
+  await resolveSharedPortsFromRunningState(startTargets, options, {
+    daemonUrl: async () => (await inspectDaemonRuntime(runtimeLookup(config)))?.url,
+    webUrl: async () => (await inspectWebRuntime(runtimeLookup(config)))?.url,
+  });
   return {
     stop: await runSequential(stopTargets, (target) => stopApp(config, target)),
     start: await runSequential(startTargets, (target) => startApp(config, target, options, { targets: startTargets })),
@@ -1019,6 +1028,10 @@ function stopOrderFor(targets: readonly ToolDevAppName[]): ToolDevAppName[] {
 async function runForeground(config: ToolDevConfig, appName: string | undefined, options: CliOptions) {
   const targets = resolveRunApps(appName);
   const foregroundOptions = { ...options, parentPid: process.pid };
+  await resolveSharedPortsFromRunningState(targets, foregroundOptions, {
+    daemonUrl: async () => (await inspectDaemonRuntime(runtimeLookup(config)))?.url,
+    webUrl: async () => (await inspectWebRuntime(runtimeLookup(config)))?.url,
+  });
   const started = await runSequential(targets, (target) => startApp(config, target, foregroundOptions, { targets }));
   printRunForegroundResult(started, options);
 
@@ -1066,6 +1079,10 @@ addPortOptions(addSharedOptions(cli.command("start [app]", "Start daemon, web, d
     assertSupportedNodeRuntimeForStart();
     const config = resolveToolDevConfig(options);
     const targets = resolveStartApps(appName);
+    await resolveSharedPortsFromRunningState(targets, options, {
+      daemonUrl: async () => (await inspectDaemonRuntime(runtimeLookup(config)))?.url,
+      webUrl: async () => (await inspectWebRuntime(runtimeLookup(config)))?.url,
+    });
     const result = await runSequential(targets, (target) => startApp(config, target, options, { targets }));
     printStartResult(result, options);
   },
