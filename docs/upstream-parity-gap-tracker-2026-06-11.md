@@ -165,8 +165,10 @@ protect against unsafe parity claims.
   preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed
   runtime bootstrap. Sandbox mode also rejects imported-folder project roots
   at import, file listing, and run start while preserving project detail
-  visibility for already-linked folders. Broader sandbox env/proxy, resume,
-  registry, and route parity remains open under #7/#33/#48.
+  visibility for already-linked folders. Agent spawn env now pins sandbox
+  homes from resolved daemon data roots, and media OAuth fallback skips host
+  auth files while sandboxed. Broader sandbox proxy, resume, registry, and
+  route parity remains open under #7/#33/#48.
 - Curated data #54 has upstream-identical `data/` assets and a root guard test
   for contributor/event/card linkage, plugin preview manifest shape, and the
   documented remote-only preview id set. Runtime/community rendering remains

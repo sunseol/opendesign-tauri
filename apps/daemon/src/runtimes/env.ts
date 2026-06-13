@@ -1,9 +1,22 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { amrVelaProfileEnv } from '../integrations/vela-profile.js';
+import { resolveProjectRelativePath } from '../home-expansion.js';
+import {
+  applySandboxRuntimeEnv,
+  isSandboxModeEnabled,
+  resolveSandboxRuntimeConfig,
+  type SandboxRuntimeConfig,
+} from '../sandbox-mode.js';
 import { expandConfiguredEnv } from './paths.js';
 
 type RuntimeEnvMap = NodeJS.ProcessEnv | Record<string, string>;
+
+const RUNTIME_PROJECT_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../..',
+);
 
 // Build the env passed to spawn() for a given agent adapter.
 //
@@ -36,6 +49,7 @@ export function spawnEnvForAgent(
   baseEnv: RuntimeEnvMap,
   configuredEnv: unknown = {},
 ): NodeJS.ProcessEnv {
+  const sandboxRuntime = sandboxRuntimeConfigForBaseEnv(baseEnv);
   const env: NodeJS.ProcessEnv = {
     ...baseEnv,
     ...expandConfiguredEnv(configuredEnv),
@@ -56,7 +70,7 @@ export function spawnEnvForAgent(
         'opencode-home',
       );
     }
-    return env;
+    return reapplySandboxRuntimeEnv(env, sandboxRuntime);
   }
   if (agentId === 'opencode') {
     stripKeysCaseInsensitive(env, [
@@ -68,20 +82,20 @@ export function spawnEnvForAgent(
     if (!env.OPENCODE_DISABLE_PROJECT_CONFIG?.trim()) {
       env.OPENCODE_DISABLE_PROJECT_CONFIG = 'true';
     }
-    return env;
+    return reapplySandboxRuntimeEnv(env, sandboxRuntime);
   }
   if (agentId === 'claude') {
     stripUnlessCustomBaseUrl(env, 'ANTHROPIC_BASE_URL', ['ANTHROPIC_API_KEY']);
-    return env;
+    return reapplySandboxRuntimeEnv(env, sandboxRuntime);
   }
   if (agentId === 'codex') {
     stripUnlessCustomBaseUrl(env, 'OPENAI_BASE_URL', [
       'OPENAI_API_KEY',
       'CODEX_API_KEY',
     ]);
-    return env;
+    return reapplySandboxRuntimeEnv(env, sandboxRuntime);
   }
-  return env;
+  return reapplySandboxRuntimeEnv(env, sandboxRuntime);
 }
 
 export function openDesignAmrTraceEnv(input: {
@@ -106,6 +120,26 @@ export function openDesignAmrTraceEnv(input: {
     OPEN_DESIGN_RUN_ATTEMPT: String(Math.floor(input.runAttempt)),
     ...(conversationId ? { OPEN_DESIGN_SESSION_ID: conversationId } : {}),
   };
+}
+
+function sandboxRuntimeConfigForBaseEnv(
+  baseEnv: RuntimeEnvMap,
+): SandboxRuntimeConfig | null {
+  if (!isSandboxModeEnabled(baseEnv)) return null;
+  const dataDir = baseEnv.OD_DATA_DIR?.trim();
+  if (!dataDir) return null;
+  return resolveSandboxRuntimeConfig(
+    true,
+    resolveProjectRelativePath(dataDir, RUNTIME_PROJECT_ROOT),
+  );
+}
+
+function reapplySandboxRuntimeEnv(
+  env: NodeJS.ProcessEnv,
+  sandboxRuntime: SandboxRuntimeConfig | null,
+): NodeJS.ProcessEnv {
+  if (!sandboxRuntime) return env;
+  return applySandboxRuntimeEnv(env, sandboxRuntime);
 }
 
 // Remove `secretKeys` from `env` unless `baseUrlKey` is set to a non-empty

@@ -1,12 +1,15 @@
 import { symlinkSync } from 'node:fs';
 import { test } from 'vitest';
 import { homedir } from 'node:os';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   assert, chmodSync, detectAgents, inspectAgentExecutableResolution, join, minimalAgentDef, mkdirSync, mkdtempSync, opencode, resolveAgentExecutable, rmSync, spawnEnvForAgent, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
 import { isCursorAuthFailureText, isReasonixAuthFailureText } from '../../src/runtimes/auth.js';
 
 const fsTest = process.platform === 'win32' ? test.skip : test;
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // Issue #398: Claude Code prefers ANTHROPIC_API_KEY over `claude login`
 // credentials, silently billing API usage. Strip it for the claude
@@ -63,6 +66,33 @@ test('spawnEnvForAgent expands configured env home paths', () => {
   assert.equal(env.CODEX_HOME, join(homedir(), '.codex-alt'));
   assert.equal(env.CODEX_CACHE, homedir());
   assert.equal(env.PATH, '/usr/bin');
+});
+
+test('spawnEnvForAgent resolves relative OD_DATA_DIR before applying sandbox roots', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'od-agent-env-sandbox-relative-'));
+  try {
+    const relativeDataDir = relative(repoRoot, dataDir);
+    const env = spawnEnvForAgent(
+      'codex',
+      {
+        OD_DATA_DIR: relativeDataDir,
+        OD_SANDBOX_MODE: '1',
+        PATH: '/usr/bin',
+      },
+      {
+        CODEX_HOME: '/Users/test/.codex-host',
+      },
+    );
+
+    assert.equal(
+      env.CODEX_HOME,
+      join(dataDir, 'sandbox', 'agent-home', '.codex'),
+    );
+    assert.equal(env.CLAUDE_CONFIG_DIR, join(dataDir, 'sandbox', 'config', 'claude'));
+    assert.equal(env.HOME, join(dataDir, 'sandbox', 'agent-home'));
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test('resolveAgentExecutable prefers a configured CODEX_BIN override over PATH resolution', () => {
