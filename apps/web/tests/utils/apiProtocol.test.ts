@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { apiProtocolLabel, apiProtocolModelLabel } from '../../src/utils/apiProtocol';
+import {
+  apiProtocolLabel,
+  apiProtocolModelLabel,
+  usesAnthropicProxy,
+} from '../../src/utils/apiProtocol';
+import type { AppConfig } from '../../src/types';
 import {
   agentDisplayName,
   agentModelDisplayName,
@@ -18,6 +23,29 @@ describe('api protocol labels', () => {
       'OpenAI API · google/gemma-4-e4b',
     );
     expect(apiProtocolModelLabel('azure', '  ')).toBe('Azure OpenAI');
+  });
+
+  it('routes only Anthropic-compatible custom API configs to the Anthropic proxy', () => {
+    expect(usesAnthropicProxy(apiConfig({
+      apiProtocol: 'aihubmix',
+      baseUrl: 'https://aihubmix.com/v1',
+      model: 'gpt-5.5',
+    }))).toBe(false);
+    expect(usesAnthropicProxy(apiConfig({
+      apiProtocol: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+    }))).toBe(false);
+    expect(usesAnthropicProxy(apiConfig({
+      apiProtocol: 'anthropic',
+      baseUrl: 'https://anthropic-compatible.example',
+      model: 'claude-compatible',
+    }))).toBe(true);
+    expect(usesAnthropicProxy(apiConfig({
+      apiProtocol: undefined,
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+    }))).toBe(false);
   });
 
   it('includes explicit local CLI models when labeling agent messages', () => {
@@ -55,3 +83,17 @@ describe('api protocol labels', () => {
     expect(agentModelDisplayName('qoder', 'Qoder CLI', 'default')).toBe('Qoder');
   });
 });
+
+function apiConfig(patch: Partial<AppConfig>): AppConfig {
+  return {
+    mode: 'api',
+    apiKey: 'sk-test',
+    apiProtocol: 'anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-5',
+    agentId: null,
+    skillId: null,
+    designSystemId: null,
+    ...patch,
+  };
+}

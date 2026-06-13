@@ -143,6 +143,9 @@ protect against unsafe parity claims.
   AIHubMix selections while dropping mismatched provider defaults.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
+  Anthropic-compatible fallback routing is now centralized in
+  `usesAnthropicProxy`, keeping explicit OpenAI/Azure/Google/Ollama/SenseAudio/
+  AIHubMix protocols out of the Anthropic proxy path.
   Media picker readiness now shares a guarded provider/model predicate so
   OpenAI OAuth-only auth does not masquerade as a configured media key while
   daemon-restored key markers still enable supported media models.
