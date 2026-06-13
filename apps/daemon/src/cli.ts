@@ -153,6 +153,10 @@ const PROJECT_STRING_FLAGS = new Set([
   'agent', 'model', 'snapshot-id', 'inputs', 'grant-caps', 'editor',
 ]);
 const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow']);
+const TEMPLATES_STRING_FLAGS = new Set([
+  'daemon-url', 'name', 'description',
+]);
+const TEMPLATES_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 // `od automation …` mirrors the Automations tab. Same surface, same
 // /api/routines store. The CLI form is the embeddability contract:
 // external agents (hermes-agent, openclaw, etc.) can drive Open Design
@@ -218,6 +222,7 @@ const SUBCOMMAND_MAP = {
   memory: runMemory,
   run: runRun,
   files: runFiles,
+  templates: runTemplates,
   conversation: runConversation,
   daemon: runDaemon,
   atoms: runAtoms,
@@ -318,6 +323,9 @@ function printRootHelp() {
 
   od memory tree <list|view|edit|move> [args]
       Inspect and edit the memory tree that is injected into agent prompts.
+
+  od templates <list|save|delete> [args]
+      List, snapshot, or delete user-saved project templates.
 
   od ui <list|show|respond|revoke|prefill> [args]
       Read and answer GenUI surfaces (form / choice / confirmation / oauth-prompt) headlessly.
@@ -881,18 +889,22 @@ function exitWithStructuredError({ code, message, data }) {
 async function structuredHttpFailure(resp, fallbackCode = 'daemon-not-running') {
   let parsed;
   try { parsed = await resp.json(); } catch { parsed = {}; }
-  const errCode = parsed?.error?.code;
+  const errorObj =
+    typeof parsed?.error === 'string'
+      ? { message: parsed.error }
+      : parsed?.error;
+  const errCode = errorObj?.code;
   if (errCode && errCode in RECOVERABLE_EXIT_CODES) {
     exitWithStructuredError({
       code:    errCode,
-      message: parsed.error.message ?? `HTTP ${resp.status}`,
-      data:    parsed.error.data,
+      message: errorObj.message ?? `HTTP ${resp.status}`,
+      data:    errorObj.data,
     });
   }
   exitWithStructuredError({
     code:    fallbackCode,
-    message: parsed?.error?.message ?? `HTTP ${resp.status}: ${await resp.text().catch(() => '')}`,
-    data:    parsed?.error?.data,
+    message: errorObj?.message ?? `HTTP ${resp.status}: ${await resp.text().catch(() => '')}`,
+    data:    errorObj?.data,
   });
 }
 
@@ -5011,6 +5023,138 @@ async function patchMemoryTreeNode(base, id, body) {
   }
   if (!resp.ok) return structuredHttpFailure(resp);
   return await resp.json();
+}
+
+function templatePositionals(values) {
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i];
+    if (!value) continue;
+    if (value.startsWith('--')) {
+      const eq = value.indexOf('=');
+      const key = eq >= 0 ? value.slice(2, eq) : value.slice(2);
+      if (eq < 0 && TEMPLATES_STRING_FLAGS.has(key)) i++;
+      continue;
+    }
+    if (value.startsWith('-')) continue;
+    out.push(value);
+  }
+  return out;
+}
+
+function printTemplatesHelp() {
+  console.log(`Usage:
+  od templates list                                  List user-saved templates.
+  od templates save  <projectId> --name <name>      Snapshot a project's current files as a new template.
+                     [--description <text>]
+  od templates delete <id>                          Delete a saved template by id.
+
+Common options:
+  --daemon-url <url>   Open Design daemon HTTP base.
+  --json               Emit raw JSON.`);
+}
+
+async function runTemplates(args) {
+  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
+    printTemplatesHelp();
+    process.exit(args.length === 0 ? 2 : 0);
+  }
+  const sub = args[0];
+  const rest = args.slice(1);
+  let flags;
+  try {
+    flags = parseFlags(rest, { string: TEMPLATES_STRING_FLAGS, boolean: TEMPLATES_BOOLEAN_FLAGS });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(2);
+  }
+  const base = await cliDaemonBaseUrl(flags);
+  const writeJson = (data) =>
+    process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+
+  switch (sub) {
+    case 'list': {
+      let resp;
+      try {
+        resp = await fetch(`${base}/api/templates`);
+      } catch (err) {
+        surfaceFetchError(err, base);
+        process.exit(3);
+      }
+      if (!resp.ok) return structuredHttpFailure(resp);
+      const data = await resp.json();
+      if (flags.json) return writeJson(data);
+      const templates = Array.isArray(data?.templates) ? data.templates : [];
+      if (templates.length === 0) {
+        console.log('No templates. Save one with `od templates save <projectId> --name "..."`.');
+        return;
+      }
+      for (const template of templates) console.log(`${template.id}\t${template.name}`);
+      return;
+    }
+    case 'save': {
+      const projectId = templatePositionals(rest)[0] ?? '';
+      if (!projectId) {
+        console.error('Usage: od templates save <projectId> --name <name> [--description <text>]');
+        process.exit(2);
+      }
+      const name = typeof flags.name === 'string' ? flags.name.trim() : '';
+      if (!name) {
+        console.error('--name required');
+        process.exit(2);
+      }
+      const body = { name, sourceProjectId: projectId };
+      if (typeof flags.description === 'string' && flags.description.length > 0) {
+        body.description = flags.description;
+      }
+      let resp;
+      try {
+        resp = await fetch(`${base}/api/templates`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } catch (err) {
+        surfaceFetchError(err, base);
+        process.exit(3);
+      }
+      if (!resp.ok) {
+        if (resp.status === 404) return structuredHttpFailure(resp, 'project-not-found');
+        if (resp.status === 400) return structuredHttpFailure(resp, 'missing-input');
+        return structuredHttpFailure(resp);
+      }
+      const data = await resp.json();
+      if (flags.json) return writeJson(data);
+      const id = data?.template?.id ?? '';
+      const savedName = data?.template?.name ?? name;
+      console.log(`[templates] saved ${savedName}${id ? ` (${id})` : ''}`);
+      return;
+    }
+    case 'delete': {
+      const id = templatePositionals(rest)[0] ?? '';
+      if (!id) {
+        console.error('Usage: od templates delete <id>');
+        process.exit(2);
+      }
+      let resp;
+      try {
+        resp = await fetch(`${base}/api/templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      } catch (err) {
+        surfaceFetchError(err, base);
+        process.exit(3);
+      }
+      if (!resp.ok) return structuredHttpFailure(resp);
+      if (flags.json) {
+        const data = await resp.json().catch(() => ({ ok: true }));
+        return writeJson(data);
+      }
+      console.log(`[templates] deleted ${id}`);
+      return;
+    }
+    default:
+      console.error(`unknown subcommand: od templates ${sub}`);
+      process.exit(2);
+  }
 }
 
 async function runMemory(args) {
