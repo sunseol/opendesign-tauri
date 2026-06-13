@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const sharedHashPath = path.join(repoRoot, "nix/pnpm-deps.nix");
@@ -36,42 +37,48 @@ const splitHashConsumers = [
   },
 ] as const satisfies readonly Consumer[];
 
-function extractExpectedHash(output: string): string | null {
+export type PnpmDepsHashShape = "single" | "split";
+
+export function extractExpectedHash(output: string): string | null {
   const matches = [...output.matchAll(/got:\s*(sha256-[A-Za-z0-9+/=]+)/g)];
   return matches.at(-1)?.[1] ?? null;
 }
 
-async function resolveHashTargets(): Promise<readonly HashUpdateTarget[]> {
-  const sharedHash = await readFile(sharedHashPath, "utf8");
+export function detectPnpmDepsHashShape(sharedHash: string): PnpmDepsHashShape {
   const hasSingleHash = /\bhash = "sha256-[A-Za-z0-9+/=]+";/.test(sharedHash);
   const hasDaemonHash = /\bdaemonHash = "sha256-[A-Za-z0-9+/=]+";/.test(sharedHash);
   const hasWebHash = /\bwebHash = "sha256-[A-Za-z0-9+/=]+";/.test(sharedHash);
 
-  if (hasDaemonHash && hasWebHash) {
-    return splitHashConsumers.map((consumer) => ({
-      ...consumer,
-      sharedHashKey: consumer.hashKey,
-    }));
-  }
-
-  if (hasSingleHash) {
-    const webConsumer = splitHashConsumers.find((consumer) => consumer.label === "web");
-    if (!webConsumer) throw new Error("Internal error: missing web Nix hash consumer.");
-
-    return [
-      {
-        ...webConsumer,
-        sharedHashKey: "hash",
-      },
-    ];
-  }
-
+  if (hasDaemonHash && hasWebHash) return "split";
+  if (hasSingleHash) return "single";
   throw new Error(
     `Expected to find either \`hash = "sha256-...";\` or split \`daemonHash\` / \`webHash\` fields in ${path.relative(
       repoRoot,
       sharedHashPath,
     )}`,
   );
+}
+
+async function resolveHashTargets(): Promise<readonly HashUpdateTarget[]> {
+  const sharedHash = await readFile(sharedHashPath, "utf8");
+  const hashShape = detectPnpmDepsHashShape(sharedHash);
+
+  if (hashShape === "split") {
+    return splitHashConsumers.map((consumer) => ({
+      ...consumer,
+      sharedHashKey: consumer.hashKey,
+    }));
+  }
+
+  const webConsumer = splitHashConsumers.find((consumer) => consumer.label === "web");
+  if (!webConsumer) throw new Error("Internal error: missing web Nix hash consumer.");
+
+  return [
+    {
+      ...webConsumer,
+      sharedHashKey: "hash",
+    },
+  ];
 }
 
 async function main(): Promise<void> {
@@ -153,4 +160,6 @@ async function main(): Promise<void> {
   );
 }
 
-await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  await main();
+}
