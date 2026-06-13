@@ -18,6 +18,19 @@
 import { randomUUID } from 'node:crypto';
 
 import type { TelemetryPrefs } from './app-config.js';
+import type {
+  ArtifactManifestEntry,
+  AttachmentManifestEntry,
+  InputTextSnapshotManifestEntry,
+  ObjectManifestCompleteness,
+} from './trace-object-manifest-types.js';
+
+export type {
+  ArtifactManifestEntry,
+  AttachmentManifestEntry,
+  InputTextSnapshotManifestEntry,
+  ObjectManifestCompleteness,
+} from './trace-object-manifest-types.js';
 
 // Langfuse US region: confirmed by an end-to-end smoke on 2026-05-07 — the
 // project's keys authenticate against `us.cloud.langfuse.com` only. EU host
@@ -135,6 +148,10 @@ export interface ReportContext {
   run: RunSummary;
   message: MessageSummary;
   artifacts: ArtifactSummary[];
+  attachmentManifest?: AttachmentManifestEntry[];
+  artifactManifest?: ArtifactManifestEntry[];
+  inputTextSnapshotManifest?: InputTextSnapshotManifestEntry[];
+  manifestCompleteness?: ObjectManifestCompleteness;
   tools?: ToolCallSummary[];
   eventsSummary: EventsSummary;
   prefs: TelemetryPrefs;
@@ -269,6 +286,30 @@ export function buildTracePayload(ctx: ReportContext): unknown[] {
     wantsArtifacts && ctx.artifacts.length > ARTIFACTS_MAX_ITEMS
       ? true
       : undefined;
+  const attachmentManifest = wantsArtifacts
+    ? ctx.attachmentManifest?.slice(0, ARTIFACTS_MAX_ITEMS)
+    : undefined;
+  const attachmentManifestTruncated =
+    wantsArtifacts &&
+    (ctx.attachmentManifest?.length ?? 0) > ARTIFACTS_MAX_ITEMS
+      ? true
+      : undefined;
+  const artifactManifest = wantsArtifacts
+    ? ctx.artifactManifest?.slice(0, ARTIFACTS_MAX_ITEMS)
+    : undefined;
+  const artifactManifestTruncated =
+    wantsArtifacts &&
+    (ctx.artifactManifest?.length ?? 0) > ARTIFACTS_MAX_ITEMS
+      ? true
+      : undefined;
+  const inputTextSnapshotManifest = wantsArtifacts
+    ? ctx.inputTextSnapshotManifest?.slice(0, ARTIFACTS_MAX_ITEMS)
+    : undefined;
+  const inputTextSnapshotManifestTruncated =
+    wantsArtifacts &&
+    (ctx.inputTextSnapshotManifest?.length ?? 0) > ARTIFACTS_MAX_ITEMS
+      ? true
+      : undefined;
 
   const tokens = ctx.message.usage
     ? {
@@ -304,6 +345,15 @@ export function buildTracePayload(ctx: ReportContext): unknown[] {
     tokens,
     artifacts: artifactsList,
     artifactsTruncated,
+    attachment_manifest: attachmentManifest,
+    attachment_manifest_truncated: attachmentManifestTruncated,
+    artifact_manifest: artifactManifest,
+    artifact_manifest_truncated: artifactManifestTruncated,
+    input_text_snapshot_manifest: inputTextSnapshotManifest,
+    input_text_snapshot_manifest_truncated: inputTextSnapshotManifestTruncated,
+    manifest_completeness: wantsArtifacts
+      ? ctx.manifestCompleteness
+      : undefined,
     projectId: ctx.projectId || undefined,
     agent: ctx.agentId,
     model: ctx.turn?.model,

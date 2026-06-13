@@ -108,7 +108,7 @@ protect against unsafe parity claims.
   KV namespace provisioning remains a deployment action under #51/#52.
 - Observability #32 now has the daemon-side trace object manifest builder for
   relay URL derivation, authorize-before-batch uploads, registration-only
-  manifests, and oversized-object handling. Wiring those manifests into the
-  Langfuse bridge trace sequence remains open under #32.
+  manifests, oversized-object handling, and Langfuse bridge sequencing that
+  registers trace-safe manifests before daemon artifact uploads.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.

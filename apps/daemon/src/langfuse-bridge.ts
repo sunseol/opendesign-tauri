@@ -14,6 +14,11 @@ import { readAppConfig } from './app-config.js';
 import type { AppVersionInfo } from './app-version.js';
 import { listMessages } from './db.js';
 import {
+  buildDaemonRegistrationManifests,
+  buildDaemonUploadedManifests,
+  objectRegistrationTelemetryConfig,
+} from './langfuse-object-manifests.js';
+import {
   reportRunCompleted,
   type ArtifactSummary,
   type EventsSummary,
@@ -24,6 +29,7 @@ import {
   type TurnInfo,
 } from './langfuse-trace.js';
 import { redactSecrets } from './redact.js';
+import type { TraceObjectUploadManifests } from './trace-object-manifest.js';
 
 interface DaemonRunRecord {
   id: string;
@@ -49,6 +55,8 @@ interface DaemonRunRecord {
   skillId?: string;
   designSystemId?: string;
   clientType?: 'desktop' | 'web' | 'unknown';
+  projectMetadata?: Record<string, unknown> | null;
+  projectAttachmentPaths?: string[];
 }
 
 export interface ReportRunCompletedFromDaemonOpts {
@@ -319,7 +327,39 @@ export async function reportRunCompletedFromDaemon(
       ...getRuntimeInfo(opts.appVersion ?? null),
       ...(run.clientType ? { clientType: run.clientType } : {}),
     };
-    const ctx: ReportContext = {
+    const prompt = redactSecrets(
+      typeof run.userPrompt === 'string' ? run.userPrompt : '',
+    );
+    const output = redactSecrets(messageContent);
+    const artifacts = summarizeProducedFiles(producedFilesRaw);
+    const objectManifestOptions = {
+      installationId,
+      dataDir,
+      projectId: run.projectId ?? '',
+      runId: run.id,
+      prompt,
+      artifacts,
+      prefs,
+      ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
+      ...(run.projectMetadata !== undefined
+        ? { projectMetadata: run.projectMetadata }
+        : {}),
+      ...(run.projectAttachmentPaths
+        ? { attachmentPaths: run.projectAttachmentPaths }
+        : {}),
+    };
+    let registrationManifests: TraceObjectUploadManifests | undefined;
+    try {
+      registrationManifests = await buildDaemonRegistrationManifests(
+        objectManifestOptions,
+      );
+    } catch (err) {
+      console.warn('[langfuse-bridge] object registration failed:', String(err));
+    }
+
+    const buildContext = (
+      manifests?: TraceObjectUploadManifests,
+    ): ReportContext => ({
       installationId,
       projectId: run.projectId ?? '',
       conversationId: run.conversationId ?? '',
@@ -333,24 +373,51 @@ export async function reportRunCompletedFromDaemon(
       },
       message: {
         messageId: run.assistantMessageId ?? '',
-        // Lexical scrub before send. Catches API keys / tokens / emails
-        // / IPs / Luhn-valid credit cards in the prompt and assistant
-        // text. See `redact.ts` for the full pattern set; the user-facing
-        // privacy copy enumerates the same categories.
-        prompt: redactSecrets(typeof run.userPrompt === 'string' ? run.userPrompt : ''),
-        output: redactSecrets(messageContent),
+        prompt,
+        output,
         ...(usage ? { usage } : {}),
       },
-      artifacts: summarizeProducedFiles(producedFilesRaw),
+      artifacts,
+      ...(manifests?.attachmentManifest
+        ? { attachmentManifest: manifests.attachmentManifest }
+        : {}),
+      ...(manifests?.artifactManifest
+        ? { artifactManifest: manifests.artifactManifest }
+        : {}),
+      ...(manifests?.inputTextSnapshotManifest
+        ? { inputTextSnapshotManifest: manifests.inputTextSnapshotManifest }
+        : {}),
+      ...(manifests ? { manifestCompleteness: manifests.completeness } : {}),
       tools: collectToolCalls(run.events, startedAt, endedAt),
       eventsSummary: summarizeEvents(run.events, durationMs),
       prefs,
       ...(turn ? { turn } : {}),
       runtime,
-    };
+    });
+
+    if (registrationManifests) {
+      const registrationConfig = objectRegistrationTelemetryConfig();
+      if (registrationConfig) {
+        await reportRunCompleted(
+          buildContext(registrationManifests),
+          opts.fetchImpl
+            ? { config: registrationConfig, fetchImpl: opts.fetchImpl }
+            : { config: registrationConfig },
+        );
+      }
+    }
+
+    let uploadedManifests: TraceObjectUploadManifests | undefined;
+    try {
+      uploadedManifests = await buildDaemonUploadedManifests(
+        objectManifestOptions,
+      );
+    } catch (err) {
+      console.warn('[langfuse-bridge] object upload failed:', String(err));
+    }
 
     await reportRunCompleted(
-      ctx,
+      buildContext(uploadedManifests),
       opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {},
     );
   } catch (err) {
