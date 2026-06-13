@@ -69,18 +69,6 @@ const TEMPLATES = [
       '用 html-ppt-weekly-report 模板生成一份周报（7 页）。先问我四件事：本周时间范围、3-5 个核心 KPI 数字、本周已发布 / 已完成的事项、下周计划与风险。然后用模板填好 8 周柱状图和下周表格。',
   },
   {
-    slug: 'xhs-post',
-    name: 'html-ppt-xhs-post',
-    title: 'HTML PPT · 小红书 图文',
-    scenario: 'marketing',
-    featured: 24,
-    description:
-      '小红书 / Instagram 风 9 页 3:4 竖版图文（810×1080）— 暖色 pastel、虚线 sticker 卡片、底部页码点点。用于发小红书图文、Instagram carousel、品牌种草内容。',
-    triggers: ['小红书', 'xhs', 'xhs post', 'xiaohongshu', '图文', 'instagram carousel', '种草'],
-    examplePrompt:
-      '帮我用 html-ppt-xhs-post 模板做一组 9 张小红书图文（3:4 竖版，810×1080）。先告诉我主题，然后帮我把封面 + 7 页内容 + 结尾 CTA 排好，每页一句标题 + 一段正文 + 关键词 sticker。',
-  },
-  {
     slug: 'course-module',
     name: 'html-ppt-course-module',
     title: 'HTML PPT · Course Module',
@@ -187,18 +175,6 @@ const TEMPLATES = [
     triggers: ['pastel', 'macaron', 'lifestyle', 'slow living', '慢生活', '生活方式', '个人成长'],
     examplePrompt:
       '用 html-ppt-xhs-pastel-card 模板做一份慢生活主题图文。奶油底 + 马卡龙圆角卡片 + Playfair 斜体序号 + donut 图。先告诉我主题（休息 / 暂停 / 自我照顾…）和 5-7 个想说的点。',
-  },
-  {
-    slug: 'dir-key-nav-minimal',
-    name: 'html-ppt-dir-key-nav-minimal',
-    title: 'HTML PPT · 8 色极简方向键',
-    scenario: 'personal',
-    featured: 34,
-    description:
-      '8 页极简方向键 keynote — 每页一个独立单色背景（靛 / 奶 / 绛 / 翠 / 灰 / 紫 / 白 / 炭），各自配色，160px display 标题 + 4px 短粗 accent 线分隔、箭头 → 前缀的 Mono 列表、左下 ← → kbd 提示 + 右下页码、巨大呼吸留白。适合"有话要说但没什么可看"的 keynote、launch、公开演讲。',
-    triggers: ['minimal keynote', '极简', 'mono color', 'one idea per slide', 'public talk', 'launch keynote'],
-    examplePrompt:
-      '用 html-ppt-dir-key-nav-minimal 模板做一份 8 页极简 keynote。每页一个单色背景 + 一句 160px 大标题 + 几条箭头列表。先告诉我演讲主题，然后帮我把 8 个核心观点拍成 8 页（每页一个 idea）。',
   },
 ];
 
