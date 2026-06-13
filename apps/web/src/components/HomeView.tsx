@@ -47,6 +47,7 @@ import type {
   SkillSummary,
 } from '../types';
 import { inlineMentionToken } from '../utils/inlineMentions';
+import { missingRequiredInputs, pluginInputsAreValid } from '../utils/pluginRequiredInputs';
 import { HomeHero } from './HomeHero';
 import { findChip, HOME_HERO_CHIPS, type HomeHeroChip } from './home-hero/chips';
 import {
@@ -1200,7 +1201,12 @@ export function HomeView({
     });
     let submittedActive = active;
     if (submittedActive && !submittedActive.inputsValid) {
-      setError('Fill the required plugin parameters before running.');
+      const missing = missingRequiredInputs(submittedActive.inputFields, submittedActive.inputs);
+      setError(
+        missing.length > 0
+          ? `Fill the required plugin ${missing.length === 1 ? 'parameter' : 'parameters'} before running: ${missing.join(', ')}.`
+          : 'Fill the required plugin parameters before running.',
+      );
       return;
     }
     const defaultInputs = { prompt: trimmed };
@@ -1842,17 +1848,6 @@ function hydratePluginInputs(
     }
   }
   return next;
-}
-
-function pluginInputsAreValid(
-  fields: InputFieldSpec[],
-  values: Record<string, unknown>,
-): boolean {
-  return fields.every((field) => {
-    if (!field.required) return true;
-    const value = values[field.name];
-    return value !== undefined && value !== null && value !== '';
-  });
 }
 
 const TEMPLATE_INPUT_PATTERN = /\{\{\s*([a-zA-Z_][\w-]*)\s*\}\}/g;
