@@ -57,6 +57,7 @@ import {
   mergeProviderModelOptions,
   providerModelsCacheKey,
 } from './providerModelsCache';
+import { validateByokDraft } from './byok/validation';
 export {
   mergeProviderModelOptions,
   providerModelsCacheKey,
@@ -294,13 +295,12 @@ export function canFetchProviderModels(
   config: Pick<AppConfig, 'apiKey' | 'baseUrl'>,
   protocol: ApiProtocol,
 ): boolean {
-  return (
-    protocol !== 'azure' &&
-    protocol !== 'ollama' &&
-    Boolean(config.apiKey.trim()) &&
-    Boolean(config.baseUrl.trim()) &&
-    isValidApiBaseUrl(config.baseUrl)
-  );
+  if (protocol === 'azure' || protocol === 'ollama') return false;
+  return validateByokDraft(
+    protocol,
+    { apiKey: config.apiKey, baseUrl: config.baseUrl, model: '' },
+    { requireModel: false },
+  ).ok;
 }
 
 function missingByokConnectionFields(

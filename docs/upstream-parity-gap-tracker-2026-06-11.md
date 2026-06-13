@@ -152,6 +152,9 @@ protect against unsafe parity claims.
   BYOK draft validation now has split, test-covered helpers for pasted key
   cleanup, first-party key-shape detection, base URL normalization, blocking
   field reporting, and account/default model preference resolution.
+  Settings model-catalog fetch preconditions now use that validation contract,
+  so first-party OpenAI/Anthropic/Google catalog requests do not start with an
+  obviously wrong provider key.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Anthropic-compatible fallback routing is now centralized in
