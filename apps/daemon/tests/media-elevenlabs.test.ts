@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { listElevenLabsVoiceOptions } from '../src/elevenlabs-voices.js';
 import { generateMedia } from '../src/media.js';
 
 const TEST_ELEVENLABS_BASE_URL = 'https://elevenlabs-gateway.example.test';
@@ -48,6 +49,37 @@ describe('elevenlabs media generation', () => {
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, JSON.stringify(data), 'utf8');
   }
+
+  it('passes requestInit through when listing ElevenLabs voices', async () => {
+    await writeConfig({
+      providers: {
+        elevenlabs: {
+          apiKey: 'eleven-test-key',
+          baseUrl: TEST_ELEVENLABS_BASE_URL,
+        },
+      },
+    });
+    const dispatcher = { name: 'proxy-dispatcher' };
+    const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
+      expect(String(input)).toBe(`${TEST_ELEVENLABS_BASE_URL}/v2/voices?page_size=25`);
+      expect((init as { dispatcher?: unknown }).dispatcher).toBe(dispatcher);
+      return new Response(
+        JSON.stringify({
+          voices: [{ voice_id: 'voice-123', name: 'Narrator' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const voices = await listElevenLabsVoiceOptions(projectRoot, {
+      limit: 25,
+      requestInit: { dispatcher } as unknown as RequestInit,
+    });
+
+    expect(voices).toEqual([{ voiceId: 'voice-123', name: 'Narrator' }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
   it('renders ElevenLabs speech', async () => {
     await writeConfig({

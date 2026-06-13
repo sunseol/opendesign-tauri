@@ -44,6 +44,7 @@ describe('research search', () => {
 
   it('uses shallow Tavily search and normalizes JSON findings', async () => {
     process.env.OD_TAVILY_API_KEY = 'tvly-test';
+    const dispatcher = { name: 'proxy-dispatcher' };
     const fetchMock = vi.fn(async (_input: FetchInput, _init?: FetchInit) =>
       new Response(
         JSON.stringify({
@@ -66,6 +67,7 @@ describe('research search', () => {
       projectRoot: await tempProjectRoot(),
       query: 'EV market 2025 trends',
       maxSources: 50,
+      requestInit: { dispatcher } as unknown as RequestInit,
     });
 
     expect(findings).toMatchObject({
@@ -84,6 +86,7 @@ describe('research search', () => {
       ],
     });
     const [, init] = fetchMock.mock.calls[0] as [FetchInput, FetchInit];
+    expect((init as { dispatcher?: unknown }).dispatcher).toBe(dispatcher);
     const body = JSON.parse(String(init!.body));
     expect(body).toMatchObject({
       query: 'EV market 2025 trends',
