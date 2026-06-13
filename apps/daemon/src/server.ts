@@ -29,6 +29,11 @@ import {
   PLUGIN_PREVIEWS_ROUTE,
 } from './plugin-preview-bakes.js';
 import { userFacingAgentLabel } from './user-facing-agent-label.js';
+import {
+  buildBrowserUseRunState,
+  isBrowserUseRequested,
+  renderBrowserUseUnavailablePrompt,
+} from './browser-use-diagnostics.js';
 import { createCommandInvocation } from '@open-design/platform';
 import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@open-design/sidecar-proto';
 import {
@@ -9752,6 +9757,17 @@ export async function startServer({
     ) {
       return design.runs.fail(run, 'BAD_REQUEST', 'message required');
     }
+    const browserUseRunState = buildBrowserUseRunState({
+      requested: isBrowserUseRequested(message, currentPrompt, systemPrompt),
+      agentId: def.id,
+    });
+    if (browserUseRunState) {
+      run.browserUse = browserUseRunState;
+      design.runs.emit(run, 'diagnostic', {
+        type: 'browser_use_unavailable',
+        ...browserUseRunState,
+      });
+    }
     if (run.cancelRequested || design.runs.isTerminal(run.status)) return;
     const runId = run.id;
 
@@ -10058,7 +10074,13 @@ export async function startServer({
       message,
       currentPrompt,
     );
-    const clientInstructionPrompt = [researchCommandContract, runContextPrompt, systemPrompt]
+    const browserUsePromptGuard = renderBrowserUseUnavailablePrompt(run.browserUse ?? null);
+    const clientInstructionPrompt = [
+      researchCommandContract,
+      runContextPrompt,
+      browserUsePromptGuard,
+      systemPrompt,
+    ]
       .map((part) => (typeof part === 'string' ? part.trim() : ''))
       .filter(Boolean)
       .join('\n\n---\n\n');
@@ -10099,6 +10121,7 @@ export async function startServer({
       runtimeToolPrompt,
       researchCommandContract,
       runContextPrompt,
+      browserUsePromptGuard,
       clientSystemPrompt: clientInstructionPrompt,
       echoGuard: ECHO_GUARD,
       userRequestPrompt,
@@ -10592,6 +10615,16 @@ export async function startServer({
           }
         : {}),
     };
+    const browserUseRuntimeEnv = run.browserUse
+      ? {
+          OD_BROWSER_USE_REQUESTED: run.browserUse.requested ? '1' : '0',
+          OD_BROWSER_USE_AVAILABLE: run.browserUse.available ? '1' : '0',
+          ...(run.browserUse.reason
+            ? { OD_BROWSER_USE_UNAVAILABLE_REASON: run.browserUse.reason }
+            : {}),
+          OD_BROWSER_USE_REGISTRY_PATH: run.browserUse.diagnostics?.registryPath ?? '',
+        }
+      : {};
     if (run.cancelRequested || design.runs.isTerminal(run.status)) {
       cleanupPromptFile();
       revokeToolToken('child_exit');
@@ -10646,6 +10679,7 @@ export async function startServer({
           {
             ...createAgentRuntimeEnv(process.env, daemonUrl, toolTokenGrant),
             ...(def.env || {}),
+            ...browserUseRuntimeEnv,
           },
           configuredAgentEnv,
         ),

@@ -45,8 +45,27 @@ describe('diagnostics export handler — non-sidecar launch', () => {
     expect(res.capturedPayload).toBeInstanceOf(Buffer);
     const zip = await JSZip.loadAsync(res.capturedPayload!);
     const manifestRaw = await zip.file('summary/manifest.json')!.async('string');
-    const manifest = JSON.parse(manifestRaw) as { warnings: string[]; files: unknown[] };
+    const manifest = JSON.parse(manifestRaw) as {
+      warnings: string[];
+      files: unknown[];
+      extra?: {
+        browserUse?: {
+          registryPath?: string;
+          socketCount?: number;
+          candidateCount?: number;
+          staleCount?: number;
+          probeFailureCategory?: string;
+        };
+      };
+    };
     expect(manifest.warnings).toContain(STANDALONE_LAUNCH_WARNING);
+    expect(manifest.extra?.browserUse).toMatchObject({
+      registryPath: expect.stringContaining('codex-browser-use'),
+      probeFailureCategory: expect.any(String),
+    });
+    expect(typeof manifest.extra?.browserUse?.socketCount).toBe('number');
+    expect(typeof manifest.extra?.browserUse?.candidateCount).toBe('number');
+    expect(typeof manifest.extra?.browserUse?.staleCount).toBe('number');
     expect(manifest.files).toEqual([]);
   });
 });

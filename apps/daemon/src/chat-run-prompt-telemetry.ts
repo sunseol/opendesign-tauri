@@ -12,6 +12,7 @@ export interface ChatRunPromptTelemetryInput {
   readonly runtimeToolPrompt?: string | null;
   readonly researchCommandContract?: string | null;
   readonly runContextPrompt?: string | null;
+  readonly browserUsePromptGuard?: string | null;
   readonly clientSystemPrompt?: string | null;
   readonly echoGuard?: string | null;
   readonly userRequestPrompt?: string | null;
@@ -54,6 +55,7 @@ export function buildChatRunPromptTelemetry(
     inputSection('runtimeToolPrompt', input.runtimeToolPrompt),
     inputSection('researchCommandContract', input.researchCommandContract),
     inputSection('runContextPrompt', input.runContextPrompt),
+    inputSection('browserUsePromptGuard', input.browserUsePromptGuard),
     inputSection('clientSystemPrompt', input.clientSystemPrompt),
     inputSection('echoGuard', input.echoGuard),
     inputSection('userRequest', input.userRequestPrompt),

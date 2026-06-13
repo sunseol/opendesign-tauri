@@ -22,6 +22,7 @@ import {
 } from '@open-design/sidecar';
 
 import { readCurrentAppVersionInfo } from './app-version.js';
+import { collectBrowserUseDiscoveryFacts } from './browser-use-diagnostics.js';
 
 export interface DiagnosticsHandlerOptions {
   /** Sidecar runtime context, present when daemon is launched via tools-dev or packaged sidecar. */
@@ -89,6 +90,7 @@ export function createDiagnosticsExportHandler(options: DiagnosticsHandlerOption
       const sources = buildSidecarLogSources(options.runtime);
       const username = safeUsername();
       const home = homedir();
+      const browserUse = collectBrowserUseDiscoveryFacts();
 
       const result = await buildDiagnosticsZip({
         context: {
@@ -106,6 +108,7 @@ export function createDiagnosticsExportHandler(options: DiagnosticsHandlerOption
             mode: options.runtime?.mode ?? null,
             base: options.runtime?.base ?? null,
             projectRoot: options.projectRoot,
+            browserUse,
           },
           warnings: options.runtime == null ? [STANDALONE_LAUNCH_WARNING] : undefined,
         },

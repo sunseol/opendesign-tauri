@@ -50,6 +50,41 @@ describe('chat run service shutdown', () => {
     });
   });
 
+  it('stores Browser Use availability on run status bodies', () => {
+    const runs = createRuns();
+    const run = runs.create({
+      projectId: 'project-1',
+      conversationId: 'conv-a',
+      browserUse: {
+        requested: true,
+        available: false,
+        reason: 'no-matching-browser-backend',
+        diagnostics: {
+          registryPath: '/tmp/codex-browser-use',
+          registryExists: false,
+          socketCount: 0,
+          candidateCount: 0,
+          staleCount: 0,
+          currentSessionIdPresent: null,
+          probeFailureCategory: 'registry-missing',
+          staleThresholdMs: 600_000,
+        },
+      },
+    });
+
+    expect(runs.statusBody(run)).toMatchObject({
+      browserUse: {
+        requested: true,
+        available: false,
+        reason: 'no-matching-browser-backend',
+        diagnostics: {
+          registryPath: '/tmp/codex-browser-use',
+          probeFailureCategory: 'registry-missing',
+        },
+      },
+    });
+  });
+
   it('destroys child stdio streams when a run reaches a terminal state', () => {
     const runs = createRuns();
     const child = new FakeChildProcess({ closeOn: 'SIGTERM', withStdio: true });

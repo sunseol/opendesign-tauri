@@ -65,6 +65,7 @@ export function createChatRunService({
           : null,
       pluginId:
         typeof meta.pluginId === 'string' && meta.pluginId ? meta.pluginId : null,
+      browserUse: meta.browserUse && typeof meta.browserUse === 'object' ? meta.browserUse : null,
       status: 'queued',
       createdAt: now,
       updatedAt: now,
@@ -123,6 +124,7 @@ export function createChatRunService({
     error: run.error ?? null,
     errorCode: run.errorCode ?? null,
     resumable: run.resumable ?? false,
+    ...(run.browserUse ? { browserUse: run.browserUse } : {}),
   });
 
   const finish = (run, status, code: number | null = null, signal: string | null = null) => {

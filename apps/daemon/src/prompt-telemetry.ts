@@ -43,6 +43,7 @@ const REDACTED_CONTENT_KINDS: ReadonlySet<PromptTelemetrySectionKind> = new Set(
   'runtimeToolPrompt',
   'researchCommandContract',
   'runContextPrompt',
+  'browserUsePromptGuard',
   'clientSystemPrompt',
   'echoGuard',
   'userRequest',
@@ -61,8 +62,9 @@ const SECTION_PRIORITY: ReadonlyMap<PromptTelemetrySectionKind, number> = new Ma
   ['pluginStagePrompt', 5],
   ['researchCommandContract', 6],
   ['runContextPrompt', 7],
-  ['echoGuard', 8],
-  ['userRequest', 9],
+  ['browserUsePromptGuard', 8],
+  ['echoGuard', 9],
+  ['userRequest', 10],
 ]);
 
 function sha256(value: string): string {

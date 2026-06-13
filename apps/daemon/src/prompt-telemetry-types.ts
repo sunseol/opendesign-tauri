@@ -12,6 +12,7 @@ export type PromptTelemetrySectionKind =
   | 'runtimeToolPrompt'
   | 'researchCommandContract'
   | 'runContextPrompt'
+  | 'browserUsePromptGuard'
   | 'clientSystemPrompt'
   | 'echoGuard'
   | 'userRequest'
