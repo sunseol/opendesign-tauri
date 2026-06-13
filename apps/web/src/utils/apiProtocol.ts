@@ -34,3 +34,8 @@ export function apiProtocolModelLabel(
 export function apiProtocolAgentId(protocol: ApiProtocol | undefined): string {
   return API_PROTOCOL_AGENT_IDS[protocol ?? 'anthropic'];
 }
+
+export function isAnthropicSupportedImagePath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return /\.(jpe?g|png|gif|webp)$/.test(lower);
+}

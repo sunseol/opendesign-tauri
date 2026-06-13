@@ -143,6 +143,9 @@ protect against unsafe parity claims.
   daemon-restored key markers still enable supported media models.
   Media project metadata can now derive a run-scoped execution policy that
   constrains image/video/audio requests to the selected surface and model.
+  BYOK Anthropic-compatible proxy runs now convert project image attachments
+  into native image content blocks while leaving non-Anthropic proxies on the
+  plain-text message path.
   AMR DSML artifact echoes now stay quiet for standalone generated artifact
   blocks while preserving literal inline `<artifact>` documentation examples,
   covering the user-visible part of upstream #4068 without adopting the

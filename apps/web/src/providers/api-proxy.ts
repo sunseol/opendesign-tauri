@@ -1,7 +1,10 @@
 import { effectiveMaxTokens } from '../state/maxTokens';
 import type { AppConfig, ChatMessage } from '../types';
 import type { StreamHandlers } from './anthropic';
+import { buildProxyMessages } from './api-proxy-messages';
 import { parseSseFrame } from './sse';
+
+export { buildProxyMessages } from './api-proxy-messages';
 
 /**
  * Optional per-request context that some protocols thread into the
@@ -36,6 +39,7 @@ export async function streamProxyEndpoint(
   let acc = '';
 
   try {
+    const messages = await buildProxyMessages(endpoint, history, context);
     const resp = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,7 +48,7 @@ export async function streamProxyEndpoint(
         apiKey: cfg.apiKey,
         model: cfg.model,
         systemPrompt: system,
-        messages: history.map((m) => ({ role: m.role, content: m.content })),
+        messages,
         maxTokens: effectiveMaxTokens(cfg),
         apiVersion: cfg.apiVersion,
         ...(context?.projectId ? { projectId: context.projectId } : {}),
