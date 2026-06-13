@@ -1694,30 +1694,23 @@ footer {
   margin-right: 6px;
   vertical-align: middle;
 }
-.foot-mega {
-  margin-top: 60px;
-  padding-top: 0;
-  padding-bottom: 12px;
-  border-top: 1px solid var(--line);
-  overflow-x: hidden;
-  overflow-y: visible;
+.foot-masthead {
+  margin-top: 56px;
 }
-.foot-mega .word {
-  font-family: var(--sans);
-  font-weight: 900;
-  font-size: clamp(70px, 13vw, 200px);
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+.foot-masthead-wordmark {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(26px, 10.4vw, 158px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
   color: var(--ink);
   white-space: nowrap;
-  margin-top: 30px;
-  padding-bottom: 0.18em;
 }
-.foot-mega .word em {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  color: var(--coral);
+.foot-masthead-accent { color: var(--coral); }
+.foot-masthead-period { color: var(--ink); }
+@media (max-width: 720px) {
+  .foot-masthead { margin-top: 40px; padding-bottom: 48px; }
+  .foot-masthead-wordmark { white-space: normal; }
 }
 
 /* ---------- scroll-reveal motion ----------

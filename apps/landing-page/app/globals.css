@@ -2317,30 +2317,23 @@ footer {
   margin-right: 6px;
   vertical-align: middle;
 }
-.foot-mega {
-  margin-top: 60px;
-  padding-top: 0;
-  padding-bottom: 12px;
-  border-top: 1px solid var(--line);
-  overflow-x: hidden;
-  overflow-y: visible;
+.foot-masthead {
+  margin-top: 56px;
 }
-.foot-mega .word {
-  font-family: var(--sans);
-  font-weight: 900;
-  font-size: clamp(70px, 13vw, 200px);
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+.foot-masthead-wordmark {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(26px, 10.4vw, 158px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
   color: var(--ink);
   white-space: nowrap;
-  margin-top: 30px;
-  padding-bottom: 0.18em;
 }
-.foot-mega .word em {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  color: var(--coral);
+.foot-masthead-accent { color: var(--coral); }
+.foot-masthead-period { color: var(--ink); }
+@media (max-width: 720px) {
+  .foot-masthead { margin-top: 40px; padding-bottom: 48px; }
+  .foot-masthead-wordmark { white-space: normal; }
 }
 
 /* ---------- scroll-reveal motion ----------
@@ -2427,7 +2420,7 @@ footer {
  *   1080  — small desktop / large laptop. Smaller hero/section heads.
  *    880  — tablet portrait. Stack two-column grids, tame the dark work
  *           card, trim partners to 3 cols.
- *    640  — large phone landscape. Wrap toolbars, trim foot-mega.
+ *    640  — large phone landscape. Wrap toolbars.
  *    560  — phone portrait. One-column lists/cards. Hero shrinks again.
  *    420  — tiny phones. Drop decorative ribbons that overflow, shrink
  *           the locale switcher, tighten section padding.
@@ -2621,7 +2614,6 @@ footer {
   .topbar-inner .right { gap: 12px; }
   .hero-actions .btn { padding: 12px 18px; font-size: 13px; }
   .work-card h3 { font-size: clamp(24px, 6vw, 30px); }
-  .foot-mega .word { font-size: clamp(54px, 18vw, 120px); }
 }
 @media (max-width: 560px) {
   .container { padding: 0 16px; }
@@ -2658,7 +2650,6 @@ footer {
   .brand { font-size: 16px; gap: 8px; }
   .brand-mark { width: 32px; height: 32px; font-size: 16px; }
   .read-more { margin-top: 36px; }
-  .foot-mega .word { font-size: clamp(48px, 16vw, 88px); }
 }
 @media (max-width: 420px) {
   .container { padding: 0 14px; }
@@ -2674,7 +2665,6 @@ footer {
   .hero-foot { font-size: 9.5px; }
   .sec-rule { font-size: 9.5px; gap: 6px 12px; }
   .partners { grid-template-columns: repeat(2, 1fr); }
-  .foot-mega .word { font-size: clamp(40px, 16vw, 64px); }
   .work-card { padding: 26px 22px; }
   .work-card.alt { padding: 24px 20px; }
 }

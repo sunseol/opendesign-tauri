@@ -613,8 +613,8 @@ function renderFooter(i: EditorialCollageInputs): string {
         <span style='color:var(--coral);'>♥ ${i.brand.year_roman}</span>
       </span>
     </div>
-    <div class='foot-mega'>
-      <div class='word' data-reveal='rise-lg'>${mixed(i.footer.mega)}</div>
+    <div class='foot-masthead' data-od-id='footer-masthead'>
+      <p class='foot-masthead-wordmark'>Open <span class='foot-masthead-accent'>Design</span><span class='foot-masthead-period'>.</span></p>
     </div>
   </div>
 </footer>`;

@@ -1429,20 +1429,10 @@ export default function Page({
                 <span style={{ color: 'var(--coral)' }}>♥ MMXXVI</span>
               </span>
             </div>
-            <div className='foot-mega'>
-              <div className='word' data-reveal='rise-lg'>
-                {(() => {
-                  const parts = home.footer.mega.split('Design');
-                  if (parts.length !== 2) return home.footer.mega;
-                  return (
-                    <>
-                      {parts[0]}
-                      <span style={{ color: 'var(--coral)' }}>Design</span>
-                      {parts[1]}
-                    </>
-                  );
-                })()}
-              </div>
+            <div className='foot-masthead' data-od-id='footer-masthead'>
+              <p className='foot-masthead-wordmark'>
+                Open <span className='foot-masthead-accent'>Design</span><span className='foot-masthead-period'>.</span>
+              </p>
             </div>
           </div>
         </footer>
