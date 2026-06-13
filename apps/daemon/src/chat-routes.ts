@@ -16,7 +16,7 @@ import {
 } from './byok-tools.js';
 import { isSafeId as isSafeProjectId } from './projects.js';
 import { projectKindToTracking } from '@open-design/contracts/analytics';
-import { validateBaseUrlResolved } from './connectionTest.js';
+import { proxyDispatcherRequestInit, validateBaseUrlResolved } from './connectionTest.js';
 import { googleStreamGenerateContentUrl } from './google-models.js';
 
 export interface RegisterChatRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'chat' | 'agents' | 'critique' | 'validation' | 'lifecycle' | 'paths'> {}
@@ -164,38 +164,45 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
     const protocol = body.protocol;
     if (
       typeof protocol !== 'string' ||
-      !['anthropic', 'openai', 'azure', 'google', 'ollama', 'senseaudio'].includes(protocol)
+      !['anthropic', 'openai', 'azure', 'google', 'ollama', 'senseaudio', 'aihubmix'].includes(protocol)
     ) {
       return sendApiError(
         res,
         400,
         'BAD_REQUEST',
-        'protocol must be one of anthropic|openai|azure|google|ollama|senseaudio',
+        'protocol must be one of anthropic|openai|azure|google|ollama|senseaudio|aihubmix',
       );
     }
+    const apiKeyRequired = protocol !== 'aihubmix';
     if (
       typeof body.baseUrl !== 'string' ||
       typeof body.apiKey !== 'string' ||
       !body.baseUrl.trim() ||
-      !body.apiKey.trim()
+      (apiKeyRequired && !body.apiKey.trim())
     ) {
       return sendApiError(
         res,
         400,
         'BAD_REQUEST',
-        'baseUrl and apiKey are required',
+        apiKeyRequired ? 'baseUrl and apiKey are required' : 'baseUrl is required',
       );
     }
     try {
-      const result = await listProviderModels({
-        protocol,
-        baseUrl: body.baseUrl,
-        apiKey: body.apiKey,
-        apiVersion:
-          typeof body.apiVersion === 'string' ? body.apiVersion : undefined,
-        signal: controller.signal,
-      });
-      return res.json(result);
+      const proxyDispatcher = proxyDispatcherRequestInit();
+      try {
+        const result = await listProviderModels({
+          protocol,
+          baseUrl: body.baseUrl,
+          apiKey: body.apiKey,
+          apiVersion:
+            typeof body.apiVersion === 'string' ? body.apiVersion : undefined,
+          signal: controller.signal,
+          requestInit: proxyDispatcher.requestInit,
+        });
+        return res.json(result);
+      } finally {
+        await proxyDispatcher.close();
+      }
     } catch (err: any) {
       console.warn(
         `[provider:models] uncaught: ${err instanceof Error ? err.message : String(err)}`,

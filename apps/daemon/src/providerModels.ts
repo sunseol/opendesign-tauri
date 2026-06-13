@@ -10,8 +10,12 @@ import type {
 import { isLoopbackApiHost } from '@open-design/contracts/api/connectionTest';
 import { redactSecrets, validateBaseUrlResolved } from './connectionTest.js';
 import { googleProviderModelsUrl, normalizeGoogleModelId } from './google-models.js';
+import { aihubmixCatalogUrl, aihubmixHeaders, parseAIHubMixCatalog } from './aihubmix.js';
 
-type ProviderModelsInput = ProviderModelsRequest & { signal?: AbortSignal };
+type ProviderModelsInput = ProviderModelsRequest & {
+  signal?: AbortSignal;
+  requestInit?: Pick<RequestInit, 'dispatcher'>;
+};
 
 const PROVIDER_MODELS_TIMEOUT_MS = 12_000;
 
@@ -149,6 +153,9 @@ function extractGoogleModels(data: unknown): ProviderModelOption[] {
 }
 
 function providerModelsUrl(protocol: ConnectionTestProtocol, baseUrl: string, apiKey: string): string {
+  if (protocol === 'aihubmix') {
+    return aihubmixCatalogUrl(baseUrl, 'llm');
+  }
   if (protocol === 'openai' || protocol === 'senseaudio') {
     return appendVersionedApiPath(baseUrl, '/models');
   }
@@ -170,6 +177,9 @@ function providerModelsHeaders(
   if (protocol === 'openai' || protocol === 'senseaudio') {
     return { authorization: `Bearer ${apiKey}` };
   }
+  if (protocol === 'aihubmix') {
+    return apiKey.trim() ? aihubmixHeaders(apiKey) : {};
+  }
   if (protocol === 'anthropic') {
     return {
       'x-api-key': apiKey,
@@ -182,6 +192,7 @@ function providerModelsHeaders(
 function extractModels(protocol: ConnectionTestProtocol, data: unknown): ProviderModelOption[] {
   // SenseAudio's /v1/models response follows the OpenAI envelope
   // (`{ data: [{ id, ... }] }`), so the same extractor handles both.
+  if (protocol === 'aihubmix') return parseAIHubMixCatalog(data, { chatOnly: true });
   if (protocol === 'openai' || protocol === 'senseaudio') return extractOpenAiModels(data);
   if (protocol === 'anthropic') return extractAnthropicModels(data);
   if (protocol === 'google') return extractGoogleModels(data);
@@ -236,6 +247,7 @@ export async function listProviderModels(
     const response = await fetch(url, {
       method: 'GET',
       headers: providerModelsHeaders(input.protocol, input.apiKey),
+      ...input.requestInit,
       signal: controller.signal,
       redirect: 'error',
     });

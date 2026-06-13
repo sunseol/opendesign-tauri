@@ -21,13 +21,18 @@ import { promises as dnsPromises } from 'node:dns';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { EnvHttpProxyAgent } from 'undici';
 import {
   applyAgentLaunchEnv,
   getAgentDef,
   resolveAgentLaunch,
   spawnEnvForAgent,
 } from './agents.js';
-import { createCommandInvocation } from '@open-design/platform';
+import {
+  createCommandInvocation,
+  mergeProxyAwareEnv,
+  resolveSystemProxyEnv,
+} from '@open-design/platform';
 import { attachAcpSession } from './acp.js';
 import { attachPiRpcSession } from './pi-rpc.js';
 import { createClaudeStreamHandler } from './claude-stream.js';
@@ -229,6 +234,41 @@ export function mergeNoProxyWithLoopbackDefaults(noProxy: string | undefined): s
   }
 
   return values.length > 0 ? values.join(',') : null;
+}
+
+export function proxyDispatcherRequestInit(
+  env: NodeJS.ProcessEnv = process.env,
+): {
+  close(): Promise<void>;
+  requestInit: Pick<RequestInit, 'dispatcher'>;
+} {
+  const proxyEnv = mergeProxyAwareEnv(
+    process.platform,
+    resolveSystemProxyEnv(),
+    env,
+  );
+  const httpProxy = proxyEnv.HTTP_PROXY ?? proxyEnv.http_proxy;
+  const httpsProxy = proxyEnv.HTTPS_PROXY ?? proxyEnv.https_proxy;
+  if (!httpProxy && !httpsProxy) {
+    return {
+      async close() {},
+      requestInit: {},
+    };
+  }
+  const noProxy = mergeNoProxyWithLoopbackDefaults(
+    proxyEnv.NO_PROXY ?? proxyEnv.no_proxy,
+  );
+  const dispatcher = new EnvHttpProxyAgent({
+    ...(httpProxy ? { httpProxy } : {}),
+    ...(httpsProxy ? { httpsProxy } : {}),
+    ...(noProxy ? { noProxy } : {}),
+  });
+  return {
+    close: () => dispatcher.close(),
+    requestInit: {
+      dispatcher: dispatcher as unknown as NonNullable<RequestInit['dispatcher']>,
+    },
+  };
 }
 
 const AGENT_COMPLETION_DEBOUNCE_MS = 500;

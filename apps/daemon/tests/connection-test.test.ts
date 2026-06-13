@@ -7,6 +7,7 @@ import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import * as platform from '@open-design/platform';
 import {
   createAgentSink,
   isSmokeOkReply,
@@ -180,6 +181,43 @@ describe('POST /api/provider/models', () => {
     });
   });
 
+  it('routes provider model discovery through the live proxy dispatcher', async () => {
+    const proxySpy = vi.spyOn(platform, 'resolveSystemProxyEnv').mockReturnValue({
+      HTTP_PROXY: 'http://proxy.example.test:8080',
+      NODE_USE_ENV_PROXY: '1',
+      NO_PROXY: 'localhost,127.0.0.1,[::1]',
+    });
+    const fetchMock = passThroughOrUpstream((_url, init) => {
+      expect(init?.dispatcher).toBeTruthy();
+      return jsonResponse({
+        data: [{ id: 'gpt-4o', object: 'model' }],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const res = await realFetch(`${baseUrl}/api/provider/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          protocol: 'openai',
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-openai',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      await expect(res.json()).resolves.toMatchObject({
+        ok: true,
+        kind: 'success',
+        models: [{ id: 'gpt-4o', label: 'gpt-4o' }],
+      });
+      expect(proxySpy).toHaveBeenCalledWith();
+    } finally {
+      proxySpy.mockRestore();
+    }
+  });
+
   it('lists Anthropic models with display names and a high page limit', async () => {
     const fetchMock = passThroughOrUpstream((url, init) => {
       expect(url).toBe('https://api.anthropic.com/v1/models?limit=1000');
@@ -268,6 +306,44 @@ describe('POST /api/provider/models', () => {
       models: [
         { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
         { id: 'gemini-custom', label: 'Gemini Custom' },
+      ],
+    });
+  });
+
+  it('lists AIHubMix chat catalogue models without requiring a key', async () => {
+    const fetchMock = passThroughOrUpstream((url, init) => {
+      expect(url).toBe('https://aihubmix.com/api/v1/models?type=llm');
+      expect((init?.headers as Record<string, string>).authorization).toBeUndefined();
+      expect((init?.headers as Record<string, string>)['APP-Code']).toBeUndefined();
+      return jsonResponse({
+        data: [
+          { model_id: 'claude-sonnet-4-5', model_name: 'Claude Sonnet 4.5', types: 'llm' },
+          { model_id: 'gpt-image-1', model_name: 'GPT Image', types: 'image_generation,llm' },
+          { model_id: 'gpt-4o', model_name: 'GPT-4o', types: 'llm,search' },
+          { model_id: 'gpt-4o', model_name: 'duplicate', types: 'llm' },
+          { model_name: 'missing id', types: 'llm' },
+        ],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await realFetch(`${baseUrl}/api/provider/models`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol: 'aihubmix',
+        baseUrl: 'https://aihubmix.com/v1',
+        apiKey: '',
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      kind: 'success',
+      models: [
+        { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+        { id: 'gpt-4o', label: 'GPT-4o' },
       ],
     });
   });
