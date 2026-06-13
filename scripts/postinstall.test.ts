@@ -165,6 +165,10 @@ test("postinstall builds workspace packages whose linkable bins delegate to dist
   assert.deepEqual(missingBuildTargets, []);
 });
 
+test("postinstall builds the shared components package before workspace consumers import dist", () => {
+  assert.equal(postinstallBuildTargets().has("packages/components"), true);
+});
+
 test("every postinstall build target has a checked-in tsconfig.json", () => {
   const missingTsconfigs = [...postinstallBuildTargets()]
     .filter((target) => existsSync(join(repoRoot, target, "package.json")))
