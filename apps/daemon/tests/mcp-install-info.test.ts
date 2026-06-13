@@ -6,7 +6,7 @@ import express from 'express';
 import { SIDECAR_ENV } from '@open-design/sidecar-proto';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { isLocalSameOrigin } from '../src/origin-validation.js';
-import { buildMcpInstallPayload } from '../src/mcp-install-info.js';
+import { buildMcpInstallPayload, resolveMcpWebBaseUrl } from '../src/mcp-install-info.js';
 
 // The install-info endpoint is a self-contained handler that resolves
 // absolute paths to node + cli.js so the Settings → MCP server panel
@@ -34,6 +34,7 @@ interface InstallInfoPayload {
   args: string[];
   env: Record<string, string>;
   daemonUrl: string | null;
+  webBaseUrl: string | null;
   platform: NodeJS.Platform;
   cliExists: boolean;
   nodeExists: boolean;
@@ -85,6 +86,7 @@ function makeInstallInfoApp({ cliPath, port, env = {}, dataDir }: InstallInfoOpt
       electronAsNode: env.ELECTRON_RUN_AS_NODE === '1',
       isSidecarMode,
       sidecarEnv,
+      webBaseUrl: resolveMcpWebBaseUrl(env),
     });
     cache = { t: now, payload };
     res.json(payload);
@@ -183,6 +185,7 @@ describe('GET /api/mcp/install-info', () => {
     // a non-sidecar launch.
     expect(body.env).toEqual({ OD_DATA_DIR: dataDir });
     expect(body.daemonUrl).toBe(`http://127.0.0.1:${port}`);
+    expect(body.webBaseUrl).toBeNull();
     expect(body.platform).toBe(process.platform);
     expect(body.cliExists).toBe(true);
     expect(body.nodeExists).toBe(true);
@@ -195,6 +198,27 @@ describe('GET /api/mcp/install-info', () => {
     const body = await readInstallInfo(res);
     expect(body.env).toBeDefined();
     expect(body.env.OD_DATA_DIR).toBe(dataDir);
+  });
+
+  it('surfaces the paired web base URL when OD_WEB_PORT is configured', async () => {
+    const { port, server } = await startHarness(
+      cliPath,
+      { OD_WEB_PORT: '65321' },
+      dataDir,
+    );
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/mcp/install-info`);
+      const body = await readInstallInfo(res);
+      expect(body.webBaseUrl).toBe('http://127.0.0.1:65321');
+    } finally {
+      await new Promise<void>((done) => server?.close(() => done()));
+    }
+  });
+
+  it('ignores invalid OD_WEB_PORT values', () => {
+    expect(resolveMcpWebBaseUrl({ OD_WEB_PORT: '0' })).toBeNull();
+    expect(resolveMcpWebBaseUrl({ OD_WEB_PORT: '-1' })).toBeNull();
+    expect(resolveMcpWebBaseUrl({ OD_WEB_PORT: 'not-a-port' })).toBeNull();
   });
 
   it('rejects cross-origin requests with 403', async () => {

@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import fs from 'node:fs';
 import { SIDECAR_ENV } from '@open-design/sidecar-proto';
-import { buildMcpInstallPayload } from './mcp-install-info.js';
+import { buildMcpInstallPayload, resolveMcpWebBaseUrl } from './mcp-install-info.js';
 import { MCP_TEMPLATES, buildAcpMcpServers, buildClaudeMcpJson, isManagedProjectCwd, readMcpConfig, writeMcpConfig } from './mcp-config.js';
 import { beginAuth, exchangeCodeForToken, refreshAccessToken } from './mcp-oauth.js';
 import { clearToken, getToken, isTokenExpired, readAllTokens, setToken } from './mcp-tokens.js';
@@ -64,6 +64,7 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
       electronAsNode: process.env.ELECTRON_RUN_AS_NODE === '1',
       isSidecarMode,
       sidecarEnv,
+      webBaseUrl: resolveMcpWebBaseUrl(process.env),
     });
     installInfoCache = { t: now, payload };
     res.json(payload);

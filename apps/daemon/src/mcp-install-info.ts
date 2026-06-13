@@ -28,6 +28,7 @@ export interface BuildMcpInstallPayloadInputs {
    *  caller wants propagated into the snippet. The caller decides
    *  what's worth propagating; this builder just merges. */
   sidecarEnv: Record<string, string>;
+  webBaseUrl?: string | null;
 }
 
 export interface McpInstallPayload {
@@ -35,6 +36,7 @@ export interface McpInstallPayload {
   args: string[];
   env: Record<string, string>;
   daemonUrl: string;
+  webBaseUrl: string | null;
   platform: NodeJS.Platform;
   cliExists: boolean;
   nodeExists: boolean;
@@ -85,6 +87,10 @@ export function buildMcpInstallPayload(
     args,
     env,
     daemonUrl: `http://127.0.0.1:${inputs.port}`,
+    webBaseUrl:
+      typeof inputs.webBaseUrl === 'string' && inputs.webBaseUrl.length > 0
+        ? inputs.webBaseUrl
+        : null,
     // Surface platform so the install panel can localize path hints
     // (~/.cursor vs %USERPROFILE%\.cursor) and keyboard shortcuts
     // (Cmd vs Ctrl).
@@ -93,4 +99,10 @@ export function buildMcpInstallPayload(
     nodeExists: inputs.nodeExists,
     buildHint: hints.length ? hints.join(' ') : null,
   };
+}
+
+export function resolveMcpWebBaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const raw = env.OD_WEB_PORT;
+  const port = raw ? Number(raw) : Number.NaN;
+  return Number.isFinite(port) && port > 0 ? `http://127.0.0.1:${port}` : null;
 }
