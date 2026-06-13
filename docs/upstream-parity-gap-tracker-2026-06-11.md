@@ -109,6 +109,8 @@ protect against unsafe parity claims.
 - Observability #32 now has the daemon-side trace object manifest builder for
   relay URL derivation, authorize-before-batch uploads, registration-only
   manifests, oversized-object handling, and Langfuse bridge sequencing that
-  registers trace-safe manifests before daemon artifact uploads.
+  registers trace-safe manifests before daemon artifact uploads. Langfuse trace
+  payloads now also accept redacted prompt-stack telemetry and expose upstream
+  `promptStack_*` query metadata plus structured generation input.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.
