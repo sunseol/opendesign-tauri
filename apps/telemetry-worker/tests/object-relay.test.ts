@@ -1,33 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import worker, { type Env } from '../src/index';
-
-const env: Env = {
-  LANGFUSE_PUBLIC_KEY: 'pk-lf-test',
-  LANGFUSE_SECRET_KEY: 'sk-lf-test',
-  LANGFUSE_BASE_URL: 'https://us.cloud.langfuse.com',
-};
-
-function makeRateLimiter(success: boolean) {
-  return {
-    limit: vi.fn(async () => ({ success })),
-  };
-}
-
-function makeObjectRelayRequest(
-  body: string,
-  headers: Record<string, string> = {},
-): Request {
-  return new Request('https://telemetry.open-design.ai/api/objects/batch', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Open-Design-Telemetry': 'object-ingestion-v1',
-      ...headers,
-    },
-    body,
-  });
-}
+import worker from '../src/index';
+import {
+  base64,
+  env,
+  makeObjectRelayRequest,
+  makePutSpy,
+  makeRateLimiter,
+  makeSignedObjectRelayRequest,
+  objectUploadSecret,
+  sha256,
+} from './object-relay-helpers';
 
 describe('telemetry worker object relay', () => {
   it('reports object relay unconfigured when upload authority is absent', async () => {
@@ -60,7 +43,7 @@ describe('telemetry worker object relay', () => {
   });
 
   it('rate limits object batches by IP before reading the body', async () => {
-    const put = vi.fn(async () => ({}));
+    const put = makePutSpy();
     const limiter = makeRateLimiter(false);
     const request = makeObjectRelayRequest('object body should not be read', {
       'CF-Connecting-IP': '203.0.113.10',
@@ -83,7 +66,7 @@ describe('telemetry worker object relay', () => {
   });
 
   it('rejects marker-only object batches without upload tokens', async () => {
-    const put = vi.fn(async () => ({}));
+    const put = makePutSpy();
     const response = await worker.fetch(
       makeObjectRelayRequest(JSON.stringify({
         client_id: 'installation-1',
@@ -103,5 +86,78 @@ describe('telemetry worker object relay', () => {
       error: 'body.upload_token must be a string',
     });
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('stores signed object batches through the R2 binding', async () => {
+    const put = makePutSpy();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const storageRef =
+      'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt';
+
+    const response = await worker.fetch(
+      makeSignedObjectRelayRequest({
+        content: 'hello object',
+        storageRef,
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_PREFIX: 'observability',
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put.mock.calls[0]?.[0]).toBe(
+      'observability/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt',
+    );
+    const body = await response.json();
+    expect(body).toEqual({
+      objects: [
+        {
+          storage_ref: storageRef,
+          status: 'available',
+          size_bytes: 12,
+          sha256: `sha256:${sha256('hello object')}`,
+        },
+      ],
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('reports signed-scope misses without writing to R2', async () => {
+    const put = makePutSpy();
+    const storageRef =
+      'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-2/brief.txt';
+    const tokenStorageRef =
+      'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt';
+
+    const response = await worker.fetch(
+      makeSignedObjectRelayRequest({
+        content: 'hello object',
+        storageRef,
+        tokenStorageRef,
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(put).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      objects: [
+        {
+          storage_ref: storageRef,
+          status: 'unavailable',
+          reason: 'unauthorized_object',
+        },
+      ],
+    });
   });
 });
