@@ -7085,6 +7085,11 @@ function hasRelativeAssetRefs(html: string): boolean {
   return false;
 }
 
+function isBlockedPreviewAssetScheme(assetRef: string): boolean {
+  const clean = assetRef.replace(/[\s\u0000-\u001F\u007F-\u009F]/g, '');
+  return /^(?:javascript|data):/i.test(clean);
+}
+
 async function inlineRelativeAssets(
   html: string,
   projectId: string,
@@ -7153,11 +7158,15 @@ async function fetchProjectRelativeText(
 }
 
 function resolveProjectRelativePath(ownerFileName: string, assetRef: string): string | null {
+  if (isBlockedPreviewAssetScheme(assetRef)) return null;
   if (/^(?:https?:|data:|blob:|mailto:|tel:|#|\/)/i.test(assetRef)) return null;
   try {
     const url = new URL(assetRef, `https://od.local/${baseDirFor(ownerFileName)}`);
     if (url.origin !== 'https://od.local') return null;
-    return decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+    const decodedPath = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+    const parts = decodedPath.split(/[/\\]/);
+    if (parts.some((part) => part === '..' || part.trim() === '..')) return null;
+    return decodedPath;
   } catch {
     return null;
   }

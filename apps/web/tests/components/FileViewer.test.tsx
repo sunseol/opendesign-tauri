@@ -462,6 +462,54 @@ describe('FileViewer SVG artifacts', () => {
     expect(srcDocFrame?.srcdoc).toContain('data-od-sandbox-shim');
   });
 
+  it('does not fetch unsafe relative preview asset references while inlining srcdoc assets', async () => {
+    const file = baseFile({
+      name: 'pages/index.html',
+      path: 'pages/index.html',
+      mime: 'text/html',
+      kind: 'html',
+      artifactManifest: {
+        version: 1,
+        kind: 'html',
+        title: 'Page',
+        entry: 'pages/index.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    });
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url === '/api/projects/project-1/raw/pages/app.css') {
+        return new Response('main { color: red; }');
+      }
+      return new Response('', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={file}
+        liveHtml={
+          '<html><head><link rel="stylesheet" href="app.css"></head>' +
+          '<body><script src="..%2fsecret.js"></script>' +
+          '<script src="java\u0000script:alert(1)"></script><main>Page</main></body></html>'
+        }
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/raw/pages/app.css');
+    });
+    const calledUrls = fetchMock.mock.calls.map(([input]) =>
+      typeof input === 'string' ? input : input instanceof Request ? input.url : String(input),
+    );
+    expect(calledUrls).not.toContain('/api/projects/project-1/raw/secret.js');
+    expect(calledUrls).not.toContain('/api/projects/project-1/raw/pages/../secret.js');
+    expect(calledUrls.some((url) => url.includes('javascript'))).toBe(false);
+  });
+
   it('reactivates the srcDoc transport after switching source back to preview', async () => {
     const file = baseFile({
       name: 'page.html',

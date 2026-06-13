@@ -60,4 +60,26 @@ describe('GenUISurfaceRenderer', () => {
       }),
     );
   });
+
+  it('rejects unsafe bundled component paths before building the iframe URL', () => {
+    const surface: GenUISurfaceSpec = {
+      id: 'unsafe-component',
+      kind: 'form',
+      persist: 'run',
+      schema: { type: 'object' },
+      component: {
+        path: '..%2fsecret.html',
+        sandbox: 'iframe',
+      },
+    };
+    render(
+      <GenUISurfaceRenderer
+        pending={{ surface, runId: 'run-1', componentPluginId: 'demo-plugin' }}
+        onAnswered={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain('unsafe component path');
+    expect(document.querySelector('iframe')).toBeNull();
+  });
 });
