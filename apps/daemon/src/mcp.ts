@@ -18,6 +18,7 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { buildProjectRawFileUrl } from '@open-design/contracts';
 import { postCreateArtifactRequest } from './artifact-create.js';
 
 const SERVER_NAME = 'open-design';
@@ -511,13 +512,16 @@ async function handleMcpToolCall(baseUrl: string, name: unknown, args: McpArgs) 
         const data = await getJson<ProjectPayload>(`${baseUrl}/api/projects/${encodeURIComponent(id)}`);
         const project = data?.project ?? data;
         const resolvedDir = typeof data?.resolvedDir === 'string' ? data.resolvedDir : null;
+        const entryFile = project?.metadata?.entryFile ?? null;
+        const previewUrl = buildProjectRawFileUrl(baseUrl, id, entryFile);
         return ok(
           withActiveEcho(
             {
               ...project,
-              entryFile: project?.metadata?.entryFile ?? null,
+              entryFile,
               kind: project?.metadata?.kind ?? null,
               resolvedDir,
+              ...(previewUrl ? { previewUrl } : {}),
             },
             active,
             resolved,

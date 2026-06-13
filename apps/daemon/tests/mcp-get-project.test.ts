@@ -27,7 +27,7 @@ describe('public MCP get_project', () => {
           project: {
             id: projectId,
             name: 'Demo',
-            metadata: { entryFile: 'index.html', kind: 'prototype' },
+            metadata: { entryFile: 'screens/main page.html', kind: 'prototype' },
           },
           resolvedDir,
         }),
@@ -44,9 +44,10 @@ describe('public MCP get_project', () => {
     expect(firstJson(result)).toMatchObject({
       id: projectId,
       name: 'Demo',
-      entryFile: 'index.html',
+      entryFile: 'screens/main page.html',
       kind: 'prototype',
       resolvedDir,
+      previewUrl: `${base}/api/projects/${projectId}/raw/screens/main%20page.html`,
     });
   });
 });
