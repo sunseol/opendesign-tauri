@@ -299,7 +299,9 @@ protect against unsafe parity claims.
   delivered before stdin closes. Runtime definitions now carry declarative
   auth probes and per-agent inactivity timeout hints, with Cursor Agent using
   `status` for auth detection and Copilot extending silent-generation
-  watchdog room without overriding operator env settings. Tavily research and
+  watchdog room without overriding operator env settings. Invalid checked-in
+  timeout hints now fail fast as `AGENT_RUNTIME_DEF_INVALID` before run setup,
+  even when an operator env override is present. Tavily research and
   ElevenLabs voice catalog requests now preserve caller-supplied fetch
   requestInit so daemon proxy dispatchers survive provider calls. MCP
   `get_project` now returns a raw file preview URL for projects with an entry

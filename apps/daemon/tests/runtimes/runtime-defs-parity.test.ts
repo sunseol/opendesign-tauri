@@ -4,7 +4,10 @@ import {
   copilot,
   cursorAgent,
 } from './helpers/test-helpers.js';
-import { resolveChatRunInactivityTimeoutMs } from '../../src/server.js';
+import {
+  assertValidRuntimeDefInactivityTimeoutMs,
+  resolveChatRunInactivityTimeoutMs,
+} from '../../src/server.js';
 import { probeAgentAuthStatus } from '../../src/runtimes/auth.js';
 
 describe('runtime definition parity', () => {
@@ -27,6 +30,24 @@ describe('runtime definition parity', () => {
 
       process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS = '1234';
       expect(resolveChatRunInactivityTimeoutMs(copilot.inactivityTimeoutMs)).toBe(1234);
+    } finally {
+      if (previous == null) {
+        delete process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS;
+      } else {
+        process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS = previous;
+      }
+    }
+  });
+
+  it('rejects invalid checked-in runtime inactivity hints even when env overrides are set', () => {
+    const previous = process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS;
+    try {
+      process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS = '1234';
+
+      for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -1, 60.5]) {
+        expect(() => assertValidRuntimeDefInactivityTimeoutMs(bad)).toThrow(RangeError);
+        expect(() => resolveChatRunInactivityTimeoutMs(bad)).toThrow(RangeError);
+      }
     } finally {
       if (previous == null) {
         delete process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS;

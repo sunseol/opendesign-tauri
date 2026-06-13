@@ -3224,7 +3224,21 @@ export interface StartServerOptions {
 const DEFAULT_CHAT_RUN_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_CHAT_RUN_INACTIVITY_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
+export function assertValidRuntimeDefInactivityTimeoutMs(agentDefault?: number): void {
+  if (agentDefault === undefined) return;
+  if (
+    !Number.isFinite(agentDefault) ||
+    !Number.isInteger(agentDefault) ||
+    agentDefault < 0
+  ) {
+    throw new RangeError(
+      'RuntimeAgentDef.inactivityTimeoutMs must be a non-negative integer',
+    );
+  }
+}
+
 export function resolveChatRunInactivityTimeoutMs(agentDefault?: number) {
+  assertValidRuntimeDefInactivityTimeoutMs(agentDefault);
   const raw = Number(process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS);
   // This watchdog observes child stdout/stderr/SSE activity, not real CPU or
   // filesystem progress. Keep the default long enough for agents that spend
@@ -9749,6 +9763,14 @@ export async function startServer({
       );
     if (!def.bin)
       return design.runs.fail(run, 'AGENT_UNAVAILABLE', 'agent has no binary');
+    try {
+      assertValidRuntimeDefInactivityTimeoutMs(def.inactivityTimeoutMs);
+    } catch (err) {
+      if (err instanceof RangeError) {
+        return design.runs.fail(run, 'AGENT_RUNTIME_DEF_INVALID', err.message);
+      }
+      throw err;
+    }
     const safeCommentAttachments =
       normalizeCommentAttachments(commentAttachments);
     if (
