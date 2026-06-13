@@ -2,6 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   resolveDaemonCliPath,
+  resolveDaemonPluginPreviewsDir,
   resolveDaemonResourceRoot,
   resolveProcessResourcesPath,
   resolveProjectRoot,
@@ -74,6 +75,36 @@ describe('resolveDaemonResourceRoot', () => {
     expect(() => resolveDaemonResourceRoot({ configured, safeBases: [safeBase] })).toThrow(
       /OD_RESOURCE_ROOT must be under/,
     );
+  });
+});
+
+describe('resolveDaemonPluginPreviewsDir', () => {
+  it('defaults to the checked-in data/plugin-previews directory', () => {
+    const projectRoot = path.resolve(import.meta.dirname, '../../..');
+
+    expect(resolveDaemonPluginPreviewsDir({ env: {}, projectRoot })).toBe(
+      path.join(projectRoot, 'data', 'plugin-previews'),
+    );
+  });
+
+  it('resolves relative overrides from the project root', () => {
+    const projectRoot = path.resolve(import.meta.dirname, '../../..');
+
+    expect(
+      resolveDaemonPluginPreviewsDir({
+        env: { OD_PLUGIN_PREVIEWS_DIR: '.tmp/previews' },
+        projectRoot,
+      }),
+    ).toBe(path.join(projectRoot, '.tmp', 'previews'));
+  });
+
+  it('passes absolute overrides through unchanged', () => {
+    expect(
+      resolveDaemonPluginPreviewsDir({
+        env: { OD_PLUGIN_PREVIEWS_DIR: '/tmp/plugin-previews' },
+        projectRoot: '/repo',
+      }),
+    ).toBe('/tmp/plugin-previews');
   });
 });
 

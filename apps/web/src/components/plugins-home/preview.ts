@@ -34,6 +34,8 @@ export interface MediaPreviewSpec {
   audioUrl: string | null;
   /** True when the plugin only ships a still image, no video stream. */
   imageOnly: boolean;
+  /** Leading hold span in milliseconds for pre-baked hover-pan clips. */
+  loopHoldMs?: number;
 }
 
 export interface HtmlPreviewSpec {
@@ -78,6 +80,12 @@ interface PreviewBlock {
   audio?: unknown;
 }
 
+interface BakedPreviewBlock {
+  poster?: unknown;
+  video?: unknown;
+  holdMs?: unknown;
+}
+
 interface ExampleOutputEntry {
   path?: unknown;
   title?: unknown;
@@ -91,6 +99,12 @@ function readPreview(record: InstalledPluginRecord): PreviewBlock | null {
   const od = record.manifest?.od as { preview?: unknown } | undefined;
   if (!od || typeof od.preview !== 'object' || od.preview === null) return null;
   return od.preview as PreviewBlock;
+}
+
+function readBakedPreview(record: InstalledPluginRecord): BakedPreviewBlock | null {
+  const od = record.manifest?.od as { bakedPreview?: unknown } | undefined;
+  if (!od || typeof od.bakedPreview !== 'object' || od.bakedPreview === null) return null;
+  return od.bakedPreview as BakedPreviewBlock;
 }
 
 function readExamples(record: InstalledPluginRecord): ExampleOutputEntry[] {
@@ -161,7 +175,26 @@ function brandLabel(record: InstalledPluginRecord): string {
 
 export function inferPluginPreview(
   record: InstalledPluginRecord,
+  options: { preferBaked?: boolean } = {},
 ): PluginPreviewSpec {
+  if (options.preferBaked) {
+    const baked = readBakedPreview(record);
+    const poster = typeof baked?.poster === 'string' ? baked.poster : null;
+    const video = typeof baked?.video === 'string' ? baked.video : null;
+    const holdMs = typeof baked?.holdMs === 'number' ? baked.holdMs : undefined;
+    if (poster && video) {
+      return {
+        kind: 'media',
+        mediaType: 'video',
+        poster,
+        videoUrl: video,
+        audioUrl: null,
+        imageOnly: false,
+        ...(holdMs != null ? { loopHoldMs: holdMs } : {}),
+      };
+    }
+  }
+
   const preview = readPreview(record);
   const examples = readExamples(record);
 

@@ -54,7 +54,7 @@ export function PluginCard({
   onShareAction,
 }: Props) {
   const [useMenuOpen, setUseMenuOpen] = useState(false);
-  const preview = useMemo(() => inferPluginPreview(record), [record]);
+  const preview = useMemo(() => inferPluginPreview(record, { preferBaked: true }), [record]);
   const description = record.manifest?.description ?? '';
   const tags = useMemo(
     () =>

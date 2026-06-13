@@ -18,6 +18,7 @@ interface MakeArgs {
   mode?: string;
   designSystemRef?: string;
   preview?: Record<string, unknown>;
+  bakedPreview?: Record<string, unknown>;
   exampleOutputs?: Array<{ path: string; title?: string }>;
 }
 
@@ -42,6 +43,7 @@ function make(args: MakeArgs): InstalledPluginRecord {
           ? { context: { designSystem: { ref: args.designSystemRef } } }
           : {}),
         ...(args.preview ? { preview: args.preview } : {}),
+        ...(args.bakedPreview ? { bakedPreview: args.bakedPreview } : {}),
         ...(args.exampleOutputs
           ? { useCase: { exampleOutputs: args.exampleOutputs } }
           : {}),
@@ -125,6 +127,29 @@ describe('inferPluginPreview', () => {
     if (out.kind !== 'html') return;
     expect(out.src).toBe('/api/plugins/wbr/example/index');
     expect(out.label).toBe('Weekly');
+  });
+
+  it('prefers baked previews only when requested by the gallery card', () => {
+    const record = make({
+      id: 'html-baked',
+      preview: { type: 'html', entry: './example.html' },
+      bakedPreview: {
+        poster: 'https://cdn.example.com/poster.jpg',
+        video: 'https://cdn.example.com/clip.mp4',
+        holdMs: 2500,
+      },
+    });
+
+    const defaultPreview = inferPluginPreview(record);
+    expect(defaultPreview.kind).toBe('html');
+
+    const cardPreview = inferPluginPreview(record, { preferBaked: true });
+    expect(cardPreview.kind).toBe('media');
+    if (cardPreview.kind !== 'media') return;
+    expect(cardPreview.mediaType).toBe('video');
+    expect(cardPreview.poster).toBe('https://cdn.example.com/poster.jpg');
+    expect(cardPreview.videoUrl).toBe('https://cdn.example.com/clip.mp4');
+    expect(cardPreview.loopHoldMs).toBe(2500);
   });
 
   it('renders design-system plugins (mode signal) as showcase-backed design surfaces', () => {

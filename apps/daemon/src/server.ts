@@ -22,6 +22,10 @@ import {
   shouldRenderCodexImagegenOverride,
 } from './prompts/system.js';
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
+import {
+  applyBakedPreviews,
+  PLUGIN_PREVIEWS_ROUTE,
+} from './plugin-preview-bakes.js';
 import { userFacingAgentLabel } from './user-facing-agent-label.js';
 import { createCommandInvocation } from '@open-design/platform';
 import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@open-design/sidecar-proto';
@@ -1016,12 +1020,27 @@ function resolveDaemonResourceDir(resourceRoot, segment, fallback) {
   return resourceRoot ? path.join(resourceRoot, segment) : fallback;
 }
 
+export function resolveDaemonPluginPreviewsDir({
+  env = process.env,
+  projectRoot,
+}) {
+  const override = env.OD_PLUGIN_PREVIEWS_DIR;
+  if (override) {
+    return path.isAbsolute(override) ? override : path.resolve(projectRoot, override);
+  }
+  return path.join(projectRoot, 'data', 'plugin-previews');
+}
+
 const DAEMON_RESOURCE_ROOT = resolveDaemonResourceRoot();
 // Built web app lives in `out/` — that's where Next.js writes the static
 // export configured in next.config.ts. The folder name used to be `dist/`
 // when this project shipped with Vite; the daemon serves whatever the
 // frontend toolchain emits, no further config needed.
 const STATIC_DIR = path.join(PROJECT_ROOT, 'apps', 'web', 'out');
+const PLUGIN_PREVIEWS_DIR = resolveDaemonPluginPreviewsDir({
+  env: process.env,
+  projectRoot: PROJECT_ROOT,
+});
 const OD_BIN = resolveDaemonCliPath();
 const OD_NODE_BIN = process.execPath;
 const SKILLS_DIR = resolveDaemonResourceDir(
@@ -4689,6 +4708,10 @@ export async function startServer({
     projects: { getProject: (id: string) => getProject(db, id) },
   });
   app.use('/artifacts', express.static(ARTIFACTS_DIR));
+  app.use(
+    PLUGIN_PREVIEWS_ROUTE,
+    express.static(PLUGIN_PREVIEWS_DIR, { maxAge: '1d', immutable: false }),
+  );
   registerDeployRoutes(app, {
     db,
     http: httpDeps,
@@ -5338,7 +5361,7 @@ export async function startServer({
   // and snapshot fetch by id (used by run replay tooling).
   app.get('/api/plugins', async (_req, res) => {
     try {
-      const plugins = listInstalledPlugins(db);
+      const plugins = applyBakedPreviews(listInstalledPlugins(db), PLUGIN_PREVIEWS_DIR);
       res.json({ plugins });
     } catch (err) {
       res.status(500).json({ error: String(err) });

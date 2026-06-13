@@ -69,6 +69,8 @@ import type { PluginLoopSubmit } from './PluginLoopHome';
 import type { FacetSelection } from './plugins-home/facets';
 import {
   examplePresetSeedPrompt,
+  firstPromptParagraph,
+  isMetaInstructionSeed,
   pluginPresetQuery,
 } from './plugins-home/presetSeedPrompt';
 import type { PluginUseAction } from './plugins-home/useActions';
@@ -827,19 +829,22 @@ export function HomeView({
     record: InstalledPluginRecord,
     inputs?: Record<string, unknown>,
   ): string | null {
+    const query = pluginPresetQuery(record, locale);
+    if (query) {
+      const rendered = renderPluginBriefTemplate(
+        query,
+        hydratePluginInputs(record.manifest?.od?.inputs ?? [], inputs),
+      );
+      if (!isMetaInstructionSeed(firstPromptParagraph(rendered))) return rendered;
+    }
+
     const seed = examplePresetSeedPrompt(
       record,
       locale,
       () => record.manifest?.description?.trim() || record.title,
     );
     if (!seed.text) return null;
-    if (!seed.fromRenderedQuery) return seed.text;
-    const query = pluginPresetQuery(record, locale);
-    if (!query) return seed.text;
-    return renderPluginBriefTemplate(
-      query,
-      hydratePluginInputs(record.manifest?.od?.inputs ?? [], inputs),
-    );
+    return seed.text;
   }
 
   useEffect(() => {
