@@ -67,6 +67,8 @@ export type PublicPluginPreview = {
   type: 'html' | 'image' | 'video';
   label: string;
   poster: string | undefined;
+  video: string | undefined;
+  holdMs: number | undefined;
   frameHref: string | undefined;
   localHtmlPath: string | undefined;
 };
@@ -105,6 +107,7 @@ export type PublicPluginEntry = {
 
 const REPO = 'https://github.com/nexu-io/open-design';
 const RAW_REPO = 'https://raw.githubusercontent.com/nexu-io/open-design/main';
+const PLUGIN_PREVIEWS_BASE_URL = 'https://repo-assets.open-design.ai/plugin-previews';
 const findRepoRoot = () => {
   const candidates = [
     process.cwd(),
@@ -125,6 +128,13 @@ const findRepoRoot = () => {
 const REPO_ROOT = findRepoRoot();
 const REGISTRY_ROOT = path.join(REPO_ROOT, 'plugins', 'registry');
 const OFFICIAL_PLUGINS_ROOT = path.join(REPO_ROOT, 'plugins', '_official');
+const BAKED_PREVIEW_MANIFEST_ROOTS = [
+  path.resolve(process.cwd(), 'data/plugin-previews/manifest.json'),
+  path.resolve(process.cwd(), '../../data/plugin-previews/manifest.json'),
+  path.resolve(
+    fileURLToPath(new URL('../../../data/plugin-previews/manifest.json', import.meta.url)),
+  ),
+] as const;
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -248,23 +258,80 @@ const canRenderHtmlPreview = (filePath: string) => {
   }
 };
 
+let cachedBakedPreviews:
+  | Map<string, { video: string; poster: string; holdMs: number | undefined }>
+  | undefined;
+
+const bakedPreviews = () => {
+  if (cachedBakedPreviews) {
+    return cachedBakedPreviews;
+  }
+  const map = new Map<string, { video: string; poster: string; holdMs: number | undefined }>();
+  const manifestPath = BAKED_PREVIEW_MANIFEST_ROOTS.find((filePath) => existsSync(filePath));
+  if (manifestPath) {
+    const raw = readJson<{
+      previews?: Record<
+        string,
+        { video?: unknown; poster?: unknown; holdMs?: unknown; durationMs?: unknown }
+      >;
+    }>(manifestPath);
+    for (const [id, preview] of Object.entries(raw?.previews ?? {})) {
+      const video = asString(preview.video);
+      const poster = asString(preview.poster);
+      const rawHoldMs = typeof preview.holdMs === 'number' ? preview.holdMs : undefined;
+      const durationMs = typeof preview.durationMs === 'number' ? preview.durationMs : undefined;
+      if (video && poster) {
+        map.set(id, {
+          video: `${PLUGIN_PREVIEWS_BASE_URL}/${video}`,
+          poster: `${PLUGIN_PREVIEWS_BASE_URL}/${poster}`,
+          holdMs:
+            rawHoldMs != null && rawHoldMs > 0 && durationMs != null && durationMs > rawHoldMs
+              ? rawHoldMs
+              : undefined,
+        });
+      }
+    }
+  }
+  cachedBakedPreviews = map;
+  return map;
+};
+
 const previewFrom = (
   pluginDir: string | undefined,
   id: string,
   rawPreview: unknown,
   locale: LandingLocaleCode = DEFAULT_LOCALE,
+  bakedPreviewId?: string,
 ): PublicPluginPreview | undefined => {
   const preview = asRecord(rawPreview);
   const rawType = asString(preview?.type);
   const poster = asString(preview?.poster);
+  const authoredVideo = asString(preview?.video);
   const entry = asString(preview?.entry);
   const url = asString(preview?.url);
+  const baked = authoredVideo ? undefined : bakedPreviews().get(bakedPreviewId ?? id);
+  const video = authoredVideo ?? baked?.video;
+  const resolvedPoster = poster ?? baked?.poster;
 
-  if (rawType === 'image' || (!rawType && poster)) {
+  if (video) {
+    return {
+      type: 'video',
+      label: previewLabelFor('video', locale),
+      poster: resolvedPoster,
+      video,
+      holdMs: authoredVideo ? undefined : baked?.holdMs,
+      frameHref: undefined,
+      localHtmlPath: undefined,
+    };
+  }
+
+  if (rawType === 'image' || (!rawType && resolvedPoster)) {
     return {
       type: 'image',
       label: previewLabelFor('image', locale),
-      poster,
+      poster: resolvedPoster,
+      video: undefined,
+      holdMs: undefined,
       frameHref: undefined,
       localHtmlPath: undefined,
     };
@@ -274,7 +341,9 @@ const previewFrom = (
     return {
       type: 'video',
       label: previewLabelFor('video', locale),
-      poster,
+      poster: resolvedPoster,
+      video: undefined,
+      holdMs: undefined,
       frameHref: undefined,
       localHtmlPath: undefined,
     };
@@ -290,7 +359,9 @@ const previewFrom = (
       return {
         type: 'html',
         label: previewLabelFor('html', locale),
-        poster,
+        poster: resolvedPoster,
+        video: undefined,
+        holdMs: undefined,
         frameHref,
         localHtmlPath: frameHref ? localHtmlPath : undefined,
       };
@@ -301,7 +372,9 @@ const previewFrom = (
     return {
       type: 'html',
       label: previewLabelFor('html', locale),
-      poster,
+      poster: resolvedPoster,
+      video: undefined,
+      holdMs: undefined,
       frameHref: url,
       localHtmlPath: undefined,
     };
@@ -542,7 +615,7 @@ const officialEntryFromManifest = (
   const mode = asString(od?.mode);
   const taskKind = asString(od?.taskKind);
   const surface = asString(od?.surface);
-  const preview = previewFrom(pluginDir, id, od?.preview, locale);
+  const preview = previewFrom(pluginDir, id, od?.preview, locale, pluginName);
   const rawTitle =
     explicitLocalizedString(
       manifest?.title as Parameters<typeof explicitLocalizedString>[0],

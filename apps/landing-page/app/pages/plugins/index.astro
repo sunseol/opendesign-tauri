@@ -183,7 +183,18 @@ const trustLabel = (plugin: (typeof plugins)[number]) =>
                     href={href(plugin.detailHref)}
                   >
                     <span class='plugin-showcase-item__visual' aria-hidden='true'>
-                      {plugin.preview?.poster ? (
+                      {plugin.preview?.video ? (
+                        <video
+                          muted
+                          loop
+                          playsinline
+                          preload='metadata'
+                          poster={plugin.preview.poster}
+                          data-plugin-preview-video
+                          data-src={plugin.preview.video}
+                          data-plugin-hold-ms={plugin.preview.holdMs != null ? String(plugin.preview.holdMs) : undefined}
+                        />
+                      ) : plugin.preview?.poster ? (
                         <LazyImg
                           src={plugin.preview.poster}
                           alt=''
@@ -265,7 +276,18 @@ const trustLabel = (plugin: (typeof plugins)[number]) =>
                     href={href(plugin.detailHref)}
                     aria-label={ui.plugins.openDetails(plugin.title)}
                   >
-                    {plugin.preview?.poster ? (
+                    {plugin.preview?.video ? (
+                      <video
+                        muted
+                        loop
+                        playsinline
+                        preload='metadata'
+                        poster={plugin.preview.poster}
+                        data-plugin-preview-video
+                        data-src={plugin.preview.video}
+                        data-plugin-hold-ms={plugin.preview.holdMs != null ? String(plugin.preview.holdMs) : undefined}
+                      />
+                    ) : plugin.preview?.poster ? (
                       <LazyImg src={plugin.preview.poster} alt='' loading='precise' />
                     ) : (
                       <span class='plugin-card__mock' aria-hidden='true'>
@@ -341,6 +363,96 @@ const trustLabel = (plugin: (typeof plugins)[number]) =>
           applyFilters();
         });
       }
+
+      const wirePreviewVideos = () => {
+        const videos = Array.from(document.querySelectorAll('video[data-plugin-preview-video]:not([data-plugin-video-init])'));
+        if (videos.length === 0) return;
+
+        const hydrate = (video) => {
+          const src = video.getAttribute('data-src');
+          if (src && !video.src) video.src = src;
+        };
+
+        const loadObserver = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            hydrate(entry.target);
+            loadObserver.unobserve(entry.target);
+          }
+        }, { rootMargin: '1000px' });
+
+        const visibleObserver = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            const video = entry.target;
+            video.__odVisible = entry.isIntersecting;
+            if (typeof video.__odSync === 'function') video.__odSync();
+          }
+        }, { threshold: 0.01 });
+
+        for (const video of videos) {
+          video.setAttribute('data-plugin-video-init', '1');
+          loadObserver.observe(video);
+
+          const holdAttr = video.getAttribute('data-plugin-hold-ms');
+          const holdMs = holdAttr == null ? NaN : parseInt(holdAttr, 10);
+          const hasHold = Number.isFinite(holdMs) && holdMs > 0;
+          const holdSeconds = hasHold ? holdMs / 1000 : 0;
+
+          const sync = () => {
+            const shouldPlay = (hasHold && video.__odVisible) || video.__odHover;
+            if (shouldPlay) {
+              hydrate(video);
+              const play = video.play();
+              if (play && play.catch) play.catch(() => {});
+            } else {
+              video.pause();
+              if (!hasHold) {
+                try { video.currentTime = 0; } catch {}
+              }
+            }
+          };
+          video.__odSync = sync;
+
+          if (hasHold) {
+            visibleObserver.observe(video);
+            const clamp = (time) => {
+              if (video.__odHover) {
+                if (time < holdSeconds) {
+                  try { video.currentTime = holdSeconds; } catch {}
+                }
+              } else if (time >= holdSeconds) {
+                try { video.currentTime = 0; } catch {}
+              }
+            };
+            if (typeof video.requestVideoFrameCallback === 'function') {
+              const tick = (_now, meta) => {
+                clamp(meta && typeof meta.mediaTime === 'number' ? meta.mediaTime : video.currentTime);
+                video.requestVideoFrameCallback(tick);
+              };
+              video.requestVideoFrameCallback(tick);
+            } else {
+              video.addEventListener('timeupdate', () => clamp(video.currentTime));
+            }
+          }
+
+          const host = video.closest('.plugin-card__preview, .plugin-showcase-item__visual') || video;
+          const enter = () => {
+            video.__odHover = true;
+            sync();
+          };
+          const leave = () => {
+            video.__odHover = false;
+            sync();
+          };
+          host.addEventListener('pointerenter', enter);
+          host.addEventListener('pointerleave', leave);
+          host.addEventListener('focusin', enter);
+          host.addEventListener('focusout', leave);
+        }
+      };
+
+      wirePreviewVideos();
+      document.addEventListener('astro:page-load', wirePreviewVideos);
 
       fetch('https://api.github.com/repos/nexu-io/open-design')
         .then((response) => response.ok ? response.json() : undefined)

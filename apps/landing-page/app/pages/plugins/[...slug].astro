@@ -235,7 +235,17 @@ const breadcrumbJsonLd = {
                   <small>{plugin.preview?.type ?? plugin.visualKind}</small>
                 </div>
                 <div class='plugin-detail-preview__frame'>
-                  {previewFrameHref ? (
+                  {plugin.preview?.video ? (
+                    <video
+                      src={plugin.preview.video}
+                      muted
+                      loop
+                      playsinline
+                      autoplay
+                      preload='metadata'
+                      poster={plugin.preview.poster}
+                    ></video>
+                  ) : previewFrameHref ? (
                     <iframe
                       src={previewFrameHref}
                       title={`${plugin.title} preview`}
