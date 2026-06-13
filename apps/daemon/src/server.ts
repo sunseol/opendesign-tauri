@@ -54,6 +54,7 @@ import {
   classifyAmrAccountFailure,
 } from './integrations/vela-errors.js';
 import { readVelaLoginStatus } from './integrations/vela.js';
+import { preparePromptFileForAgent } from './runtimes/prompt-file.js';
 import { migrateLegacyDataDirSync } from './legacy-data-migrator.js';
 import {
   consumedImportNonces,
@@ -10118,17 +10119,32 @@ export async function startServer({
       newSessionId: def.resumesSessionViaCli === true ? randomUUID() : undefined,
     };
 
-    const args = def.buildArgs(
-      composed,
-      safeImages,
-      extraAllowedDirs,
-      agentOptions,
-      {
-        cwd: effectiveCwd,
-        resumeSessionId: agentResumeCtx.resumeSessionId,
-        newSessionId: agentResumeCtx.newSessionId,
-      },
-    );
+    const promptFile = await preparePromptFileForAgent(def, composed, run.id);
+    let promptFileCleaned = false;
+    const cleanupPromptFile = () => {
+      if (!promptFile || promptFileCleaned) return;
+      promptFileCleaned = true;
+      promptFile.cleanup().catch(() => {});
+    };
+
+    let args;
+    try {
+      args = def.buildArgs(
+        composed,
+        safeImages,
+        extraAllowedDirs,
+        agentOptions,
+        {
+          cwd: effectiveCwd,
+          promptFilePath: promptFile?.path,
+          resumeSessionId: agentResumeCtx.resumeSessionId,
+          newSessionId: agentResumeCtx.newSessionId,
+        },
+      );
+    } catch (err) {
+      cleanupPromptFile();
+      throw err;
+    }
 
     // Second-pass budget check that knows about the Windows `.cmd` shim
     // wrap. The pre-buildArgs `checkPromptArgvBudget` only looks at the
@@ -10146,6 +10162,7 @@ export async function startServer({
       args,
     );
     if (cmdShimBudgetError) {
+      cleanupPromptFile();
       design.runs.emit(
         run,
         'error',
@@ -10173,6 +10190,7 @@ export async function startServer({
       args,
     );
     if (directExeBudgetError) {
+      cleanupPromptFile();
       design.runs.emit(
         run,
         'error',
@@ -10350,6 +10368,7 @@ export async function startServer({
     // spawn(def.bin) — that fallback re-introduces the exact ENOENT symptom
     // from issue #10.
     if (!resolvedBin || !agentLaunch.launchPath) {
+      cleanupPromptFile();
       revokeToolToken('child_exit');
       unregisterChatAgentEventSink();
       send('error', createSseErrorPayload(
@@ -10373,6 +10392,7 @@ export async function startServer({
         configuredAgentEnv,
       );
       if (!loginStatus.loggedIn) {
+        cleanupPromptFile();
         revokeToolToken('child_exit');
         unregisterChatAgentEventSink();
         sendAmrAccountFailure({
@@ -10395,6 +10415,7 @@ export async function startServer({
         : {}),
     };
     if (run.cancelRequested || design.runs.isTerminal(run.status)) {
+      cleanupPromptFile();
       revokeToolToken('child_exit');
       unregisterChatAgentEventSink();
       return;
@@ -10511,6 +10532,7 @@ export async function startServer({
         writePromptToChildStdin = true;
       }
     } catch (err) {
+      cleanupPromptFile();
       revokeToolToken('child_exit');
       unregisterChatAgentEventSink();
       send('error', createSseErrorPayload('AGENT_EXECUTION_FAILED', `spawn failed: ${err.message}`));
@@ -10728,6 +10750,7 @@ export async function startServer({
           design.runs.finish(run, 'failed', 1, null);
         } finally {
           critiqueRunRegistry.unregister(critiqueProjectKey, critiqueRunId);
+          cleanupPromptFile();
         }
         return;
       }
@@ -10993,6 +11016,7 @@ export async function startServer({
 
     child.on('error', (err) => {
       clearInactivityWatchdog();
+      cleanupPromptFile();
       flushVisibleAgentStderr();
       revokeToolToken('child_exit');
       unregisterChatAgentEventSink();
@@ -11001,6 +11025,7 @@ export async function startServer({
     });
     child.on('close', (code, signal) => {
       clearInactivityWatchdog();
+      cleanupPromptFile();
       flushVisibleAgentStderr();
       revokeToolToken('child_exit');
       unregisterChatAgentEventSink();

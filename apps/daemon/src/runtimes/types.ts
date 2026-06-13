@@ -18,6 +18,7 @@ export type RuntimeBuildOptions = {
 
 export type RuntimeContext = {
   cwd?: string;
+  promptFilePath?: string;
   // Resume-capable adapters can use these to continue the CLI's own session
   // rather than relying solely on daemon-rendered transcript history.
   resumeSessionId?: string | null;
@@ -58,6 +59,7 @@ export type RuntimeAgentDef = {
   versionProbeTimeoutMs?: number;
   helpArgs?: string[];
   capabilityFlags?: Record<string, string>;
+  promptViaFile?: boolean;
   promptViaStdin?: boolean;
   // Format for the user prompt fed via stdin. Default is plain text (the
   // entire prompt buffer goes in raw, then stdin is closed). When set to

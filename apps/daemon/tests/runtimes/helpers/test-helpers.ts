@@ -90,6 +90,7 @@ export const opencode = requireAgent('opencode');
 export const reasonix = requireAgent('reasonix');
 export const aider = requireAgent('aider');
 export const amr = requireAgent('amr');
+export const grokBuild = requireAgent('grok-build');
 export const deepseekMaxPromptArgBytes = (() => {
   assert.ok(
     deepseek.maxPromptArgBytes !== undefined,

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import {
-  aider, assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, reasonix, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
+  aider, assert, claude, codex, copilot, cursorAgent, deepseek, devin, detectAgents, gemini, grokBuild, join, kilo, kiro, mkdtempSync, opencode, pi, qoder, qwen, reasonix, rmSync, spawnEnvForAgent, tmpdir, vibe, writeFileSync, chmodSync,
 } from './helpers/test-helpers.js';
 import type { TestAgentDef } from './helpers/test-helpers.js';
 
@@ -52,6 +52,53 @@ test('opencode args deliver prompts via stdin without passing a literal dash pro
   ]);
   assert.equal(withModel.includes('--dangerously-skip-permissions'), false);
   assert.equal(withModel.includes('--model'), false);
+});
+
+test('grok-build reads the prompt from a daemon-owned prompt file', () => {
+  const prompt = 'design a dashboard';
+  const promptFilePath = '/tmp/od-grok-prompt.md';
+
+  assert.equal(grokBuild.promptViaFile, true);
+  assert.equal(grokBuild.promptViaStdin, false);
+  assert.throws(
+    () => grokBuild.buildArgs(prompt, [], [], {}, {}),
+    /promptFilePath/,
+  );
+
+  const args = grokBuild.buildArgs(
+    prompt,
+    [],
+    [],
+    { model: 'grok-4.20-reasoning', reasoning: 'high' },
+    { promptFilePath },
+  );
+
+  assert.deepEqual(args, [
+    '--prompt-file',
+    promptFilePath,
+    '--model',
+    'grok-4.20-reasoning',
+    '--effort',
+    'high',
+  ]);
+  assert.equal(args.includes(prompt), false);
+});
+
+test('grok-build suppresses reasoning effort for non-reasoning models', () => {
+  const args = grokBuild.buildArgs(
+    '',
+    [],
+    [],
+    { model: 'grok-4.20-non-reasoning', reasoning: 'high' },
+    { promptFilePath: '/tmp/od-grok-prompt.md' },
+  );
+
+  assert.deepEqual(args, [
+    '--prompt-file',
+    '/tmp/od-grok-prompt.md',
+    '--model',
+    'grok-4.20-non-reasoning',
+  ]);
 });
 
 // Copilot reads the prompt from stdin when `-p` is omitted entirely

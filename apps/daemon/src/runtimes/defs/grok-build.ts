@@ -1,5 +1,27 @@
-import { parseLineSeparatedModels, DEFAULT_MODEL_OPTION } from './shared.js';
+import { DEFAULT_MODEL_OPTION } from './shared.js';
+import type { RuntimeModelOption } from '../types.js';
 import type { RuntimeAgentDef } from '../types.js';
+
+const GROK_MODEL_ID_RE = /^\*?\s*-?\s*(grok-[a-z0-9][a-z0-9._-]*)(?:\s+\(default\))?\s*$/i;
+
+export function parseGrokBuildModels(stdout: string): RuntimeModelOption[] {
+  const seen = new Set<string>();
+  const out: RuntimeModelOption[] = [DEFAULT_MODEL_OPTION];
+  for (const rawLine of String(stdout || '').split('\n')) {
+    const match = rawLine.trim().match(GROK_MODEL_ID_RE);
+    const id = match?.[1];
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, label: id });
+  }
+  return out;
+}
+
+function grokModelSupportsReasoningEffort(model: string | null | undefined): boolean {
+  if (!model || model === DEFAULT_MODEL_OPTION.id || model === 'grok-build') return false;
+  const normalized = model.toLowerCase();
+  return normalized.includes('reasoning') && !normalized.includes('non-reasoning');
+}
 
 // xAI's first-party CLI agent — https://x.ai/cli — distributed as the
 // `grok` binary. Installed via `curl -fsSL https://x.ai/cli/install.sh | bash`,
@@ -11,29 +33,16 @@ import type { RuntimeAgentDef } from '../types.js';
 // need to inject credentials. Users authenticate once with `grok login
 // --oauth` and the resulting `~/.grok/auth.json` is what every spawned
 // invocation reads.
-//
-// Headless mode follows Claude Code's pattern (`-p <PROMPT>` for single-
-// turn, `--output-format streaming-json` for structured streaming), but
-// the streaming-json schema is xAI-specific and we do not yet have a
-// daemon-side parser for it. To ship the runtime now and let users at
-// least chat with grok inside OD, this defaults to `plain` streamFormat
-// (single-turn text reply, no tool_use streaming). Upgrading to a
-// `grok-stream-json` event parser is follow-up work once the format is
-// stable enough to lock in.
 export const grokBuildAgentDef = {
   id: 'grok-build',
   name: 'Grok Build',
   bin: 'grok',
   versionArgs: ['--version'],
   helpArgs: ['-p', '--help'],
-  // `grok models` prints one model id per line, plus a `Default model:`
-  // header line that parseLineSeparatedModels strips because it isn't
-  // an id token. Falls back to the static list below when probing fails
-  // (no SuperGrok Heavy entitlement on this machine, network blip, etc.).
   listModels: {
     args: ['models'],
     timeoutMs: 10_000,
-    parse: parseLineSeparatedModels,
+    parse: parseGrokBuildModels,
   },
   fallbackModels: [
     DEFAULT_MODEL_OPTION,
@@ -49,15 +58,15 @@ export const grokBuildAgentDef = {
       label: 'grok-4.20-multi-agent (xAI · orchestration)',
     },
   ],
-  // Prompt delivered via stdin so Windows `spawn ENAMETOOLONG` and Linux
-  // `spawn E2BIG` can't truncate large composed prompts. `grok -p` with
-  // no positional argument reads from piped stdin.
-  buildArgs: (_prompt, _imagePaths, _extra = [], options = {}) => {
-    const args = ['-p'];
+  buildArgs: (_prompt, _imagePaths, _extra = [], options = {}, runtimeContext = {}) => {
+    if (!runtimeContext.promptFilePath) {
+      throw new Error('grok-build requires runtimeContext.promptFilePath');
+    }
+    const args = ['--prompt-file', runtimeContext.promptFilePath];
     if (options.model && options.model !== DEFAULT_MODEL_OPTION.id) {
       args.push('--model', options.model);
     }
-    if (options.reasoning) {
+    if (options.reasoning && grokModelSupportsReasoningEffort(options.model)) {
       args.push('--effort', options.reasoning);
     }
     return args;
@@ -69,7 +78,8 @@ export const grokBuildAgentDef = {
     { id: 'xhigh', label: 'xhigh' },
     { id: 'max', label: 'max' },
   ],
-  promptViaStdin: true,
+  promptViaFile: true,
+  promptViaStdin: false,
   streamFormat: 'plain',
   installUrl: 'https://x.ai/cli',
   docsUrl: 'https://x.ai/cli',

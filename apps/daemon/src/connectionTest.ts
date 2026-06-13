@@ -40,6 +40,7 @@ import {
   cursorAuthGuidance,
   probeAgentAuthStatus,
 } from './runtimes/auth.js';
+import { preparePromptFileForAgent } from './runtimes/prompt-file.js';
 import {
   buildLegacyMaxTokensParam,
   buildMaxCompletionTokensParam,
@@ -1321,6 +1322,7 @@ async function testAgentConnectionInternal(
   const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-conn-test-'));
   let child: AgentChild | null = null;
   let childExit: Promise<AgentChildExit> | null = null;
+  let promptFile: Awaited<ReturnType<typeof preparePromptFileForAgent>> = null;
   let childClosed = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let abortHandler: (() => void) | null = null;
@@ -1423,12 +1425,16 @@ async function testAgentConnectionInternal(
     }
     let args: string[];
     try {
+      promptFile = await preparePromptFileForAgent(def, SMOKE_PROMPT, 'connection-test');
       args = def.buildArgs(
         SMOKE_PROMPT,
         [],
         [],
         { model: input.model ?? null, reasoning: input.reasoning ?? null },
-        { cwd: tempDir },
+        {
+          cwd: tempDir,
+          ...(promptFile ? { promptFilePath: promptFile.path } : {}),
+        },
       );
       if (input.agentId === 'opencode' && !args.includes('--pure')) {
         args.push('--pure');
@@ -1732,6 +1738,7 @@ async function testAgentConnectionInternal(
         }
       }
     }
+    await promptFile?.cleanup().catch(() => {});
     await fsp
       .rm(tempDir, { recursive: true, force: true })
       .catch(() => {
