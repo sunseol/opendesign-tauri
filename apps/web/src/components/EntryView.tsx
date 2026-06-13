@@ -55,6 +55,7 @@ interface Props {
   promptTemplates: PromptTemplateSummary[];
   defaultDesignSystemId: string | null;
   agents: AgentInfo[];
+  agentsLoading?: boolean;
   // Execution / model-switching context forwarded to the EntryShell so the
   // sticky top-bar can expose the active CLI/BYOK + model and persist
   // changes through the same channels as the project view.
@@ -242,6 +243,7 @@ export function EntryView({
   promptTemplates,
   defaultDesignSystemId,
   agents,
+  agentsLoading,
   config,
   integrationInitialTab,
   composioConfigLoading = false,
@@ -344,6 +346,7 @@ export function EntryView({
       projectsLoading={projectsLoading}
       config={config}
       agents={agents}
+      {...(agentsLoading !== undefined ? { agentsLoading } : {})}
       daemonLive={daemonLive}
       onModeChange={onModeChange}
       onAgentChange={onAgentChange}

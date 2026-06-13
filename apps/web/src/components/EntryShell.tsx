@@ -228,6 +228,7 @@ interface Props {
   // and persist changes through the same callbacks the project view uses.
   config: AppConfig;
   agents: AgentInfo[];
+  agentsLoading?: boolean;
   daemonLive: boolean;
   onModeChange: (mode: ExecMode) => void;
   onAgentChange: (id: string) => void;
@@ -343,6 +344,7 @@ export function EntryShell({
   projectsLoading = false,
   config,
   agents,
+  agentsLoading = false,
   daemonLive,
   onModeChange,
   onAgentChange,
@@ -529,6 +531,7 @@ export function EntryShell({
           <OnboardingView
             config={config}
             agents={agents}
+            agentsLoading={agentsLoading}
             daemonLive={daemonLive}
             onModeChange={onModeChange}
             onAgentChange={onAgentChange}
@@ -735,6 +738,7 @@ export function EntryShell({
 function OnboardingView({
   config,
   agents,
+  agentsLoading = false,
   daemonLive,
   onModeChange,
   onAgentChange,
@@ -748,6 +752,7 @@ function OnboardingView({
 }: {
   config: AppConfig;
   agents: AgentInfo[];
+  agentsLoading?: boolean;
   daemonLive: boolean;
   onModeChange: (mode: ExecMode) => void;
   onAgentChange: (id: string) => void;
@@ -770,6 +775,7 @@ function OnboardingView({
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [cliScanStatus, setCliScanStatus] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [amrStatus, setAmrStatus] = useState<VelaLoginStatus | null>(null);
+  const [amrRefreshPending, setAmrRefreshPending] = useState(false);
   const [amrLoginPending, setAmrLoginPending] = useState(false);
   const [amrLoginCancelPending, setAmrLoginCancelPending] = useState(false);
   const [amrLoginError, setAmrLoginError] = useState<string | null>(null);
@@ -795,6 +801,7 @@ function OnboardingView({
   });
   const agentRevealTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const cliScanTokenRef = useRef(0);
+  const amrAgentRefreshAttemptedRef = useRef(false);
   const amrLoginPollCancelledRef = useRef(false);
   const apiProtocol = config.apiProtocol ?? 'anthropic';
   const providerTestInputKey = [
@@ -839,6 +846,7 @@ function OnboardingView({
     (agent) => agent.available && agent.id !== 'amr' && visibleAgentIds.includes(agent.id),
   );
   const amrAgent = agents.find((agent) => agent.id === 'amr' && agent.available) ?? null;
+  const amrDetecting = !amrAgent && (agentsLoading || amrRefreshPending);
   const showAmrCloudOption = amrAgent !== null;
   const amrSignedIn = amrStatus?.loggedIn === true;
   const amrSelectedAndSignedOut = runtime === 'amr' && !amrSignedIn;
@@ -888,6 +896,21 @@ function OnboardingView({
       cancelled = true;
     };
   }, [amrAgent]);
+
+  useEffect(() => {
+    if (amrAgent || amrAgentRefreshAttemptedRef.current || agentsLoading) return;
+    let cancelled = false;
+    amrAgentRefreshAttemptedRef.current = true;
+    setAmrRefreshPending(true);
+    void Promise.resolve(onRefreshAgents())
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setAmrRefreshPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [amrAgent, agentsLoading, onRefreshAgents]);
 
   useEffect(() => {
     if (runtime === 'amr') return;
@@ -1410,6 +1433,8 @@ function OnboardingView({
                       }}
                     />
                   </div>
+                ) : amrDetecting ? (
+                  <OnboardingAmrCloudSkeleton />
                 ) : null}
                 <div className="onboarding-view__alternatives">
                   {runtimeItems.map((item) => (
@@ -2168,6 +2193,46 @@ function OnboardingAmrModelSelect({
         onChange={onSelectModel}
         placement="top"
       />
+    </div>
+  );
+}
+
+function OnboardingAmrCloudSkeleton() {
+  const t = useT();
+  return (
+    <div className="onboarding-view__amr-cloud-card">
+      <div
+        className="onboarding-view__card onboarding-view__card--featured onboarding-view__card--amr onboarding-view__card--benefit-aside onboarding-view__card--skeleton"
+        role="status"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+      >
+        <span className="onboarding-view__identity">
+          <span className="onboarding-view__icon onboarding-view__icon--asset">
+            <AgentIcon id="amr" size={52} className="onboarding-view__agent-logo" />
+          </span>
+          <span className="onboarding-view__card-copy">
+            <span className="onboarding-view__card-top">
+              <strong>{t('settings.amrCloud')}</strong>
+            </span>
+            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--meta" />
+          </span>
+        </span>
+        <span className="onboarding-view__benefit-aside" aria-hidden="true">
+          <span className="onboarding-view__benefit-stack onboarding-view__benefit-stack--skeleton">
+            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
+            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
+            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
+            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
+          </span>
+        </span>
+        <span className="onboarding-view__card-model" aria-hidden="true">
+          <span className="onboarding-view__skeleton-model">
+            <span className="onboarding-view__skeleton-model-label" />
+            <span className="onboarding-view__skeleton-model-bar" />
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

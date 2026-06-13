@@ -136,13 +136,17 @@ protect against unsafe parity claims.
   `vela model list` preflight is already absent in this fork: `/api/amr/models`
   uses `AmrModelLoadingCache`, AMR spawn env backfills `HOME`, and chat runs
   pass the selected model to ACP/Vela instead of fail-closing on a fresh
-  catalog probe.
+  catalog probe. Onboarding now keeps the Open Design AMR card visible as a
+  non-interactive skeleton while agent detection or the one-shot AMR re-probe
+  is still in flight, covering upstream #4112's cold-start affordance.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs
   explicit error handlers, scrubs stack file paths, buffers early events until
   `/api/analytics/config` returns, and keeps product analytics consent separate
   from PostHog key/host availability for stability reporting.
+  Artifact manifest telemetry is merged into the content-consent gate,
+  covering upstream #4087's consent simplification.
   The integrations Composio API-key gate now links to the Composio dashboard
   and emits the `gate_card` click element so the key-discovery funnel is
   measurable from the blocked connector surface. Langfuse completion telemetry
@@ -187,6 +191,12 @@ protect against unsafe parity claims.
   chokepoint guard; the stdin write path is also extracted behind a
   pending-tool-id check so stale or duplicate tool results cannot reach the
   child process.
+  Daemon/web stream error parity already covers upstream #4052: structured SSE
+  errors are kept pending while retry decisions settle, then surfaced instead
+  of falling back to generic lifecycle exit errors. The project-instructions UI
+  and hidden project-level prompt injection from upstream #4045 are absent from
+  the current ProjectView and BYOK system prompt path; only unused composer
+  option plumbing remains.
   Sandbox hardening #33 now also resolves local agent profiles and executable
   search roots from daemon-owned sandbox state when `OD_SANDBOX_MODE` is set,
   preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed

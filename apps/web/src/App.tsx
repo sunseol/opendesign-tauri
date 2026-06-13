@@ -1469,6 +1469,7 @@ export function App() {
         promptTemplates={promptTemplates}
         defaultDesignSystemId={config.designSystemId}
         agents={agents}
+        agentsLoading={agentsLoading}
         config={config}
         integrationInitialTab={integrationInitialTab}
         composioConfigLoading={composioConfigLoading}
