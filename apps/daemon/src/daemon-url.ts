@@ -1,3 +1,6 @@
+import { spawn } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   SIDECAR_ENV,
   SIDECAR_MESSAGES,
@@ -6,6 +9,7 @@ import {
 import { requestJsonIpc } from "@open-design/sidecar";
 
 export const DEFAULT_DAEMON_URL = "http://127.0.0.1:7456";
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 export interface ResolveDaemonUrlOptions {
   /** Value passed via `--daemon-url`. Empty string is treated as unset. */
@@ -21,8 +25,9 @@ export interface ResolveDaemonUrlOptions {
  *
  * Spawn order: explicit `--daemon-url` flag, `OD_DAEMON_URL` env, then
  * a STATUS roundtrip to the concrete sidecar IPC endpoint supplied by
- * the lifecycle owner in `OD_SIDECAR_IPC_PATH`. Falls back to the
- * legacy default for direct `od` launches that do not run as a sidecar.
+ * the lifecycle owner in `OD_SIDECAR_IPC_PATH`, then the default
+ * `tools-dev status --json` runtime. Falls back to the legacy default
+ * for direct `od` launches that do not run as a sidecar.
  */
 export async function resolveDaemonUrl(
   options: ResolveDaemonUrlOptions = {},
@@ -34,6 +39,8 @@ export async function resolveDaemonUrl(
   if (envUrl != null && envUrl.length > 0) return envUrl;
   const discovered = await discoverDaemonUrlFromIpc(env, options.timeoutMs ?? 800);
   if (discovered != null) return discovered;
+  const toolsDevUrl = await discoverDaemonUrlFromToolsDev(env, options.timeoutMs ?? 800);
+  if (toolsDevUrl != null) return toolsDevUrl;
   return DEFAULT_DAEMON_URL;
 }
 
@@ -53,4 +60,75 @@ async function discoverDaemonUrlFromIpc(
   } catch {
     return null;
   }
+}
+
+async function discoverDaemonUrlFromToolsDev(
+  env: NodeJS.ProcessEnv,
+  timeoutMs: number,
+): Promise<string | null> {
+  return await new Promise<string | null>((resolveUrl) => {
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn("pnpm", ["--silent", "exec", "tools-dev", "status", "--json"], {
+        cwd: REPO_ROOT,
+        env,
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+    } catch {
+      resolveUrl(null);
+      return;
+    }
+
+    let settled = false;
+    let timer: NodeJS.Timeout | undefined;
+    const done = (url: string | null) => {
+      if (settled) return;
+      settled = true;
+      if (timer != null) clearTimeout(timer);
+      resolveUrl(url);
+    };
+    timer = setTimeout(() => {
+      child.kill();
+      done(null);
+    }, timeoutMs);
+
+    let stdout = "";
+    child.stdout?.on("data", (chunk: Buffer | string) => {
+      stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    });
+    child.on("error", () => done(null));
+    child.on("close", (code) => {
+      done(code === 0 ? extractDaemonUrlFromToolsDevStatus(stdout) : null);
+    });
+  });
+}
+
+function extractDaemonUrlFromToolsDevStatus(stdout: string): string | null {
+  for (let i = stdout.indexOf("{"); i !== -1; i = stdout.indexOf("{", i + 1)) {
+    try {
+      const url = readToolsDevStatusUrl(JSON.parse(stdout.slice(i)));
+      if (url != null) return url;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function readToolsDevStatusUrl(status: unknown): string | null {
+  if (!isRecord(status)) return null;
+  const rootUrl = cleanUrl(status.url);
+  const apps = status.apps;
+  if (!isRecord(apps)) return rootUrl;
+  const daemon = apps.daemon;
+  if (!isRecord(daemon)) return rootUrl;
+  return cleanUrl(daemon.url) ?? rootUrl;
+}
+
+function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+  return typeof value === "object" && value != null && !Array.isArray(value);
+}
+
+function cleanUrl(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
