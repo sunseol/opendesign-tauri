@@ -45,6 +45,8 @@ const STROKE_COLOR = '#ff3b30';
 const STROKE_WIDTH = 4;
 const ACTIVE_BUTTON_COLOR = 'var(--accent)';
 const TARGET_COLOR = '#1677ff';
+const CAPTURE_MISSING_MESSAGE = 'Could not capture the preview. Add a note or try again.';
+const SENT_WITHOUT_SCREENSHOT_MESSAGE = 'Annotation sent without screenshot.';
 
 export function PreviewDrawOverlay({
   children,
@@ -65,6 +67,7 @@ export function PreviewDrawOverlay({
   const composingRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
   const [pendingAction, setPendingAction] = useState<'queue' | 'send' | null>(null);
+  const [captureStatus, setCaptureStatus] = useState<string | null>(null);
   const sending = pendingAction !== null;
 
   useEffect(() => {
@@ -322,8 +325,10 @@ export function PreviewDrawOverlay({
     if (action === 'send' && sendDisabled) return;
     if (sending || !canSubmit) return;
     setPendingAction(action);
+    setCaptureStatus(null);
     try {
       let file: File | null = null;
+      let sentWithoutScreenshot = false;
       if (shouldCapture) {
         let blob: Blob | null = null;
         const snap = await requestSnapshot();
@@ -348,6 +353,11 @@ export function PreviewDrawOverlay({
         if (blob) {
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
           file = new File([blob], `drawing-${ts}.png`, { type: 'image/png' });
+        } else if (!note.trim()) {
+          setCaptureStatus(CAPTURE_MISSING_MESSAGE);
+          return;
+        } else {
+          sentWithoutScreenshot = true;
         }
       }
       const kind = markKind();
@@ -362,6 +372,7 @@ export function PreviewDrawOverlay({
       };
       window.dispatchEvent(new CustomEvent(ANNOTATION_EVENT, { detail }));
       clearInk();
+      setCaptureStatus(sentWithoutScreenshot ? SENT_WITHOUT_SCREENSHOT_MESSAGE : null);
       setNote('');
     } finally {
       setPendingAction(null);
@@ -514,6 +525,11 @@ export function PreviewDrawOverlay({
               )}
             </button>
           ) : null}
+          {captureStatus ? (
+            <span role="status" style={statusStyle}>
+              {captureStatus}
+            </span>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -546,4 +562,11 @@ const ghostStyle: CSSProperties = {
   gap: 6,
   background: 'transparent',
   color: 'inherit',
+};
+
+const statusStyle: CSSProperties = {
+  maxWidth: 240,
+  color: '#ffd8c9',
+  fontSize: 12,
+  lineHeight: 1.3,
 };
