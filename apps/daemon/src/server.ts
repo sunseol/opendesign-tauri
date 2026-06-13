@@ -57,6 +57,7 @@ import {
 import { readVelaLoginStatus } from './integrations/vela.js';
 import { preparePromptFileForAgent } from './runtimes/prompt-file.js';
 import { installRouteRegistrationGuard } from './route-registration-guard.js';
+import { submitToolResultToRunState } from './run-tool-results.js';
 import { migrateLegacyDataDirSync } from './legacy-data-migrator.js';
 import {
   consumedImportNonces,
@@ -11060,48 +11061,12 @@ export async function startServer({
   const submitToolResultToRun = (runId, toolUseId, content, isError = false) => {
     const run = design.runs.get(runId);
     if (!run) return { ok: false, reason: 'not_found' };
-    if (design.runs.isTerminal(run.status)) {
-      return { ok: false, reason: 'run_terminal' };
-    }
-    if (!run.child || !run.child.stdin || run.child.stdin.destroyed) {
-      return { ok: false, reason: 'stdin_closed' };
-    }
-    if (!run.stdinOpen) {
-      return { ok: false, reason: 'stdin_text_mode' };
-    }
-    if (typeof toolUseId !== 'string' || !toolUseId) {
-      return { ok: false, reason: 'bad_tool_use_id' };
-    }
-    const safeContent = typeof content === 'string' ? content : String(content ?? '');
-    const userMessage = JSON.stringify({
-      type: 'user',
-      message: {
-        role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: toolUseId,
-            content: safeContent,
-            is_error: !!isError,
-          },
-        ],
-      },
+    return submitToolResultToRunState(run, {
+      content,
+      isError,
+      isTerminal: design.runs.isTerminal(run.status),
+      toolUseId,
     });
-    try {
-      run.child.stdin.write(`${userMessage}\n`, 'utf8');
-    } catch (err) {
-      return { ok: false, reason: 'write_failed', error: err && err.message };
-    }
-    if (run.pendingHostAnswers) {
-      run.pendingHostAnswers.delete(toolUseId);
-      if (run.pendingHostAnswers.size === 0 && run.stdinOpen) {
-        if (run.child && run.child.stdin && !run.child.stdin.destroyed) {
-          try { run.child.stdin.end(); } catch {}
-        }
-        run.stdinOpen = false;
-      }
-    }
-    return { ok: true };
   };
 
   orbitService.setRunHandler(async ({

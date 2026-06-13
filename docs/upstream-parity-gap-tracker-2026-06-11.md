@@ -162,7 +162,9 @@ protect against unsafe parity claims.
   duplicate handlers were removed after the extracted routes were verified.
   Tool-result submissions now reject mismatched body/path run ids before
   writing to a running agent stdin, matching the sandbox orchestration
-  chokepoint guard.
+  chokepoint guard; the stdin write path is also extracted behind a
+  pending-tool-id check so stale or duplicate tool results cannot reach the
+  child process.
   Sandbox hardening #33 now also resolves local agent profiles and executable
   search roots from daemon-owned sandbox state when `OD_SANDBOX_MODE` is set,
   preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed
