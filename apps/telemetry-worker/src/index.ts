@@ -2,6 +2,7 @@ import {
   handleObjectBatchRequest,
   hasObjectUploadAuthority,
   type ObjectRelayEnv,
+  type RateLimitBinding,
 } from './object-relay';
 
 const DEFAULT_LANGFUSE_BASE_URL = 'https://us.cloud.langfuse.com';
@@ -16,10 +17,6 @@ const ALLOWED_EVENT_TYPES = new Set([
   'event-create',
   'score-create',
 ]);
-
-interface RateLimitBinding {
-  limit(options: { key: string }): Promise<{ success: boolean }>;
-}
 
 export interface Env extends ObjectRelayEnv {
   LANGFUSE_PUBLIC_KEY?: string;
