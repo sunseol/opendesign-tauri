@@ -149,6 +149,9 @@ protect against unsafe parity claims.
   Shared BYOK media option hooks now expose those live AIHubMix image, video,
   and speech catalogues while preserving static provider options for every
   non-AIHubMix picker.
+  BYOK draft validation now has split, test-covered helpers for pasted key
+  cleanup, first-party key-shape detection, base URL normalization, blocking
+  field reporting, and account/default model preference resolution.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Anthropic-compatible fallback routing is now centralized in
