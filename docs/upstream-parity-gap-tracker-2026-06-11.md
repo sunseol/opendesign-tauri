@@ -305,8 +305,9 @@ protect against unsafe parity claims.
   `get_project` now returns a raw file preview URL for projects with an entry
   file, backed by a shared contracts URL builder; MCP install-info also
   advertises the paired Studio web base URL when launchers provide
-  `OD_WEB_PORT`. Broader sandbox resume, registry, and route parity remains
-  open under #7/#33/#48.
+  `OD_WEB_PORT`. Shared contracts now expose the canonical chat-run status
+  literal list plus runtime-def and media-execution API error codes. Broader
+  sandbox resume, registry, and route parity remains open under #7/#33/#48.
 - Curated data #54 has upstream-identical `data/` assets and a root guard test
   for contributor/event/card linkage, plugin preview manifest shape, and the
   documented remote-only preview id set. Runtime/community rendering remains

@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type {
+import {
+  CHAT_RUN_STATUSES,
+  type ChatRunStatus,
   ChatRunCancelResponse,
   ChatRunStatusResponse,
 } from '../src/api/chat';
 
 describe('chat run lifecycle contract', () => {
+  it('exports the canonical run status literals', () => {
+    expect(CHAT_RUN_STATUSES).toEqual(['queued', 'running', 'succeeded', 'failed', 'canceled']);
+
+    const status: ChatRunStatus = CHAT_RUN_STATUSES[0];
+    expect(status).toBe('queued');
+  });
+
   it('accepts daemon process lifecycle metadata on run status responses', () => {
     const status = {
       id: 'run-1',
