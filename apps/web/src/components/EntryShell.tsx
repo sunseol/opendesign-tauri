@@ -561,10 +561,11 @@ export function EntryShell({
             <div className="entry-main__topbar-chips">
               <GithubStarBadge />
               <a
-                className="entry-discord-badge"
+                className="entry-discord-badge od-tooltip"
                 href="https://discord.gg/mHAjSMV6gz"
                 aria-label="Join the Open Design Discord"
-                title="Join the Open Design Discord"
+                data-tooltip="Join the Open Design Discord"
+                data-tooltip-placement="bottom"
                 data-testid="entry-discord-badge"
               >
                 <Icon name="discord" size={14} className="entry-discord-badge__icon" />
@@ -583,7 +584,7 @@ export function EntryShell({
               />
               <button
                 type="button"
-                className="use-everywhere-chip"
+                className="use-everywhere-chip od-tooltip"
                 onClick={() => {
                   trackHomeToolbarClick(analytics.track, {
                     page_name: 'home',
@@ -592,7 +593,8 @@ export function EntryShell({
                   });
                   openIntegrationTab('use-everywhere');
                 }}
-                title={t('entry.useEverywhereTitle')}
+                data-tooltip={t('entry.useEverywhereTitle')}
+                data-tooltip-placement="bottom"
                 aria-label={t('entry.useEverywhereAria')}
                 data-testid="entry-use-everywhere-button"
               >

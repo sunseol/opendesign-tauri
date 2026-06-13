@@ -136,12 +136,13 @@ export function InlineModelSwitcher({
     >
       <button
         type="button"
-        className="inline-switcher__chip"
+        className="inline-switcher__chip od-tooltip"
         data-testid="inline-model-switcher-chip"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={t('inlineSwitcher.chipTitle')}
+        data-tooltip={`${chipMode} · ${chipPrimary} · ${chipModel}`}
+        data-tooltip-placement="bottom"
       >
         <span className="inline-switcher__chip-icon" aria-hidden="true">
           {config.mode === 'daemon' && currentAgent ? (
