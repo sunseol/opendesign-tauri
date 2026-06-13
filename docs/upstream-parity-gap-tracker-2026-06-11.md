@@ -41,7 +41,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Desktop and packaged runtime | `apps/desktop` 34 files, `apps/packaged` 28 files | [#14](https://github.com/sunseol/opendesign-tauri/issues/14), [#27](https://github.com/sunseol/opendesign-tauri/issues/27), [#37](https://github.com/sunseol/opendesign-tauri/issues/37), [#50](https://github.com/sunseol/opendesign-tauri/issues/50) | In progress - runtime helper package closure guarded for Tauri packaging |
 | Release, CI, tools, fixtures | `.github` 88 files, `tools/pack` 87 files, `tools/pr` 20 files, `tools/serve` 10 files | [#12](https://github.com/sunseol/opendesign-tauri/issues/12), [#28](https://github.com/sunseol/opendesign-tauri/issues/28), [#36](https://github.com/sunseol/opendesign-tauri/issues/36), [#45](https://github.com/sunseol/opendesign-tauri/issues/45), [#52](https://github.com/sunseol/opendesign-tauri/issues/52), [#53](https://github.com/sunseol/opendesign-tauri/issues/53) | In progress - tools-dev local env/shared-port parity, tools-dev/tools-pack metatool metadata, tools-pr fork-retention guard, tools-serve updater/release fixture, and Nix hash helper parity verified |
 | Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, prompt-stack diagnostics, and deploy docs covered |
-| Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | Not started |
+| Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | In progress - Helm chart, one-click Docker/Podman installer, AWS/Azure templates, and cloud deployment docs imported with fork identity guardrails |
 | Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path and integrity guard covered |
 
 ## Priority Queue
@@ -185,6 +185,12 @@ protect against unsafe parity claims.
   `meta.json` declares source inputs and bins call the shared freshness check
   before loading `dist/index.mjs`. The tools-pack metadata includes resources
   so Tauri package resource changes cannot pass through a stale dist entry.
+- Deployment assets #46 now include the upstream `charts/open-design` Helm
+  chart, tokenized Compose env, one-click install/update/uninstall scripts,
+  AWS/Azure infrastructure templates, and Azure/Alibaba Cloud docs with fork
+  clone URLs retained. Docker-backed installer integration and live Helm lint
+  remain environment-dependent because Docker, Helm, and ShellCheck are not
+  available in this workspace.
 - Daemon runtime #7 now stages Grok Build prompts through daemon-owned temp
   files for chat runs and Settings connection tests, with cleanup on spawn
   failures, cancellations, critique runs, and child exit. The sensitive PDF

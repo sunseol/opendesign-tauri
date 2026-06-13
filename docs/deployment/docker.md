@@ -21,7 +21,15 @@ What this does:
 ## Step 2: Start Open Design
 
 ```bash
-docker-compose up -d
+cp .env.example .env
+openssl rand -hex 32
+```
+
+Open `.env`, paste the generated value into `OD_API_TOKEN=`, then start the service:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
 ```
 
 What to expect:
@@ -68,3 +76,4 @@ You should see the Open Design interface.
 - `failed to connect to the docker API`: Docker Desktop is not running yet
 - `address already in use`: Port `7456` is occupied by another process
 - `curl: (7) Failed to connect`: container is still starting; wait 10-20 seconds and retry
+- `Authorization: Bearer <OD_API_TOKEN> required` on macOS: Docker Desktop bridge networking can make the daemon see requests as non-loopback. See [Docker Desktop on macOS](../../deploy/README.md#docker-desktop-on-macos) for the host networking workaround.
