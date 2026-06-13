@@ -1266,8 +1266,14 @@ function createMarketplaceFetcher(seedId, bundledMarketplaceEntries) {
   };
 }
 
-export function resolveDataDir(raw, projectRoot) {
-  if (!raw) return path.join(projectRoot, '.od');
+export function resolveDataDir(raw, projectRoot, options = {}) {
+  const value = raw?.trim();
+  if (!value) {
+    if (options.requireExplicit) {
+      throw new Error('OD_DATA_DIR is required when OD_SANDBOX_MODE is enabled');
+    }
+    return path.join(projectRoot, '.od');
+  }
   // expandHomePrefix is shared with media-config.ts so OD_DATA_DIR and
   // OD_MEDIA_CONFIG_DIR can never split state under a $HOME-style value.
   // Some launchers (systemd unit files, NixOS modules, certain Docker
@@ -1276,7 +1282,7 @@ export function resolveDataDir(raw, projectRoot) {
   // expandHomePrefix turns those (and the ~ shorthand, with both / and \
   // separators) into os.homedir() before path.resolve runs so launch
   // surfaces stay consistent.
-  const resolved = resolveProjectRelativePath(raw, projectRoot);
+  const resolved = resolveProjectRelativePath(value, projectRoot);
   try {
     fs.mkdirSync(resolved, { recursive: true });
     fs.accessSync(resolved, fs.constants.W_OK);
@@ -1302,7 +1308,9 @@ export function resolveDataDir(raw, projectRoot) {
   }
   return resolved;
 }
-const RUNTIME_DATA_DIR = resolveDataDir(process.env.OD_DATA_DIR, PROJECT_ROOT);
+const RUNTIME_DATA_DIR = resolveDataDir(process.env.OD_DATA_DIR, PROJECT_ROOT, {
+  requireExplicit: isSandboxModeEnabled(process.env),
+});
 const PLUGIN_LOCKFILE_PATH = path.join(RUNTIME_DATA_DIR, 'od-plugin-lock.json');
 // Canonical (realpath-resolved) form of RUNTIME_DATA_DIR for the few callers
 // that compare it against a user-supplied realpath() result. On macOS, /var
