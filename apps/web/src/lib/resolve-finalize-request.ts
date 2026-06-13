@@ -1,16 +1,12 @@
-import type { FinalizeAnthropicRequest } from '@open-design/contracts';
+import type {
+  FinalizeAnthropicRequest,
+  FinalizeProviderProtocol,
+} from '@open-design/contracts';
 
 import { effectiveMaxTokens } from '../state/maxTokens';
 import type { ApiProtocol, AppConfig } from '../types';
 
-type SupportedFinalizeProtocol =
-  | 'anthropic'
-  | 'openai'
-  | 'azure'
-  | 'google'
-  | 'ollama';
-
-const FINALIZE_PROTOCOLS = new Set<SupportedFinalizeProtocol>([
+const FINALIZE_PROTOCOLS = new Set<FinalizeProviderProtocol>([
   'anthropic',
   'openai',
   'azure',
@@ -23,10 +19,10 @@ export interface FinalizeCredentialsMissingToast {
   details: string | null;
 }
 
-function resolveFinalizeProtocol(config: AppConfig): SupportedFinalizeProtocol {
+function resolveFinalizeProtocol(config: AppConfig): FinalizeProviderProtocol {
   const protocol = config.apiProtocol ?? 'anthropic';
-  return FINALIZE_PROTOCOLS.has(protocol as SupportedFinalizeProtocol)
-    ? (protocol as SupportedFinalizeProtocol)
+  return FINALIZE_PROTOCOLS.has(protocol as FinalizeProviderProtocol)
+    ? (protocol as FinalizeProviderProtocol)
     : 'anthropic';
 }
 
