@@ -44,6 +44,14 @@ export function parseCodexDebugModels(stdout: string): RuntimeModelOption[] | nu
   return out.length > 1 ? out : null;
 }
 
+export function codexNeedsDangerFullAccessSandbox(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (env.OD_CODEX_SANDBOX?.trim() === 'danger-full-access') return true;
+  return platform === 'win32';
+}
+
 export const codexAgentDef = {
     id: 'codex',
     name: 'Codex CLI',
@@ -98,8 +106,8 @@ export const codexAgentDef = {
       // back to a coarse policy that rejects any shell. macOS (Seatbelt)
       // and Linux (Landlock+seccomp) keep workspace-write because their
       // sandbox enforcement permits shell while restricting writes.
-      const isWindows = process.platform === 'win32';
-      const args = isWindows
+      const needsDangerFullAccessSandbox = codexNeedsDangerFullAccessSandbox(process.platform, process.env);
+      const args = needsDangerFullAccessSandbox
         ? ['exec', '--json', '--skip-git-repo-check', '--sandbox', 'danger-full-access']
         : [
             'exec',

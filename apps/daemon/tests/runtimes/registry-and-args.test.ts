@@ -2,6 +2,7 @@ import { test } from 'vitest';
 import {
   AGENT_DEFS, amp, assert, chmodSync, codex, cursorAgent, detectAgents, join, mkdtempSync, opencode, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
+import { codexNeedsDangerFullAccessSandbox } from '../../src/runtimes/defs/codex.js';
 import { readLocalAgentProfileDefs } from '../../src/runtimes/registry.js';
 
 test('AGENT_DEFS ids are unique', () => {
@@ -137,6 +138,45 @@ test('codex args use workspace-write sandbox on macOS and Linux', () => {
       ]);
     });
   }
+});
+
+test('codex args allow OD_CODEX_SANDBOX danger-full-access override on Linux', () => {
+  withPlatform('linux', () => {
+    withEnvSnapshot(['OD_CODEX_DISABLE_PLUGINS', 'OD_CODEX_SANDBOX'], () => {
+      delete process.env.OD_CODEX_DISABLE_PLUGINS;
+      process.env.OD_CODEX_SANDBOX = 'danger-full-access';
+
+      assert.equal(codexNeedsDangerFullAccessSandbox('linux', process.env), true);
+      const args = codex.buildArgs('', [], [], {}, { cwd: '/tmp/od-project' });
+      assert.deepEqual(args.slice(0, 5), [
+        'exec',
+        '--json',
+        '--skip-git-repo-check',
+        '--sandbox',
+        'danger-full-access',
+      ]);
+      assert.equal(args.includes('sandbox_workspace_write.network_access=true'), false);
+    });
+  });
+});
+
+test('codex args ignore unknown OD_CODEX_SANDBOX values', () => {
+  withPlatform('linux', () => {
+    withEnvSnapshot(['OD_CODEX_DISABLE_PLUGINS', 'OD_CODEX_SANDBOX'], () => {
+      delete process.env.OD_CODEX_DISABLE_PLUGINS;
+      process.env.OD_CODEX_SANDBOX = 'workspace-write';
+
+      assert.equal(codexNeedsDangerFullAccessSandbox('linux', process.env), false);
+      const args = codex.buildArgs('', [], [], {}, { cwd: '/tmp/od-project' });
+      assert.deepEqual(args.slice(0, 5), [
+        'exec',
+        '--json',
+        '--skip-git-repo-check',
+        '--sandbox',
+        'workspace-write',
+      ]);
+    });
+  });
 });
 
 test('codex args use danger-full-access sandbox on Windows because workspace-write blocks PowerShell', () => {
