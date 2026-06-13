@@ -10,8 +10,8 @@ This is the easiest self-hosting path for beginners.
 ## Step 1: Open the Deploy Folder
 
 ```bash
-git clone https://github.com/nexu-io/open-design.git
-cd open-design/deploy
+git clone https://github.com/sunseol/opendesign-tauri.git
+cd opendesign-tauri/deploy
 ```
 
 What this does:

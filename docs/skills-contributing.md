@@ -2,7 +2,7 @@
 
 **Parent:** [`spec.md`](spec.md) · **Siblings:** [`skills-protocol.md`](skills-protocol.md) · [`architecture.md`](architecture.md) · [`modes.md`](modes.md)
 
-> Want to read the protocol spec instead? See [`skills-protocol.md`](skills-protocol.md). This file is the **how-to** for shipping a skill upstream — what to write, how to run it locally, what we'll send back at review.
+> Want to read the protocol spec instead? See [`skills-protocol.md`](skills-protocol.md). This file is the **how-to** for shipping a skill to this Tauri fork — what to write, how to run it locally, what we'll send back at review.
 
 A skill is the most leverage you can ship into Open Design without writing framework code. One folder, one Markdown file with frontmatter, a hand-built example, and the picker shows it. This guide walks you through the path from `git clone` to merged PR, plus the bar we hold skill PRs to and the patterns that get bounced.
 
@@ -16,8 +16,8 @@ If you only have ten seconds, the picture is:
 
 ```bash
 # 1. Fork & clone
-git clone git@github.com:<your-username>/open-design.git
-cd open-design
+git clone git@github.com:<your-username>/opendesign-tauri.git
+cd opendesign-tauri
 git checkout -b skill/<your-skill-name>
 
 # 2. Bootstrap (Node 24, pnpm 10.33.x)
@@ -69,7 +69,7 @@ A skill is a **recipe for producing one kind of artifact**. Not a feature, not a
 
 **Third option: ship as an external skill bundle.** If your workflow is genuinely a recipe (not a daemon feature) but is too vendor-specific or audience-narrow to land in-tree, the skills protocol supports user-global skills via `~/.claude/skills/` (see [`skills-protocol.md` §3](skills-protocol.md#3-skill-discovery--precedence)). Publishing your bundle as a standalone repo lets users `git clone` or `od skill add` it without us taking on the maintenance surface. This is the right path for payment-provider workflows, regional marketplace integrations, in-house design systems, and similar — not a rejection, just a different distribution channel.
 
-If you're not sure your idea fits, **open a discussion first** ([github.com/nexu-io/open-design/discussions](https://github.com/nexu-io/open-design/discussions)) — we'd rather spend 5 minutes redirecting than have you build the wrong thing for a week.
+If you're not sure your idea fits, **open an issue first** ([github.com/sunseol/opendesign-tauri/issues/new](https://github.com/sunseol/opendesign-tauri/issues/new)) — we'd rather spend 5 minutes redirecting than have you build the wrong thing for a week.
 
 ---
 
