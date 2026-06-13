@@ -140,6 +140,52 @@ describe('api proxy message builder', () => {
       projectId: 'project-1',
     });
   });
+
+  it('forwards BYOK media default models through the proxy request body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: end\ndata: {}\n\n'));
+          controller.close();
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await streamProxyEndpoint(
+      '/api/proxy/senseaudio/stream',
+      {
+        apiKey: 'test-api-key',
+        baseUrl: 'https://api.senseaudio.cn',
+        model: 'senseaudio-s2',
+      } as AppConfig,
+      'System prompt',
+      [userMessage('Create media', [])],
+      new AbortController().signal,
+      {
+        onDelta: vi.fn(),
+        onDone: vi.fn(),
+        onError: vi.fn(),
+      },
+      {
+        projectId: 'project-1',
+        byokImageModel: 'senseaudio-image-2.0-260319',
+        byokVideoModel: 'aihubmix-video-model',
+        byokSpeechModel: 'aihubmix-tts-1',
+        byokSpeechVoice: 'alloy',
+      },
+    );
+
+    const proxyInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(proxyInit.body))).toMatchObject({
+      projectId: 'project-1',
+      byokImageModel: 'senseaudio-image-2.0-260319',
+      byokVideoModel: 'aihubmix-video-model',
+      byokSpeechModel: 'aihubmix-tts-1',
+      byokSpeechVoice: 'alloy',
+    });
+  });
 });
 
 function userMessage(
