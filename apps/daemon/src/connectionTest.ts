@@ -39,6 +39,7 @@ import { createClaudeStreamHandler } from './claude-stream.js';
 import { diagnoseClaudeCliFailure } from './claude-diagnostics.js';
 import { createCopilotStreamHandler } from './copilot-stream.js';
 import { createJsonEventStreamHandler } from './json-event-stream.js';
+import { diagnoseOpenCodeCliFailure } from './opencode-diagnostics.js';
 import { agentCliEnvForAgent, validateAgentCliEnv } from './app-config.js';
 import {
   classifyAgentAuthFailure,
@@ -1680,6 +1681,27 @@ async function testAgentConnectionInternal(
           agentName: def.name,
           detail: claudeDiagnostic.detail,
         };
+      }
+      if (input.agentId === 'opencode') {
+        const opencodeDiagnostic = diagnoseOpenCodeCliFailure({
+          exitCode: winner.code,
+          stderrTail,
+          stdoutTail: rawStdoutTail || buffered,
+        });
+        if (opencodeDiagnostic) {
+          const detail = redactSecrets(rawDetail);
+          console.warn(
+            `[test:agent] ${def.name} → opencode_diagnostic: ${opencodeDiagnostic}`,
+          );
+          return {
+            ok: false,
+            kind: 'agent_spawn_failed',
+            latencyMs,
+            model,
+            agentName: def.name,
+            detail: detail ? `${opencodeDiagnostic} Raw failure: ${detail}` : opencodeDiagnostic,
+          };
+        }
       }
       const detail = redactSecrets(
         rawDetail,
