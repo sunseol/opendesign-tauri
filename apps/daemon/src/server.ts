@@ -3211,12 +3211,12 @@ export interface StartServerOptions {
 const DEFAULT_CHAT_RUN_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_CHAT_RUN_INACTIVITY_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
-function resolveChatRunInactivityTimeoutMs() {
+export function resolveChatRunInactivityTimeoutMs(agentDefault?: number) {
   const raw = Number(process.env.OD_CHAT_RUN_INACTIVITY_TIMEOUT_MS);
   // This watchdog observes child stdout/stderr/SSE activity, not real CPU or
   // filesystem progress. Keep the default long enough for agents that spend
   // several minutes silently writing large artifacts.
-  if (!Number.isFinite(raw)) return DEFAULT_CHAT_RUN_INACTIVITY_TIMEOUT_MS;
+  if (!Number.isFinite(raw)) return agentDefault ?? DEFAULT_CHAT_RUN_INACTIVITY_TIMEOUT_MS;
   // Node clamps delays larger than a signed 32-bit integer down to 1ms, which
   // makes an oversized override fail almost immediately while reporting a huge
   // timeout. Keep explicit overrides bounded to a practical, timer-safe value.
@@ -10461,7 +10461,7 @@ export async function startServer({
         },
       ));
     };
-    const inactivityTimeoutMs = resolveChatRunInactivityTimeoutMs();
+    const inactivityTimeoutMs = resolveChatRunInactivityTimeoutMs(def.inactivityTimeoutMs);
     const inactivityKillGraceMs = 3_000;
     let inactivityTimer = null;
     let childStdoutSeen = false;

@@ -67,4 +67,5 @@ export const copilotAgentDef = {
     },
     promptViaStdin: true,
     streamFormat: 'copilot-stream-json',
+    inactivityTimeoutMs: 30 * 60 * 1000,
 } satisfies RuntimeAgentDef;

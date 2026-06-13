@@ -117,6 +117,11 @@ export type RuntimeAgentDef = {
   // True when the adapter's CLI can persist and resume its own session
   // across daemon spawns.
   resumesSessionViaCli?: boolean;
+  inactivityTimeoutMs?: number;
+  authProbe?: {
+    args: string[];
+    timeoutMs?: number;
+  };
 };
 
 export type DetectedAgent = Omit<
@@ -130,6 +135,8 @@ export type DetectedAgent = Omit<
   | 'fallbackBins'
   | 'versionProbeTimeoutMs'
   | 'maxPromptArgBytes'
+  | 'inactivityTimeoutMs'
+  | 'authProbe'
   | 'env'
 > & {
   models: RuntimeModelOption[];

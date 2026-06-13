@@ -1,5 +1,5 @@
 import { execAgentFile } from './invocation.js';
-import type { RuntimeEnv } from './types.js';
+import type { RuntimeAgentDef, RuntimeEnv } from './types.js';
 
 export type AgentAuthProbeResult = {
   status: 'ok' | 'missing' | 'unknown';
@@ -93,15 +93,25 @@ export function classifyAgentAuthFailure(
 }
 
 export async function probeAgentAuthStatus(
-  agentId: string,
+  agent: string | Pick<RuntimeAgentDef, 'id' | 'name' | 'authProbe'>,
   resolvedBin: string,
   env: RuntimeEnv,
 ): Promise<AgentAuthProbeResult | null> {
-  if (agentId !== 'cursor-agent') return null;
+  const def = typeof agent === 'string'
+    ? {
+        id: agent,
+        name: agent,
+        authProbe: agent === 'cursor-agent'
+          ? { args: ['status'], timeoutMs: 5000 }
+          : undefined,
+      }
+    : agent;
+  const probe = def.authProbe;
+  if (!probe) return null;
   try {
-    const { stdout, stderr } = await execAgentFile(resolvedBin, ['status'], {
+    const { stdout, stderr } = await execAgentFile(resolvedBin, probe.args, {
       env,
-      timeout: 5000,
+      timeout: probe.timeoutMs ?? 5000,
       maxBuffer: 1024 * 1024,
     });
     const output = `${stdout ?? ''}\n${stderr ?? ''}`;
@@ -124,7 +134,7 @@ export async function probeAgentAuthStatus(
     }
     return {
       status: 'unknown',
-      message: 'Cursor Agent authentication status could not be verified with `cursor-agent status`.',
+      message: `${def.name} authentication status could not be verified.`,
     };
   }
 }

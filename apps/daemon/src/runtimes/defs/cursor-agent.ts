@@ -82,4 +82,5 @@ export const cursorAgentDef = {
     promptViaStdin: true,
     streamFormat: 'json-event-stream',
     eventParser: 'cursor-agent',
+    authProbe: { args: ['status'], timeoutMs: 5000 },
 } satisfies RuntimeAgentDef;

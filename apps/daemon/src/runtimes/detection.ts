@@ -178,7 +178,7 @@ async function probe(
     agentCapabilities.set(def.id, caps);
   }
   const modelResult = await fetchModels(def, launch.launchPath, probeEnv);
-  const auth = await probeAgentAuthStatus(def.id, launch.launchPath, probeEnv);
+  const auth = await probeAgentAuthStatus(def, launch.launchPath, probeEnv);
   return {
     ...stripFns(def),
     models: modelResult.models,
@@ -215,9 +215,13 @@ function stripFns(
     fallbackBins,
     versionProbeTimeoutMs,
     maxPromptArgBytes,
+    inactivityTimeoutMs,
+    authProbe,
     env,
     ...rest
   } = def;
+  void inactivityTimeoutMs;
+  void authProbe;
   return rest;
 }
 
