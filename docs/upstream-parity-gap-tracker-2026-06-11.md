@@ -32,7 +32,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Upstream integration strategy | 956 upstream-only commits | [#1](https://github.com/sunseol/opendesign-tauri/issues/1) | Not started |
 | Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | Not started |
 | Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | Not started |
-| Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | Not started |
+| Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle and integrations analytics contract drift covered |
 | Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | Not started |
 | Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | Not started |
 | Plugins and marketplace | `plugins` 596 files | [#5](https://github.com/sunseol/opendesign-tauri/issues/5), [#21](https://github.com/sunseol/opendesign-tauri/issues/21), [#22](https://github.com/sunseol/opendesign-tauri/issues/22), [#47](https://github.com/sunseol/opendesign-tauri/issues/47) | Not started |
@@ -114,6 +114,10 @@ protect against unsafe parity claims.
   captures the composed prompt parts on the run record, and the daemon bridge
   forwards upstream `promptStack_*` query metadata plus structured generation
   input.
+- Contracts #43 now accepts the upstream chat run lifecycle status extensions
+  (`cancelRequested`, child process ids, exit observation metadata, and cancel
+  response run snapshots) plus the integrations connectors `gate_card`
+  analytics click element. Type-level package tests guard those DTO additions.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs
