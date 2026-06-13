@@ -160,6 +160,9 @@ protect against unsafe parity claims.
   failures, cancellations, critique runs, and child exit. The sensitive PDF
   export/media-generate route guard is also installed, and the old inline
   duplicate handlers were removed after the extracted routes were verified.
+  Tool-result submissions now reject mismatched body/path run ids before
+  writing to a running agent stdin, matching the sandbox orchestration
+  chokepoint guard.
   Sandbox hardening #33 now also resolves local agent profiles and executable
   search roots from daemon-owned sandbox state when `OD_SANDBOX_MODE` is set,
   preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed
