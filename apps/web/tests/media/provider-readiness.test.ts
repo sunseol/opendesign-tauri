@@ -19,6 +19,17 @@ describe('media provider picker readiness', () => {
     expect(isMediaProviderPickerReady('bfl', {})).toBe(false);
   });
 
+  it('enables AIHubMix only after media credentials are configured', () => {
+    expect(isMediaProviderPickerReady('aihubmix', {})).toBe(false);
+    expect(isMediaProviderPickerReady('aihubmix', {
+      aihubmix: {
+        apiKey: '',
+        baseUrl: '',
+        apiKeyConfigured: true,
+      },
+    })).toBe(true);
+  });
+
   it('does not treat OAuth-only OpenAI auth as media credentials', () => {
     const providers: Record<string, MediaProviderCredentials> = {
       openai: {

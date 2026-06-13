@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mediaModelProviderId } from '../../src/media/models';
+import { findMediaModel, mediaModelProviderId } from '../../src/media/models';
 
 describe('mediaModelProviderId', () => {
   it('resolves AIHubMix live-catalogue ids by prefix without the static registry', () => {
@@ -10,6 +10,8 @@ describe('mediaModelProviderId', () => {
 
   it('resolves static models to their registry provider', () => {
     expect(mediaModelProviderId('gpt-image-2')).toBe('openai');
+    expect(findMediaModel('aihubmix-gpt-image-1')?.provider).toBe('aihubmix');
+    expect(mediaModelProviderId('aihubmix-gpt-image-1')).toBe('aihubmix');
     expect(mediaModelProviderId('senseaudio-image-2.0-260319')).toBe('senseaudio');
     expect(mediaModelProviderId('senseaudio-tts')).toBe('senseaudio');
   });

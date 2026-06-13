@@ -47,6 +47,7 @@ export type MediaProviderId =
   | 'elevenlabs'
   | 'fishaudio'
   | 'senseaudio'
+  | 'aihubmix'
   | 'tavily'
   | 'leonardo'
   | 'stub';
@@ -240,6 +241,18 @@ export const MEDIA_PROVIDERS: MediaProvider[] = [
     docsUrl: 'https://docs.senseaudio.cn',
   },
   {
+    id: 'aihubmix',
+    label: 'AIHubMix',
+    hint: 'OpenAI-compatible aggregator',
+    integrated: true,
+    credentialsRequired: true,
+    settingsVisible: true,
+    defaultBaseUrl: 'https://aihubmix.com/v1',
+    docsUrl: 'https://docs.aihubmix.com',
+    supportsCustomModel: true,
+    customModelPlaceholder: 'gpt-image-1 or dall-e-3',
+  },
+  {
     id: 'tavily',
     label: 'Tavily Search',
     hint: 'Agent-callable web research',
@@ -407,6 +420,20 @@ export const IMAGE_MODELS: MediaModel[] = [
     provider: 'imagerouter',
     caps: ['t2i'],
   },
+  {
+    id: 'aihubmix-gpt-image-1',
+    label: 'gpt-image-1 (AIHubMix)',
+    hint: 'AIHubMix · OpenAI gpt-image-1',
+    provider: 'aihubmix',
+    caps: ['t2i', 'i2i'],
+  },
+  {
+    id: 'aihubmix-dall-e-3',
+    label: 'dall-e-3 (AIHubMix)',
+    hint: 'AIHubMix · OpenAI DALL-E 3',
+    provider: 'aihubmix',
+    caps: ['t2i'],
+  },
 
   // Custom OpenAI-compatible /v1/images/generations endpoint.
   {
@@ -552,6 +579,7 @@ export const AUDIO_MODELS_BY_KIND: Record<AudioKind, MediaModel[]> = {
     { id: 'senseaudio-tts', label: 'senseaudio-tts', hint: 'SenseAudio', provider: 'senseaudio', caps: ['tts', 'voice-clone'] },
     { id: 'doubao-tts', label: 'doubao-tts', hint: 'Volcengine', provider: 'volcengine', caps: ['tts'] },
     { id: 'gpt-4o-mini-tts', label: 'gpt-4o-mini-tts', hint: 'OpenAI', provider: 'openai', caps: ['tts'] },
+    { id: 'aihubmix-tts-1', label: 'tts-1 (AIHubMix)', hint: 'AIHubMix · OpenAI tts-1', provider: 'aihubmix', caps: ['tts'] },
   ],
   sfx: [
     { id: 'elevenlabs-sfx', label: 'elevenlabs-sfx', hint: 'ElevenLabs SFX', provider: 'elevenlabs', caps: ['sfx'], default: true },

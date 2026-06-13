@@ -141,6 +141,8 @@ protect against unsafe parity claims.
   Media model provider resolution now recognizes live AIHubMix catalogue ids by
   prefix before the async catalogue is present, so BYOK seed guards can keep
   AIHubMix selections while dropping mismatched provider defaults.
+  AIHubMix also has static media provider metadata and seed image/speech models,
+  giving the pickers a credential-gated fallback before live catalogues load.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Anthropic-compatible fallback routing is now centralized in
