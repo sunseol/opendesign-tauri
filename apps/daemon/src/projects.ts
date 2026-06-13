@@ -27,7 +27,10 @@ import {
 } from './artifact-publication-guard.js';
 import { normalizeArtifactRuntimeImports } from './artifact-runtime-compat.js';
 import { isIgnoredProjectDirName } from './project-ignored-dirs.js';
-import { isSandboxModeEnabled } from './sandbox-mode.js';
+import {
+  SANDBOX_IMPORTED_PROJECT_UNAVAILABLE_MESSAGE,
+  sandboxImportedProjectRootUnavailableReason,
+} from './sandbox-mode.js';
 
 const FORBIDDEN_SEGMENT = /^$|^\.\.?$/;
 const RESERVED_PROJECT_FILE_SEGMENTS = new Set(['.live-artifacts']);
@@ -52,10 +55,8 @@ export function projectDir(projectsRoot, projectId) {
 export class SandboxImportedProjectError extends Error {
   code = 'SANDBOX_IMPORTED_PROJECT_UNAVAILABLE';
 
-  constructor() {
-    super(
-      'Imported-folder projects are not available in OD_SANDBOX_MODE until their files are mirrored into the managed project directory.',
-    );
+  constructor(message = SANDBOX_IMPORTED_PROJECT_UNAVAILABLE_MESSAGE) {
+    super(message);
     this.name = 'SandboxImportedProjectError';
   }
 }
@@ -66,14 +67,16 @@ function hasExternalProjectRoot(metadata?) {
 }
 
 export function assertSandboxProjectRootAvailable(metadata?) {
-  if (isSandboxModeEnabled(process.env) && hasExternalProjectRoot(metadata)) {
-    throw new SandboxImportedProjectError();
+  if (!hasExternalProjectRoot(metadata)) return;
+  const reason = sandboxImportedProjectRootUnavailableReason(metadata.baseDir);
+  if (reason) {
+    throw new SandboxImportedProjectError(reason);
   }
 }
 
 function usesExternalProjectRoot(metadata?) {
-  if (isSandboxModeEnabled(process.env)) return false;
-  return hasExternalProjectRoot(metadata);
+  if (!hasExternalProjectRoot(metadata)) return false;
+  return sandboxImportedProjectRootUnavailableReason(metadata.baseDir) === null;
 }
 
 // Returns the folder a project's files live in. For git-linked projects

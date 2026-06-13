@@ -84,7 +84,7 @@ describe('POST /api/import/folder', () => {
       const resp = await importFolder({ baseDir: folder });
       expect(resp.status).toBe(400);
       const body = (await resp.json()) as { error?: { message?: string } };
-      expect(body.error?.message).toMatch(/folder imports are disabled/i);
+      expect(body.error?.message).toMatch(/OD_SANDBOX_IMPORT_ALLOWED_ROOTS/i);
     });
   });
 

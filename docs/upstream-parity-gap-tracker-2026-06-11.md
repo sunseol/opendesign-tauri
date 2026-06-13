@@ -286,13 +286,15 @@ protect against unsafe parity claims.
   preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed
   runtime bootstrap. Sandbox mode also rejects imported-folder project roots
   at import, file listing, and run start while preserving project detail
-  visibility for already-linked folders. Agent spawn env now pins sandbox
-  homes from resolved daemon data roots, and media OAuth fallback skips host
-  auth files while sandboxed. Sandboxed agent callback env also merges
-  loopback NO_PROXY entries so inherited host proxies do not intercept daemon
-  callbacks. Daemon project-root resolution is now shared by nested runtime
-  modules so sandbox discovery paths resolve the same repo root from `src` and
-  `dist` trees. Codex container deployments can also opt into
+  visibility for already-linked folders; operators can now set
+  `OD_SANDBOX_IMPORT_ALLOWED_ROOTS` to allow explicitly trusted import roots
+  without reopening arbitrary host-folder access. Agent spawn env now pins
+  sandbox homes from resolved daemon data roots, and media OAuth fallback
+  skips host auth files while sandboxed. Sandboxed agent callback env also
+  merges loopback NO_PROXY entries so inherited host proxies do not intercept
+  daemon callbacks. Daemon project-root resolution is now shared by nested
+  runtime modules so sandbox discovery paths resolve the same repo root from
+  `src` and `dist` trees. Codex container deployments can also opt into
   `OD_CODEX_SANDBOX=danger-full-access` when `workspace-write` sandbox setup is
   blocked. Claude stream-json bookkeeping now treats `usage` events with
   `stopReason: 'tool_use'` as non-terminal, so host tool answers can still be

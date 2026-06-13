@@ -25,6 +25,23 @@ async function withSandboxMode<T>(run: () => T | Promise<T>): Promise<T> {
   }
 }
 
+async function withSandboxImportAllowedRoots<T>(
+  roots: string[],
+  run: () => T | Promise<T>,
+): Promise<T> {
+  const previous = process.env.OD_SANDBOX_IMPORT_ALLOWED_ROOTS;
+  process.env.OD_SANDBOX_IMPORT_ALLOWED_ROOTS = roots.join(path.delimiter);
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.OD_SANDBOX_IMPORT_ALLOWED_ROOTS;
+    } else {
+      process.env.OD_SANDBOX_IMPORT_ALLOWED_ROOTS = previous;
+    }
+  }
+}
+
 describe('resolveProjectDir', () => {
   const projectsRoot = '/var/od/projects';
   const projectId = 'proj-abc';
@@ -56,6 +73,32 @@ describe('resolveProjectDir', () => {
           baseDir: '/Users/me/projects/site',
         }),
       ).toThrow(SandboxImportedProjectError);
+    });
+  });
+
+  it('uses metadata.baseDir in sandbox mode when it is under an allowed import root', async () => {
+    await withSandboxMode(async () => {
+      await withSandboxImportAllowedRoots(['/Users/me/projects'], async () => {
+        expect(
+          resolveProjectDir(projectsRoot, projectId, {
+            kind: 'prototype',
+            baseDir: '/Users/me/projects/site',
+          }),
+        ).toBe(path.normalize('/Users/me/projects/site'));
+      });
+    });
+  });
+
+  it('rejects relative sandbox import allowed roots', async () => {
+    await withSandboxMode(async () => {
+      await withSandboxImportAllowedRoots(['projects'], async () => {
+        expect(() =>
+          resolveProjectDir(projectsRoot, projectId, {
+            kind: 'prototype',
+            baseDir: '/Users/me/projects/site',
+          }),
+        ).toThrow(/OD_SANDBOX_IMPORT_ALLOWED_ROOTS.*absolute/i);
+      });
     });
   });
 
