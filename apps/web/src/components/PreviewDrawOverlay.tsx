@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Poin
 import { Icon } from './Icon';
 import type { PreviewVisualMarkKind } from '../types';
 import { requestPreviewSnapshot } from '../runtime/exports';
+import { isImeComposing } from '../utils/imeComposing';
 
 export type PreviewDrawMode = 'click' | 'draw';
 
@@ -480,8 +481,7 @@ export function PreviewDrawOverlay({
               composingRef.current = false;
             }}
             onKeyDown={(e) => {
-              const nativeEvent = e.nativeEvent as KeyboardEvent & { keyCode?: number };
-              if (composingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) return;
+              if (isImeComposing(e, composingRef.current)) return;
               if (e.key === 'Enter') void send('send');
             }}
           />

@@ -57,6 +57,35 @@ describe('PreviewDrawOverlay', () => {
     }
   });
 
+  it('submits after IME composition ends even if the native keydown flag is stale', async () => {
+    const annotation = vi.fn();
+    window.addEventListener('opendesign:annotation', annotation);
+
+    try {
+      const { container } = render(
+        <PreviewDrawOverlay active>
+          <div style={{ width: 320, height: 200 }} />
+        </PreviewDrawOverlay>,
+      );
+
+      const input = container.querySelector<HTMLInputElement>('.preview-draw-note-input');
+      expect(input).toBeTruthy();
+
+      fireEvent.change(input!, { target: { value: '检查这个面板' } });
+      fireEvent.compositionStart(input!);
+      fireEvent.compositionEnd(input!);
+      fireEvent.keyDown(input!, { key: 'Enter', isComposing: true });
+
+      await waitFor(() => expect(annotation).toHaveBeenCalledTimes(1));
+      expect(annotation.mock.calls[0]?.[0].detail).toMatchObject({
+        action: 'send',
+        note: '检查这个面板',
+      });
+    } finally {
+      window.removeEventListener('opendesign:annotation', annotation);
+    }
+  });
+
   it('clears transient ink when draw mode exits', async () => {
     const { container, rerender } = render(
       <PreviewDrawOverlay active>
