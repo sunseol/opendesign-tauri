@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import FaviconLinks from '../../_components/favicon-links.astro';
 import FontStylesheet from '../../_components/font-stylesheet.astro';
 import GoogleAnalytics from '../../_components/google-analytics.astro';
+import PostHogAnalytics from '../../_components/posthog-analytics.astro';
 import { Header } from '../../_components/header';
 import HeaderEnhancer from '../../_components/header-enhancer.astro';
 import LazyImg from '../../_components/lazy-img.astro';
@@ -182,6 +183,7 @@ const breadcrumbJsonLd = {
     <script is:inline type='application/ld+json' set:html={JSON.stringify(pluginJsonLd)}></script>
     <script is:inline type='application/ld+json' set:html={JSON.stringify(breadcrumbJsonLd)}></script>
     <GoogleAnalytics />
+    <PostHogAnalytics />
   </head>
   <body>
     <div class='side-rail right' aria-hidden='true'>

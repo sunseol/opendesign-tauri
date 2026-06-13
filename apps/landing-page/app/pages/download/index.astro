@@ -235,6 +235,33 @@ const jsonLd = [
 
   <script is:inline define:vars={{ autoPrefix: page.autoCtaPrefix, RELEASE_METADATA_URL }}>
     (() => {
+      const trackDownloadClick = (variant, element) => {
+        try {
+          const props = {
+            page_name: 'download',
+            variant,
+            link_url: (element && (element.getAttribute('href') || element.href)) || '',
+          };
+          if (typeof window.__odTrack === 'function') {
+            window.__odTrack('download_click', props);
+          } else if (window.posthog && window.posthog.capture) {
+            window.posthog.capture('download_click', props);
+          }
+        } catch {}
+      };
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!target || !target.closest) return;
+        const cardLink = target.closest('[data-dl-key]');
+        if (cardLink) {
+          trackDownloadClick(cardLink.getAttribute('data-dl-key') || 'unknown', cardLink);
+          return;
+        }
+        const autoLink = target.closest('[data-dl-auto]');
+        if (autoLink) trackDownloadClick('auto-detected', autoLink);
+      });
+
       const detect = () => {
         const ua = (navigator.userAgent || '').toLowerCase();
         const platform = (

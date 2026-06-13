@@ -1,0 +1,10 @@
+---
+import { posthogHeadHtml } from '../_lib/posthog-analytics';
+
+const env = import.meta.env as Record<string, string | undefined>;
+const apiKey = env.POSTHOG_KEY ?? env.PUBLIC_POSTHOG_KEY;
+const host = env.POSTHOG_HOST ?? env.PUBLIC_POSTHOG_HOST;
+const headHtml = posthogHeadHtml(apiKey, host);
+---
+
+<Fragment set:html={headHtml} />

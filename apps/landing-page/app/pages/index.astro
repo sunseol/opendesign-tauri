@@ -5,7 +5,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import FaviconLinks from '../_components/favicon-links.astro';
 import FontStylesheet from '../_components/font-stylesheet.astro';
+import GoogleAnalytics from '../_components/google-analytics.astro';
 import LocaleSwitcherScript from '../_components/locale-switcher-script.astro';
+import PostHogAnalytics from '../_components/posthog-analytics.astro';
 import PreciseLazyload from '../_components/precise-lazyload.astro';
 import { heroImage, heroImageSrcset } from '../image-assets';
 import {
@@ -147,6 +149,9 @@ const pageHtml = renderToStaticMarkup(
 
     <FontStylesheet />
 
+    <GoogleAnalytics />
+    <PostHogAnalytics />
+
     {/*
      * Hero LCP preload. Cloudflare Pages turns this <link rel="preload"> into
      * a 103 Early Hints response automatically when Early Hints is enabled in
@@ -269,15 +274,16 @@ const pageHtml = renderToStaticMarkup(
             });
           }
 
-          const stars = document.querySelector('[data-github-stars]');
-          if (stars) {
+          const starSlots = document.querySelectorAll('[data-github-stars]');
+          if (starSlots.length) {
             fetch('https://api.github.com/repos/nexu-io/open-design', {
               headers: { Accept: 'application/vnd.github+json' },
             })
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
               .then((data) => {
                 if (typeof data?.stargazers_count === 'number') {
-                  stars.textContent = formatStars(data.stargazers_count);
+                  const label = formatStars(data.stargazers_count);
+                  for (const slot of starSlots) slot.textContent = label;
                 }
               })
               .catch(() => {});
