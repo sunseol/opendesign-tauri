@@ -1700,6 +1700,7 @@ export const fa: Dict = {
   'settings.orbit.countSkipped': 'رد شده',
   'settings.orbit.countFailed': 'ناموفق',
   'settings.orbit.runError': 'اجرای Orbit ممکن نبود. مطمئن شوید daemon محلی در حال اجراست و کانکتورها پیکربندی شده‌اند.',
+  'routines.errorAgentEmptyOutput': 'Agent بدون تولید هیچ خروجی‌ای تکمیل شد. ممکن است مدل یا ارائه‌دهنده پاسخ خالی برگردانده باشد — لاگ‌های Agent را برای خطاهای بالادستی بررسی کنید.',
   'settings.orbit.gateAriaLabel': "برای استفاده از Orbit به اتصال‌دهنده نیاز است",
   'settings.orbit.gateEyebrow': "پیکربندی لازم است",
   'settings.orbit.gateTitle': "یک ابزار را متصل کنید تا Orbit کار کند",

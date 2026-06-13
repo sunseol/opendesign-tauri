@@ -1667,6 +1667,7 @@ export const hu: Dict = {
   'settings.orbit.countSkipped': 'Kihagyva',
   'settings.orbit.countFailed': 'Sikertelen',
   'settings.orbit.runError': 'Nem sikerült futtatni az Orbit műveletet. Ellenőrizd, hogy a helyi daemon fut-e, és a csatlakozók be vannak-e állítva.',
+  'routines.errorAgentEmptyOutput': 'Az Agent kimenet nélkül fejeződött be. Lehet, hogy a modell vagy a szolgáltató üres választ adott vissza — ellenőrizd az Agent naplóit a felsőbb szintű hibákért.',
   'settings.orbit.gateAriaLabel': "Az Orbit használatához csatlakozók szükségesek",
   'settings.orbit.gateEyebrow': "Beállítás szükséges",
   'settings.orbit.gateTitle': "Csatlakoztass egy eszközt az Orbit működéséhez",

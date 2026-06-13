@@ -1857,6 +1857,7 @@ export const zhTW: Dict = {
   'settings.orbit.countSkipped': '已略過',
   'settings.orbit.countFailed': '失敗',
   'settings.orbit.runError': '無法執行 Orbit。請確認本機 daemon 正在執行且連接器已設定。',
+  'routines.errorAgentEmptyOutput': '代理已完成執行但未產生任何輸出。模型或提供商可能返回了空回應，請檢查代理日誌中的上游錯誤。',
   'settings.orbit.gateAriaLabel': "使用 Orbit 需要先設定連接器",
   'settings.orbit.gateEyebrow': "需要先完成設定",
   'settings.orbit.gateTitle': "連接一個工具，讓 Orbit 開始運作",

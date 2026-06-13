@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Routine } from '@open-design/contracts';
 
+import { I18nProvider } from '../../src/i18n';
 import { RoutinesSection } from '../../src/components/RoutinesSection';
 import * as router from '../../src/router';
 
@@ -503,6 +504,94 @@ describe('RoutinesSection', () => {
     await waitFor(() => {
       expect(screen.getAllByText(failure)).toHaveLength(2);
     });
+  });
+
+  it('localizes known daemon empty-output failures in the last-run summary and history', async () => {
+    const failure =
+      'Agent completed without producing any output. The model or provider may have returned an empty response — check the agent logs for upstream errors.';
+    const localizedFailure =
+      'Agent가 출력 없이 완료되었습니다. 모델 또는 공급자가 빈 응답을 반환했을 수 있습니다 — 업스트림 오류는 Agent 로그를 확인하세요.';
+    const routines: Routine[] = [{
+      id: 'routine-1',
+      name: 'Morning briefing',
+      prompt: 'Morning summary',
+      schedule: { kind: 'daily', time: '09:00', timezone: 'UTC' },
+      target: { mode: 'create_each_run' },
+      skillId: null,
+      agentId: null,
+      enabled: true,
+      nextRunAt: Date.now() + 3600_000,
+      lastRun: {
+        runId: 'run-failed-1',
+        status: 'failed',
+        trigger: 'scheduled',
+        startedAt: Date.now() - 1000,
+        completedAt: Date.now(),
+        projectId: 'proj-run',
+        conversationId: 'conv-run',
+        agentRunId: 'agent-run-1',
+        error: failure,
+        errorCode: 'AGENT_EMPTY_OUTPUT',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === '/api/routines' && (!init || init.method === undefined)) {
+        return new Response(JSON.stringify({ routines }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/projects' && (!init || init.method === undefined)) {
+        return new Response(JSON.stringify({ projects: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/routines/routine-1/runs?limit=10') {
+        return new Response(JSON.stringify({
+          runs: [
+            {
+              id: 'run-failed-1',
+              routineId: 'routine-1',
+              trigger: 'scheduled',
+              status: 'failed',
+              projectId: 'proj-run',
+              conversationId: 'conv-run',
+              agentRunId: 'agent-run-1',
+              startedAt: Date.now() - 1000,
+              completedAt: Date.now(),
+              summary: null,
+              error: failure,
+              errorCode: 'AGENT_EMPTY_OUTPUT',
+            },
+          ],
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({}), { status: 404 });
+    }) as typeof fetch;
+
+    render(
+      <I18nProvider initial="ko">
+        <RoutinesSection />
+      </I18nProvider>,
+    );
+
+    const row = (await screen.findByText('Morning briefing')).closest('li')!;
+    expect(within(row).getByText(localizedFailure)).toBeTruthy();
+    expect(within(row).queryByText(failure)).toBeNull();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'History' }));
+    await waitFor(() => {
+      expect(screen.getAllByText(localizedFailure)).toHaveLength(2);
+    });
+    expect(screen.queryByText(failure)).toBeNull();
   });
 
   it('shows the empty history state when a routine has never run', async () => {

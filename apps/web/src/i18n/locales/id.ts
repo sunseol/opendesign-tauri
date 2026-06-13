@@ -437,6 +437,7 @@ export const id: Dict = {
   'settings.orbit.countSkipped': 'Dilewati',
   'settings.orbit.countFailed': 'Gagal',
   'settings.orbit.runError': 'Tidak bisa menjalankan Orbit. Pastikan daemon lokal berjalan dan konektor sudah dikonfigurasi.',
+  'routines.errorAgentEmptyOutput': 'Agent selesai tanpa menghasilkan output apa pun. Model atau penyedia mungkin mengembalikan respons kosong — periksa log Agent untuk error dari hulu.',
   'settings.orbit.gateAriaLabel': 'Konektor diperlukan untuk memakai Orbit',
   'settings.orbit.gateEyebrow': 'Perlu pengaturan',
   'settings.orbit.gateTitle': 'Hubungkan alat untuk menjalankan Orbit',

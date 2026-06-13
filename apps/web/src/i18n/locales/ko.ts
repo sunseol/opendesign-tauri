@@ -1707,6 +1707,7 @@ export const ko: Dict = {
   'settings.orbit.countSkipped': '건너뜀',
   'settings.orbit.countFailed': '실패',
   'settings.orbit.runError': 'Orbit을 실행할 수 없습니다. 로컬 daemon이 실행 중이고 커넥터가 구성되어 있는지 확인하세요.',
+  'routines.errorAgentEmptyOutput': 'Agent가 출력 없이 완료되었습니다. 모델 또는 공급자가 빈 응답을 반환했을 수 있습니다 — 업스트림 오류는 Agent 로그를 확인하세요.',
   'settings.orbit.gateAriaLabel': "Orbit을 사용하려면 커넥터가 필요합니다",
   'settings.orbit.gateEyebrow': "설정이 필요합니다",
   'settings.orbit.gateTitle': "도구를 연결해 Orbit을 시작하세요",

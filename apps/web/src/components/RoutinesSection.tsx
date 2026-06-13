@@ -11,8 +11,13 @@ import type {
 
 import { Icon } from './Icon';
 import { navigate } from '../router';
+import { useT } from '../i18n';
+import { localizeRunFailureReason } from '../i18n/runErrors';
+import type { Dict } from '../i18n/types';
 
 type ProjectSummary = { id: string; name: string };
+
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 type RoutinesSectionProps = {
   onClose?: () => void;
@@ -171,10 +176,9 @@ function runFailureReason(run: {
   status: RoutineRun['status'];
   error?: string | null;
   summary?: string | null;
-} | null | undefined): string | null {
+} | null | undefined, t: TranslateFn): string | null {
   if (!run || run.status !== 'failed') return null;
-  const reason = (run.error || run.summary || '').trim();
-  return reason || null;
+  return localizeRunFailureReason(run.error || run.summary || '', t);
 }
 
 type FormState = {
@@ -351,7 +355,12 @@ function ScheduleEditor({
   );
 }
 
-function RunHistory({ routineId, refreshKey, onClose }: { routineId: string; refreshKey: number; onClose?: () => void }) {
+function RunHistory({ routineId, refreshKey, onClose, t }: {
+  routineId: string;
+  refreshKey: number;
+  onClose?: () => void;
+  t: TranslateFn;
+}) {
   const [runs, setRuns] = useState<RoutineRun[] | null>(null);
 
   useEffect(() => {
@@ -378,7 +387,7 @@ function RunHistory({ routineId, refreshKey, onClose }: { routineId: string; ref
   return (
     <ul className="routines-history">
       {runs.map((r) => {
-        const failureReason = runFailureReason(r);
+        const failureReason = runFailureReason(r, t);
         return (
           <li key={r.id} className="routines-history-row">
             <StatusPill status={r.status} />
@@ -420,6 +429,7 @@ function RunHistory({ routineId, refreshKey, onClose }: { routineId: string; ref
 }
 
 export function RoutinesSection({ onClose }: RoutinesSectionProps) {
+  const t = useT();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -711,7 +721,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                 : '→ new project each run';
             const isBusy = busyId === r.id;
             const isExpanded = expandedId === r.id;
-            const failureReason = runFailureReason(r.lastRun);
+            const failureReason = runFailureReason(r.lastRun, t);
             return (
               <li key={r.id} className={`routines-card routines-item${r.enabled ? '' : ' is-disabled'}`}>
                 <div className="routines-item-head">
@@ -791,7 +801,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                 </div>
                 {isExpanded ? (
                   <div className="routines-item-history">
-                    <RunHistory routineId={r.id} refreshKey={historyTick} onClose={onClose} />
+                    <RunHistory routineId={r.id} refreshKey={historyTick} onClose={onClose} t={t} />
                   </div>
                 ) : null}
               </li>

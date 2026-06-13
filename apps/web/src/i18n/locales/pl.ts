@@ -1657,6 +1657,7 @@ export const pl: Dict = {
   'settings.orbit.countSkipped': 'Pominięte',
   'settings.orbit.countFailed': 'Nieudane',
   'settings.orbit.runError': 'Nie można uruchomić Orbit. Upewnij się, że lokalny daemon działa, a konektory są skonfigurowane.',
+  'routines.errorAgentEmptyOutput': 'Agent zakończył działanie bez wygenerowania żadnych danych wyjściowych. Model lub dostawca mógł zwrócić pustą odpowiedź — sprawdź dzienniki agenta pod kątem błędów po stronie źródła.',
   'settings.orbit.gateAriaLabel': "Do działania Orbit wymagane są łączniki",
   'settings.orbit.gateEyebrow': "Wymagana konfiguracja",
   'settings.orbit.gateTitle': "Połącz narzędzie, aby uruchomić Orbit",

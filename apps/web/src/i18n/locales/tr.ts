@@ -1644,6 +1644,7 @@ export const tr: Dict = {
   'settings.orbit.countSkipped': 'Atlandı',
   'settings.orbit.countFailed': 'Başarısız',
   'settings.orbit.runError': 'Orbit çalıştırılamadı. Yerel daemon’ın çalıştığından ve bağlayıcıların yapılandırıldığından emin olun.',
+  'routines.errorAgentEmptyOutput': 'Agent herhangi bir çıktı üretmeden tamamlandı. Model veya sağlayıcı boş bir yanıt döndürmüş olabilir — üst kaynaklı hatalar için agent günlüklerini kontrol edin.',
   'settings.orbit.gateAriaLabel': "Orbit’i kullanmak için bağlayıcılar gerekiyor",
   'settings.orbit.gateEyebrow': "Kurulum gerekli",
   'settings.orbit.gateTitle': "Orbit’i çalıştırmak için bir araç bağlayın",

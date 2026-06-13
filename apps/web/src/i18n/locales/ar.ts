@@ -1657,6 +1657,7 @@ export const ar: Dict = {
   'settings.orbit.countSkipped': 'تم التخطي',
   'settings.orbit.countFailed': 'فشل',
   'settings.orbit.runError': 'تعذر تشغيل Orbit. تأكد من أن daemon المحلي يعمل وأن الموصّلات مهيأة.',
+  'routines.errorAgentEmptyOutput': 'أكمل الـ Agent دون إنتاج أي مُخرَج. ربما أرجع النموذج أو المزوّد استجابة فارغة — تحقّق من سجلات الـ Agent بحثًا عن أخطاء المصدر.',
   'settings.orbit.gateAriaLabel': "يلزم وجود موصلات لاستخدام Orbit",
   'settings.orbit.gateEyebrow': "الإعداد مطلوب",
   'settings.orbit.gateTitle': "اربط أداة لتشغيل Orbit",

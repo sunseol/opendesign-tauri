@@ -1460,6 +1460,7 @@ export const th: Dict = {
   'settings.orbit.countSkipped': 'โดนข้ามไป',
   'settings.orbit.countFailed': 'ไม่ลุล่วง',
   'settings.orbit.runError': 'หาที่รวมงานไม่ได้ โปรดเตรียมทั้งการเชื่อมต่อ และเครื่องมือ',
+  'routines.errorAgentEmptyOutput': 'Agent ทำงานเสร็จโดยไม่ได้สร้างผลลัพธ์ใดๆ โมเดลหรือผู้ให้บริการอาจส่งคืนการตอบสนองที่ว่างเปล่า — ตรวจสอบบันทึกของ agent เพื่อหาข้อผิดพลาดจากต้นทาง',
   'settings.orbit.gateAriaLabel': 'ระบบเรียกความพร้อม',
   'settings.orbit.gateEyebrow': 'ใช้ตัวเสริม',
   'settings.orbit.gateTitle': 'ต่อข้อมูลแอปทั้งหมดเพื่อใช้ Orbit',

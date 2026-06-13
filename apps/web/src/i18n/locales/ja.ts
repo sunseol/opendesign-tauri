@@ -1594,6 +1594,7 @@ export const ja: Dict = {
   'settings.orbit.countSkipped': 'スキップ',
   'settings.orbit.countFailed': '失敗',
   'settings.orbit.runError': 'Orbit を実行できませんでした。ローカル daemon が実行中で、コネクターが設定されていることを確認してください。',
+  'routines.errorAgentEmptyOutput': 'Agent は出力を生成せずに完了しました。モデルまたはプロバイダーが空のレスポンスを返した可能性があります。上流のエラーがないか Agent のログを確認してください。',
   'settings.orbit.gateAriaLabel': "Orbit を使うにはコネクタが必要です",
   'settings.orbit.gateEyebrow': "セットアップが必要",
   'settings.orbit.gateTitle': "ツールを接続して Orbit を動かしましょう",

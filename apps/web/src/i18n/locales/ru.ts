@@ -1698,6 +1698,7 @@ export const ru: Dict = {
   'settings.orbit.countSkipped': 'Пропущено',
   'settings.orbit.countFailed': 'С ошибкой',
   'settings.orbit.runError': 'Не удалось запустить Orbit. Убедитесь, что локальный daemon запущен, а коннекторы настроены.',
+  'routines.errorAgentEmptyOutput': 'Agent завершил работу, не создав никакого результата. Возможно, модель или провайдер вернули пустой ответ — проверьте журналы агента на наличие ошибок на стороне сервиса.',
   'settings.orbit.gateAriaLabel': "Для работы Orbit нужны коннекторы",
   'settings.orbit.gateEyebrow': "Требуется настройка",
   'settings.orbit.gateTitle': "Подключите инструмент для работы Orbit",

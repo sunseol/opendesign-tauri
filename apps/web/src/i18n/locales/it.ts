@@ -1532,6 +1532,7 @@ export const it: Dict = {
   'settings.orbit.countSkipped': 'Saltati',
   'settings.orbit.countFailed': 'Falliti',
   'settings.orbit.runError': 'Impossibile eseguire Orbit. Verifica che il daemon locale sia in esecuzione e che i connettori siano configurati.',
+  'routines.errorAgentEmptyOutput': 'L\'Agent è terminato senza produrre alcun output. Il modello o il provider potrebbe aver restituito una risposta vuota — controlla i log dell\'Agent per eventuali errori a monte.',
   'settings.orbit.gateAriaLabel': 'Sono richiesti connettori per utilizzare Orbit',
   'settings.orbit.gateEyebrow': 'Configurazione richiesta',
   'settings.orbit.gateTitle': 'Connetti uno strumento per alimentare Orbit',

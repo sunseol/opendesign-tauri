@@ -730,6 +730,7 @@ export const zhCN: Dict = {
   'tasks.primitive.routines.title': '例程',
   'tasks.primitive.routines.body': '单次聊天结束后仍能保留的持久任务定义。',
   'tasks.primitive.routines.meta': '产品外壳已就绪',
+  'routines.errorAgentEmptyOutput': '代理已完成运行但未产生任何输出。模型或提供商可能返回了空响应，请检查代理日志中的上游错误。',
   'tasks.primitive.schedules.title': '计划',
   'tasks.primitive.schedules.body': '按时间或事件触发，决定例程何时运行。',
   'tasks.primitive.schedules.meta': '分支待合并',

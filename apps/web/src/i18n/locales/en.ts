@@ -730,6 +730,7 @@ export const en: Dict = {
   'tasks.primitive.routines.title': 'Routines',
   'tasks.primitive.routines.body': 'Durable task definitions that survive after a single chat ends.',
   'tasks.primitive.routines.meta': 'Product shell ready',
+  'routines.errorAgentEmptyOutput': 'Agent completed without producing any output. The model or provider may have returned an empty response — check the agent logs for upstream errors.',
   'tasks.primitive.schedules.title': 'Schedules',
   'tasks.primitive.schedules.body': 'Time or event triggers that decide when a routine should run.',
   'tasks.primitive.schedules.meta': 'Branch pending',

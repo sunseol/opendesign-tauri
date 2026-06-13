@@ -1595,6 +1595,7 @@ export const de: Dict = {
   'settings.orbit.countSkipped': 'Übersprungen',
   'settings.orbit.countFailed': 'Fehlgeschlagen',
   'settings.orbit.runError': 'Orbit konnte nicht ausgeführt werden. Stelle sicher, dass der lokale Daemon läuft und Connectors konfiguriert sind.',
+  'routines.errorAgentEmptyOutput': 'Agent wurde abgeschlossen, ohne eine Ausgabe zu erzeugen. Das Modell oder der Anbieter hat möglicherweise eine leere Antwort zurückgegeben — prüfe die Agent-Logs auf vorgelagerte Fehler.',
   'settings.orbit.gateAriaLabel': "Connectors werden für Orbit benötigt",
   'settings.orbit.gateEyebrow': "Einrichtung erforderlich",
   'settings.orbit.gateTitle': "Verbinde ein Tool, um Orbit zu nutzen",

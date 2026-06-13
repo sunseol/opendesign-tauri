@@ -1699,6 +1699,7 @@ export const uk: Dict = {
   'settings.orbit.countSkipped': 'Пропущено',
   'settings.orbit.countFailed': 'Помилка',
   'settings.orbit.runError': 'Не вдалося запустити Orbit. Переконайтеся, що локальний daemon працює, а конектори налаштовані.',
+  'routines.errorAgentEmptyOutput': 'Agent завершив роботу, не створивши жодного результату. Модель або провайдер міг повернути порожню відповідь — перевірте журнали agent на наявність помилок із боку джерела.',
   'settings.orbit.gateAriaLabel': "Для роботи Orbit потрібні конектори",
   'settings.orbit.gateEyebrow': "Потрібне налаштування",
   'settings.orbit.gateTitle': "Підключіть інструмент, щоб запустити Orbit",

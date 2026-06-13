@@ -1698,6 +1698,7 @@ export const ptBR: Dict = {
   'settings.orbit.countSkipped': 'Ignorados',
   'settings.orbit.countFailed': 'Falharam',
   'settings.orbit.runError': 'Não foi possível executar Orbit. Verifique se o daemon local está em execução e se os conectores estão configurados.',
+  'routines.errorAgentEmptyOutput': 'O agent foi concluído sem produzir nenhuma saída. O modelo ou provedor pode ter retornado uma resposta vazia — verifique os logs do agent em busca de erros upstream.',
   'settings.orbit.gateAriaLabel': "Conectores são necessários para usar o Orbit",
   'settings.orbit.gateEyebrow': "Configuração necessária",
   'settings.orbit.gateTitle': "Conecte uma ferramenta para alimentar o Orbit",

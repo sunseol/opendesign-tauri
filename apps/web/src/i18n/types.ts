@@ -1038,6 +1038,7 @@ export interface Dict {
   'tasks.primitive.routines.title': string;
   'tasks.primitive.routines.body': string;
   'tasks.primitive.routines.meta': string;
+  'routines.errorAgentEmptyOutput': string;
   'tasks.primitive.schedules.title': string;
   'tasks.primitive.schedules.body': string;
   'tasks.primitive.schedules.meta': string;
