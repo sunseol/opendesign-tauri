@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChatMessage } from '../../src/types';
-import { messageTime } from '../../src/utils/chatTime';
+import { messageTime, shortTime } from '../../src/utils/chatTime';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('messageTime', () => {
   it('uses assistant startedAt before persisted createdAt', () => {
@@ -27,5 +31,19 @@ describe('messageTime', () => {
     };
 
     expect(messageTime(message)).toBe(200);
+  });
+});
+
+describe('shortTime', () => {
+  it('formats a compact hour and minute label for inline chat timestamps', () => {
+    const spy = vi
+      .spyOn(Date.prototype, 'toLocaleTimeString')
+      .mockReturnValue('09:30 AM');
+
+    expect(shortTime(Date.UTC(2026, 0, 1, 9, 30))).toBe('09:30 AM');
+    expect(spy).toHaveBeenCalledWith(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   });
 });
