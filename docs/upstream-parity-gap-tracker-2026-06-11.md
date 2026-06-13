@@ -118,6 +118,9 @@ protect against unsafe parity claims.
   (`cancelRequested`, child process ids, exit observation metadata, and cancel
   response run snapshots) plus the integrations connectors `gate_card`
   analytics click element. Type-level package tests guard those DTO additions.
+- Privacy boundary #48 now rejects oversized prompt image attachments before
+  agent spawn and fails loudly when accepted upload paths cannot be statted,
+  instead of silently dropping required image context from a run.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

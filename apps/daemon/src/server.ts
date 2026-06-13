@@ -956,6 +956,52 @@ export function resolveSafeProjectAttachments(cwd, attachments, opts = {}) {
   return out;
 }
 
+export function resolveSafePromptImagePaths(imagePaths, opts = {}) {
+  if (!Array.isArray(imagePaths) || imagePaths.length === 0) {
+    return { safeImages: [], oversizedImages: [], failedImages: [] };
+  }
+  const pathImpl = opts.pathImpl ?? path;
+  const existsSync = opts.existsSync ?? fs.existsSync;
+  const statSync = opts.statSync ?? fs.statSync;
+  const uploadDir = pathImpl.resolve(opts.uploadDir ?? UPLOAD_DIR);
+  const maxBytes = Number.isFinite(opts.maxBytes)
+    ? Number(opts.maxBytes)
+    : MAX_CHAT_IMAGE_BYTES;
+  const safeImages = [];
+  const oversizedImages = [];
+  const failedImages = [];
+
+  for (const inputPath of imagePaths) {
+    if (typeof inputPath !== 'string' || inputPath.length === 0) continue;
+    let resolved;
+    try {
+      resolved = pathImpl.resolve(inputPath);
+    } catch {
+      continue;
+    }
+    if (!resolved.startsWith(uploadDir + pathImpl.sep) || !existsSync(resolved)) continue;
+
+    let stat;
+    try {
+      stat = statSync(resolved);
+    } catch (err) {
+      failedImages.push({
+        path: inputPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      continue;
+    }
+    if (!stat.isFile()) continue;
+    if (typeof stat.size === 'number' && stat.size > maxBytes) {
+      oversizedImages.push({ path: inputPath, sizeBytes: stat.size });
+      continue;
+    }
+    safeImages.push(inputPath);
+  }
+
+  return { safeImages, oversizedImages, failedImages };
+}
+
 export function resolveProcessResourcesPath({
   execPath = process.execPath,
   resourcesPath = process.resourcesPath,
@@ -2626,6 +2672,7 @@ function createSseErrorPayload(code, message, init = {}) {
 }
 
 const UPLOAD_DIR = path.join(os.tmpdir(), 'od-uploads');
+const MAX_CHAT_IMAGE_BYTES = 1024 * 1024;
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
 
@@ -9568,13 +9615,22 @@ export async function startServer({
     }
     if (run.cancelRequested || design.runs.isTerminal(run.status)) return;
 
-    // Sanitise supplied image paths: must live under UPLOAD_DIR.
-    const safeImages = imagePaths.filter((p) => {
-      const resolved = path.resolve(p);
-      return (
-        resolved.startsWith(UPLOAD_DIR + path.sep) && fs.existsSync(resolved)
+    const { safeImages, oversizedImages, failedImages } =
+      resolveSafePromptImagePaths(imagePaths);
+    if (oversizedImages.length > 0) {
+      return design.runs.fail(
+        run,
+        'BAD_REQUEST',
+        'Image attachments must be 1 MB or smaller.',
       );
-    });
+    }
+    if (failedImages.length > 0) {
+      return design.runs.fail(
+        run,
+        'INTERNAL_ERROR',
+        'Failed to read one or more image attachments.',
+      );
+    }
     const amrStagedImages =
       def.id === 'amr'
         ? await stageAmrImagePaths(cwd ?? PROJECT_ROOT, safeImages, UPLOAD_DIR)
