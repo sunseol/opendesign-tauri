@@ -30,7 +30,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Area | Diff signal | Primary issues | Status |
 | --- | ---: | --- | --- |
 | Upstream integration strategy | 956 upstream-only commits | [#1](https://github.com/sunseol/opendesign-tauri/issues/1) | Not started |
-| Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - AMR onboarding skeleton, BYOK model persistence, #4080 annotation capture fallback, and #4202 persisted-artifact transcript summaries covered |
+| Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#16](https://github.com/sunseol/opendesign-tauri/issues/16), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - AMR onboarding skeleton, BYOK model persistence, #4080 annotation capture fallback, #4202 persisted-artifact transcript summaries, and Motion UMD artifact runtime repair covered |
 | Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, and sandbox runtime isolation wired |
 | Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle and integrations analytics contract drift covered |
 | Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - shared React primitive package imported with build/typecheck, root guard, and postinstall build-target coverage |
@@ -136,7 +136,9 @@ protect against unsafe parity claims.
   AMR DSML artifact echoes now stay quiet for standalone generated artifact
   blocks while preserving literal inline `<artifact>` documentation examples,
   covering the user-visible part of upstream #4068 without adopting the
-  larger ACP state-machine rewrite. Upstream #4075's blocking per-run
+  larger ACP state-machine rewrite. #16 now also repairs wrong Motion UMD
+  artifact scripts from unpkg/jsDelivr to the React `framer-motion.js` bundle.
+  Upstream #4075's blocking per-run
   `vela model list` preflight is already absent in this fork: `/api/amr/models`
   uses `AmrModelLoadingCache`, AMR spawn env backfills `HOME`, and chat runs
   pass the selected model to ACP/Vela instead of fail-closing on a fresh
