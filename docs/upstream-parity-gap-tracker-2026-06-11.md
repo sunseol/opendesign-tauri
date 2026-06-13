@@ -150,7 +150,8 @@ protect against unsafe parity claims.
   constrains image/video/audio requests to the selected surface and model.
   BYOK Anthropic-compatible proxy runs now convert project image attachments
   into native image content blocks while leaving non-Anthropic proxies on the
-  plain-text message path.
+  plain-text message path, including the full `streamMessage` fallback path
+  that must carry project context into the proxy wrapper.
   AMR DSML artifact echoes now stay quiet for standalone generated artifact
   blocks while preserving literal inline `<artifact>` documentation examples,
   covering the user-visible part of upstream #4068 without adopting the
