@@ -84,6 +84,17 @@ export const SUGGESTED_MODELS_BY_PROTOCOL: Record<ApiProtocol, readonly string[]
     'MiniMax-M2.7-highspeed',
     'MiniMax-M2.7',
   ],
+  aihubmix: [
+    'gpt-5.5',
+    'gpt-4o',
+    'gpt-4o-mini',
+    'claude-opus-4-8',
+    'claude-sonnet-4-5',
+    'claude-haiku-4-5',
+    'gemini-2.0-flash',
+    'deepseek-chat',
+    'deepseek-reasoner',
+  ],
   ollama: [
     'cogito-2.1:671b',
     'deepseek-v3.1:671b',
@@ -143,6 +154,7 @@ export const FAST_MODEL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   // through the Memory model picker.
   ollama: 'gemma3:4b',
   senseaudio: 'senseaudio-s2-flash',
+  aihubmix: 'gpt-4o-mini',
 };
 
 export const API_PROTOCOL_TABS: ReadonlyArray<{
@@ -155,6 +167,7 @@ export const API_PROTOCOL_TABS: ReadonlyArray<{
   { id: 'google', title: 'Google Gemini' },
   { id: 'ollama', title: 'Ollama Cloud' },
   { id: 'senseaudio', title: 'SenseAudio' },
+  { id: 'aihubmix', title: 'AIHubMix' },
 ];
 
 export const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
@@ -164,6 +177,7 @@ export const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
   google: 'Google Gemini',
   ollama: 'Ollama Cloud API',
   senseaudio: 'SenseAudio API',
+  aihubmix: 'AIHubMix API',
 };
 
 export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
@@ -173,6 +187,7 @@ export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
   google: 'AIza... or AQ....',
   ollama: 'Ollama API key',
   senseaudio: 'SenseAudio API key',
+  aihubmix: 'sk-...',
 };
 
 // Default base URL the daemon assumes when the user leaves the field
@@ -185,4 +200,5 @@ export const DEFAULT_BASE_URL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   google: 'https://generativelanguage.googleapis.com',
   ollama: 'https://ollama.com',
   senseaudio: 'https://api.senseaudio.cn',
+  aihubmix: 'https://aihubmix.com/v1',
 };

@@ -382,6 +382,10 @@ const API_KEY_CONSOLE_LINKS: Record<ApiProtocol, { host: string; url: string }> 
     host: 'docs.senseaudio.cn',
     url: 'https://docs.senseaudio.cn',
   },
+  aihubmix: {
+    host: 'docs.aihubmix.com',
+    url: 'https://docs.aihubmix.com',
+  },
 };
 
 const AGENT_SHORT_DESCRIPTIONS: Record<string, string> = {

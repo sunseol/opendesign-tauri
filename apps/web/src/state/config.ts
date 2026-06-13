@@ -334,6 +334,7 @@ function inferApiProtocol(model: string, baseUrl: string): ApiProtocol {
     // and the BYOK tab UI stay consistent with the protocol the user
     // picked — even though the on-wire shape is OpenAI-compatible.
     if (normalized.includes('senseaudio.cn')) return 'senseaudio';
+    if (normalized.includes('aihubmix.com')) return 'aihubmix';
     return isOpenAICompatible(model, baseUrl) ? 'openai' : 'anthropic';
   } catch {
     // Preserve the rest of the user's settings even if an old saved base URL is

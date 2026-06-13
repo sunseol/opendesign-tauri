@@ -141,6 +141,8 @@ protect against unsafe parity claims.
   Media model provider resolution now recognizes live AIHubMix catalogue ids by
   prefix before the async catalogue is present, so BYOK seed guards can keep
   AIHubMix selections while dropping mismatched provider defaults.
+  AIHubMix is now a first-class BYOK chat protocol in the web metadata and
+  dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Media picker readiness now shares a guarded provider/model predicate so
   OpenAI OAuth-only auth does not masquerade as a configured media key while
   daemon-restored key markers still enable supported media models.
