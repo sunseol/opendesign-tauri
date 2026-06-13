@@ -163,6 +163,9 @@ protect against unsafe parity claims.
   into native image content blocks while leaving non-Anthropic proxies on the
   plain-text message path, including the full `streamMessage` fallback path
   that must carry project context into the proxy wrapper.
+  Attachment API context now preserves user-visible ordering with numbered
+  headings and can omit image metadata that Anthropic native image blocks
+  already carry, avoiding duplicate preview-unavailable text for sketch rasters.
   ProxyContext now forwards BYOK video, speech model, and speech voice defaults
   alongside image defaults so daemon-side media tools see the selected surface
   fallbacks.

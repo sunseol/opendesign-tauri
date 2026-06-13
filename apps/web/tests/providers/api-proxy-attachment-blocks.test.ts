@@ -1,0 +1,157 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { historyWithApiAttachmentContext } from '../../src/api-attachment-context';
+import { buildProxyMessages } from '../../src/providers/api-proxy';
+import type { ChatMessage, ProjectFile } from '../../src/types';
+
+describe('api proxy attachment blocks', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('serializes Anthropic image blocks in user-visible attachment order', async () => {
+    const pngBytes = new Uint8Array([137, 80, 78, 71]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: {
+          get: (name: string) => (name.toLowerCase() === 'content-type' ? 'image/png' : null),
+        },
+        arrayBuffer: async () => pngBytes.buffer,
+      }),
+    );
+
+    await buildProxyMessages(
+      '/api/proxy/anthropic/stream',
+      [
+        userMessage('Compare them', [
+          { path: 'references/second.png', name: 'second.png', kind: 'image', size: 4, order: 1 },
+          { path: 'references/first.png', name: 'first.png', kind: 'image', size: 4, order: 0 },
+        ]),
+      ],
+      { projectId: 'project-1' },
+    );
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/projects/project-1/raw/references/first.png',
+      { cache: 'no-store' },
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/projects/project-1/raw/references/second.png',
+      { cache: 'no-store' },
+    );
+  });
+
+  it('keeps text fallback when a supported Anthropic image cannot be read', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        headers: { get: () => null },
+        arrayBuffer: async () => new ArrayBuffer(0),
+      }),
+    );
+
+    const messages = await buildProxyMessages(
+      '/api/proxy/anthropic/stream',
+      [
+        userMessage('Describe the attached image', [
+          { path: 'references/logo.png', name: 'logo.png', kind: 'image', size: 4 },
+        ]),
+      ],
+      { projectId: 'project-1' },
+    );
+
+    expect(messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Describe the attached image' },
+          {
+            type: 'text',
+            text: 'Attached image could not be sent as native image content: path: references/logo.png | name: logo.png',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('does not send preview-unavailable text alongside sketch raster image blocks', async () => {
+    const pngBytes = new Uint8Array([137, 80, 78, 71]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: {
+          get: (name: string) => (name.toLowerCase() === 'content-type' ? 'image/png' : null),
+        },
+        arrayBuffer: async () => pngBytes.buffer,
+      }),
+    );
+
+    const history = await historyWithApiAttachmentContext(
+      [
+        userMessage('Describe this image', [
+          { path: 'sketch-hero.png', name: 'sketch-hero.png', kind: 'image', size: 4 },
+        ]),
+      ],
+      'msg-1',
+      'project-1',
+      [projectFile('sketch-hero.png', 'sketch')],
+      { omitNativeImageAttachments: true },
+    );
+
+    const messages = await buildProxyMessages(
+      '/api/proxy/anthropic/stream',
+      history,
+      { projectId: 'project-1' },
+    );
+
+    expect(JSON.stringify(messages)).not.toContain('Content preview unavailable');
+    expect(messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Describe this image' },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: 'iVBORw==',
+            },
+          },
+        ],
+      },
+    ]);
+  });
+});
+
+function userMessage(
+  content: string,
+  attachments: NonNullable<ChatMessage['attachments']>,
+): ChatMessage {
+  return {
+    id: 'msg-1',
+    role: 'user',
+    content,
+    createdAt: 1,
+    attachments,
+  };
+}
+
+function projectFile(path: string, kind: ProjectFile['kind']): ProjectFile {
+  return {
+    name: path.split('/').pop() ?? path,
+    path,
+    type: 'file',
+    size: 4,
+    mtime: 123,
+    kind,
+    mime: 'image/png',
+  };
+}
