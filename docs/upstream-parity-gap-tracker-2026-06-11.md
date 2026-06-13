@@ -106,5 +106,9 @@ protect against unsafe parity claims.
   `/api/objects/authorize` upload tokens from KV-registered trace scopes, and
   registers object scopes only for accepted `trace-create` events. Cloudflare
   KV namespace provisioning remains a deployment action under #51/#52.
+- Observability #32 now has the daemon-side trace object manifest builder for
+  relay URL derivation, authorize-before-batch uploads, registration-only
+  manifests, and oversized-object handling. Wiring those manifests into the
+  Langfuse bridge trace sequence remains open under #32.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.
