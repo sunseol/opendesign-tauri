@@ -25,6 +25,17 @@ function makeRateLimiter(success: boolean) {
   };
 }
 
+function makeObjectRelayRequest(body: string): Request {
+  return new Request('https://telemetry.open-design.ai/api/objects/batch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Open-Design-Telemetry': 'object-ingestion-v1',
+    },
+    body,
+  });
+}
+
 describe('telemetry worker', () => {
   it('returns a health response for browser checks', async () => {
     const response = await worker.fetch(
@@ -37,6 +48,7 @@ describe('telemetry worker', () => {
       ok: true,
       service: 'open-design-telemetry-relay',
       configured: true,
+      objectRelayConfigured: false,
       upstream: 'https://us.cloud.langfuse.com/api/public/ingestion',
     });
   });
@@ -49,7 +61,19 @@ describe('telemetry worker', () => {
       ok: true,
       service: 'open-design-telemetry-relay',
       configured: false,
+      objectRelayConfigured: false,
       upstream: 'https://us.cloud.langfuse.com/api/public/ingestion',
+    });
+  });
+
+  it('reports object relay unconfigured when upload authority is absent', async () => {
+    const response = await worker.fetch(new Request('https://telemetry.open-design.ai/health'), {
+      TRACE_OBJECT_BUCKET: { put: vi.fn(async () => ({})) },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      objectRelayConfigured: false,
     });
   });
 
@@ -144,5 +168,23 @@ describe('telemetry worker', () => {
   it('fails closed when Langfuse credentials are absent', async () => {
     const response = await worker.fetch(makeRequest({ batch: [] }), {});
     expect(response.status).toBe(503);
+  });
+
+  it('rejects object batches without upload authority before reading the body', async () => {
+    const request = makeObjectRelayRequest('object body should not be read');
+    const textSpy = vi.spyOn(request, 'text').mockRejectedValue(
+      new Error('object body should not be read'),
+    );
+
+    const response = await worker.fetch(request, {
+      ...env,
+      TRACE_OBJECT_BUCKET: { put: vi.fn(async () => ({})) },
+    });
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: 'object relay upload authority is not configured',
+    });
+    expect(textSpy).not.toHaveBeenCalled();
   });
 });

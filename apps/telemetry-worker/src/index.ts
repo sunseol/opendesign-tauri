@@ -1,3 +1,9 @@
+import {
+  handleObjectBatchRequest,
+  hasObjectUploadAuthority,
+  type ObjectRelayEnv,
+} from './object-relay';
+
 const DEFAULT_LANGFUSE_BASE_URL = 'https://us.cloud.langfuse.com';
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_BATCH_EVENTS = 100;
@@ -15,7 +21,7 @@ interface RateLimitBinding {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
-export interface Env {
+export interface Env extends ObjectRelayEnv {
   LANGFUSE_PUBLIC_KEY?: string;
   LANGFUSE_SECRET_KEY?: string;
   LANGFUSE_BASE_URL?: string;
@@ -131,18 +137,28 @@ function isHealthPath(request: Request): boolean {
   return pathname === '/api/langfuse' || pathname === '/health';
 }
 
+function isObjectBatchPath(request: Request): boolean {
+  const { pathname } = new URL(request.url);
+  return pathname === '/api/objects/batch';
+}
+
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (request.method === 'GET' && isHealthPath(request)) {
     return jsonResponse(200, {
       ok: true,
       service: 'open-design-telemetry-relay',
       configured: hasLangfuseCredentials(env),
+      objectRelayConfigured: hasObjectUploadAuthority(env),
       upstream: resolveLangfuseUrl(env),
     });
   }
 
   if (request.method !== 'POST') {
     return jsonResponse(405, { error: 'method not allowed' });
+  }
+
+  if (isObjectBatchPath(request)) {
+    return handleObjectBatchRequest(request, env);
   }
 
   if (request.headers.get(RELAY_MARKER_HEADER) !== RELAY_MARKER_VALUE) {
