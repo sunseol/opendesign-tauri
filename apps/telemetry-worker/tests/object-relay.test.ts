@@ -90,6 +90,45 @@ describe('telemetry worker object relay', () => {
     expect(put).not.toHaveBeenCalled();
   });
 
+  it('rejects object batches without the object marker', async () => {
+    const put = makePutSpy();
+    const response = await worker.fetch(
+      new Request('https://telemetry.open-design.ai/api/objects/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objects: [] }),
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(403);
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('rejects signed-looking object batches when server upload authority is absent', async () => {
+    const put = makePutSpy();
+    const response = await worker.fetch(
+      makeSignedObjectRelayRequest({
+        content: 'hello object',
+        storageRef: 'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt',
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+      },
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: 'object relay upload authority is not configured',
+    });
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it('rejects object authorization metadata without registered telemetry scope', async () => {
     const put = makePutSpy();
     const scopeKv = makeScopeKv();
@@ -184,6 +223,56 @@ describe('telemetry worker object relay', () => {
           storage_ref: storageRef,
           status: 'unavailable',
           reason: 'unauthorized_object',
+        },
+      ],
+    });
+  });
+
+  it('rejects object refs outside the signed project and run namespace', async () => {
+    const put = makePutSpy();
+    const response = await worker.fetch(
+      makeSignedObjectRelayRequest({
+        content: 'hello object',
+        storageRef: 'od://objects/workspaces/unknown/projects/proj-2/runs/run-1/attachment/att-1/brief.txt',
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'body.objects[0].storage_ref must match the project, run, and object class',
+    });
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('reports oversized objects without writing them', async () => {
+    const put = makePutSpy();
+    const response = await worker.fetch(
+      makeSignedObjectRelayRequest({
+        content: 'too large',
+        storageRef: 'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt',
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_MAX_BYTES: '4',
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(put).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      objects: [
+        {
+          storage_ref: 'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt',
+          status: 'unavailable',
+          reason: 'object_too_large',
+          size_bytes: 9,
         },
       ],
     });
