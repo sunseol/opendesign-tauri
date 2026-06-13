@@ -28,6 +28,7 @@ import { uk } from './locales/uk';
 import { tr } from './locales/tr';
 import { th } from './locales/th';
 import { it } from './locales/it';
+import { getOpenDesignHost } from '@open-design/host';
 import { LOCALES, type Dict, type Locale } from './types';
 
 export { LOCALES, LOCALE_LABEL } from './types';
@@ -58,6 +59,8 @@ const DICTS: Record<Locale, Dict> = {
 };
 
 const LS_KEY = 'open-design:locale';
+const LS_SOURCE_KEY = 'open-design:locale-source';
+const MANUAL_LOCALE_SOURCE = 'manual';
 
 export function resolveSystemLocale(languages: readonly string[]): Locale | null {
   const supported = LOCALES as readonly string[];
@@ -85,15 +88,29 @@ export function resolveSystemLocale(languages: readonly string[]): Locale | null
 // First-run defaults to the user's browser/system language when possible.
 // An explicit user pick saved to localStorage always wins; unsupported
 // languages fall back to English.
-function detectInitialLocale(): Locale {
+function readDesktopHostOsLocale(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const value = getOpenDesignHost()?.client?.osLocale;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+export function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'en';
+  let stored: string | null = null;
+  let storedSource: string | null = null;
   try {
-    const stored = window.localStorage.getItem(LS_KEY);
-    if (stored && (LOCALES as string[]).includes(stored)) {
-      return stored as Locale;
-    }
+    stored = window.localStorage.getItem(LS_KEY);
+    storedSource = window.localStorage.getItem(LS_SOURCE_KEY);
   } catch {
     /* ignore */
+  }
+  if (storedSource === MANUAL_LOCALE_SOURCE && stored && (LOCALES as string[]).includes(stored)) {
+    return stored as Locale;
+  }
+  const hostLocale = readDesktopHostOsLocale();
+  if (hostLocale) {
+    const detectedHostLocale = resolveSystemLocale([hostLocale]);
+    if (detectedHostLocale) return detectedHostLocale;
   }
   const detected = resolveSystemLocale(
     navigator.languages?.length ? navigator.languages : [navigator.language],
@@ -134,6 +151,7 @@ export function I18nProvider({ initial, children }: ProviderProps) {
     setLocaleState(next);
     try {
       window.localStorage.setItem(LS_KEY, next);
+      window.localStorage.setItem(LS_SOURCE_KEY, MANUAL_LOCALE_SOURCE);
     } catch {
       /* ignore */
     }
