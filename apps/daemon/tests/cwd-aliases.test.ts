@@ -1,8 +1,11 @@
 import {
+  chmodSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -251,4 +254,97 @@ describe('stageActiveSkill', () => {
       expect(result.reason).toContain(expectedReason);
     },
   );
+
+  it('falls back to a dereferenced stream copy when the native copy fails with EPERM', async () => {
+    const fs = fresh();
+    const cwd = path.join(fs, 'project');
+    const sourceDir = writeSampleSkill(path.join(fs, 'skills'), 'blog-post');
+    symlinkSync(
+      path.join(sourceDir, 'assets', 'template.html'),
+      path.join(sourceDir, 'assets', 'linked.html'),
+    );
+    mkdirSync(cwd);
+
+    const messages: string[] = [];
+    const eperm = Object.assign(
+      new Error('EPERM: operation not permitted, copyfile'),
+      { code: 'EPERM' },
+    );
+
+    const result = await stageActiveSkill(
+      cwd,
+      'blog-post',
+      sourceDir,
+      (m) => messages.push(m),
+      () => Promise.reject(eperm),
+    );
+
+    expect(result.staged).toBe(true);
+    const staged = result.stagedPath!;
+    expect(readFileSync(path.join(staged, 'SKILL.md'), 'utf8')).toContain(
+      'original SKILL',
+    );
+    const linked = path.join(staged, 'assets', 'linked.html');
+    expect(lstatSync(linked).isSymbolicLink()).toBe(false);
+    expect(lstatSync(linked).isFile()).toBe(true);
+    expect(readFileSync(linked, 'utf8')).toContain('original');
+    expect(messages.some((m) => m.includes('stream copy'))).toBe(true);
+  });
+
+  it('preserves the source exec bit through the stream-copy fallback', async () => {
+    const fs = fresh();
+    const cwd = path.join(fs, 'project');
+    const sourceDir = writeSampleSkill(path.join(fs, 'skills'), 'blog-post');
+    const script = path.join(sourceDir, 'scripts', 'run.sh');
+    mkdirSync(path.dirname(script));
+    writeFileSync(script, '#!/usr/bin/env bash\necho hi\n');
+    chmodSync(script, 0o755);
+    mkdirSync(cwd);
+
+    const eperm = Object.assign(new Error('EPERM: operation not permitted'), {
+      code: 'EPERM',
+    });
+    const result = await stageActiveSkill(
+      cwd,
+      'blog-post',
+      sourceDir,
+      () => {},
+      () => Promise.reject(eperm),
+    );
+
+    expect(result.staged).toBe(true);
+    const stagedScript = path.join(result.stagedPath!, 'scripts', 'run.sh');
+    expect(statSync(stagedScript).mode & 0o111).not.toBe(0);
+    expect(statSync(path.join(result.stagedPath!, 'SKILL.md')).mode & 0o111).toBe(
+      0,
+    );
+  });
+
+  it('degrades to the absolute-path fallback on a non-recoverable copy error', async () => {
+    const fs = fresh();
+    const cwd = path.join(fs, 'project');
+    const sourceDir = writeSampleSkill(path.join(fs, 'skills'), 'blog-post');
+    mkdirSync(cwd);
+
+    const enospc = Object.assign(
+      new Error('ENOSPC: no space left on device'),
+      { code: 'ENOSPC' },
+    );
+    const messages: string[] = [];
+
+    const result = await stageActiveSkill(
+      cwd,
+      'blog-post',
+      sourceDir,
+      (m) => messages.push(m),
+      () => Promise.reject(enospc),
+    );
+
+    expect(result.staged).toBe(false);
+    expect(result.reason).toMatch(/ENOSPC/);
+    expect(
+      existsSync(path.join(cwd, SKILLS_CWD_ALIAS, 'blog-post', 'SKILL.md')),
+    ).toBe(false);
+    expect(messages.some((m) => m.includes('stream copy'))).toBe(false);
+  });
 });
