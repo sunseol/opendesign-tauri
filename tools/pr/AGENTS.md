@@ -1,6 +1,8 @@
 # tools/pr
 
-Follow the root `AGENTS.md` and `tools/AGENTS.md` first. This tool owns the maintainer PR-duty command surface for nexu-io/open-design.
+Follow the root `AGENTS.md` and `tools/AGENTS.md` first. This tool owns the maintainer PR-duty command surface for sunseol/opendesign-tauri.
+
+Upstream currently removes `tools/pr`; this fork keeps it as a read-only maintainer control plane. Port upstream PR-duty lessons only when they preserve that boundary.
 
 ## Owns
 

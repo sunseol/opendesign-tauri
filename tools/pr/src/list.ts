@@ -8,6 +8,7 @@
 
 import { isBotOnlyApproval, reduceLatestReviewsByAuthor } from "./bot.js";
 import { daysSince, fetchOpenPrs, labelByPrefix } from "./gh.js";
+import { TOOLS_PR_REPORT_TITLE } from "./identity.js";
 import { deriveForbidden, deriveLane } from "./lane.js";
 import type {
   Bucket,
@@ -158,8 +159,8 @@ function formatHumanReport(prs: Pr[], total: number): string {
   const lines: string[] = [];
   const countLine =
     prs.length === total
-      ? `open-design PR triage — ${total} open PRs`
-      : `open-design PR triage — showing ${prs.length} of ${total} open PRs`;
+      ? `${TOOLS_PR_REPORT_TITLE} — ${total} open PRs`
+      : `${TOOLS_PR_REPORT_TITLE} — showing ${prs.length} of ${total} open PRs`;
   lines.push(countLine);
   lines.push("");
 
