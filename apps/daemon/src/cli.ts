@@ -6,6 +6,7 @@ import { runArtifactsCli } from './artifacts-cli.js';
 import { runProjectHandoff } from './handoff-cli.js';
 import { runConnectorsToolCli } from './tools-connectors-cli.js';
 import { runDesignSystemsToolCli } from './tools-design-systems-cli.js';
+import { runDesignSystemsCli } from './design-systems-cli.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
@@ -4549,7 +4550,20 @@ async function runLibraryList(name, args) {
 }
 
 async function runSkills(args)        { return runLibraryList('skills', args); }
-async function runDesignSystems(args) { return runLibraryList('design-systems', args); }
+async function runDesignSystems(args) {
+  return runDesignSystemsCli(args, {
+    fetchImpl: fetch,
+    libraryDaemonUrl,
+    runLibraryList,
+    structuredHttpFailure,
+    io: {
+      log: (message) => console.log(message),
+      error: (message) => console.error(message),
+      write: (message) => process.stdout.write(message),
+      exit: (code) => process.exit(code),
+    },
+  });
+}
 async function runCraft(args)         { return runLibraryList('craft', args); }
 
 async function runStatus(args) {

@@ -2,36 +2,17 @@ import { copyFile, mkdir, readFile, readdir, realpath, stat, writeFile } from 'n
 import path from 'node:path';
 
 import { extractComponentsManifest } from '@open-design/contracts';
+import type {
+  DesignSystemProjectSource,
+  LocalDesignSystemImportOptions,
+  LocalDesignSystemImportResult,
+} from './design-system-import-types.js';
 
-export type LocalDesignSystemImportResult = {
-  id: string;
-  dir: string;
-  files: string[];
-};
-
-export type LocalDesignSystemImportOptions = {
-  now?: Date;
-  name?: string;
-  fallbackName?: string;
-  reservedIds?: Iterable<string>;
-  source?: DesignSystemProjectSource;
-  importMode?: 'normalized' | 'hybrid' | 'verbatim';
-  craftApplies?: string[];
-};
-
-export type DesignSystemProjectSource =
-  | {
-      type: 'local';
-      path: string;
-      importedAt?: string;
-    }
-  | {
-      type: 'github';
-      url: string;
-      branch?: string;
-      commit?: string;
-      importedAt?: string;
-    };
+export type {
+  DesignSystemProjectSource,
+  LocalDesignSystemImportOptions,
+  LocalDesignSystemImportResult,
+} from './design-system-import-types.js';
 
 type ProjectScan = {
   sourceRoot: string;
