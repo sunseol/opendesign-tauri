@@ -93,6 +93,7 @@ beforeEach(() => {
 describe('NewProjectPanel design system defaults', () => {
   it('uses the configured default design system when it exists in the catalog', () => {
     expect(defaultDesignSystemSelection('clay', designSystems)).toEqual(['clay']);
+    expect(defaultDesignSystemSelection('user:draft-system', designSystems)).toEqual([]);
     expect(defaultDesignSystemSelection('missing', designSystems)).toEqual([]);
     expect(defaultDesignSystemSelection(null, designSystems)).toEqual([]);
   });
