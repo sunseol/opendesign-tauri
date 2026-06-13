@@ -4,6 +4,13 @@ import {
   type ObjectUploadTokenPayload,
 } from './object-relay-types';
 
+export function base64UrlEncode(value: string): string {
+  return btoa(value)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
 function base64UrlDecode(value: string): string | null {
   try {
     const padded = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -36,6 +43,15 @@ async function hmacSha256Hex(secret: string, value: string): Promise<string> {
   return [...new Uint8Array(signature)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
+}
+
+export async function signUploadToken(
+  uploadSecret: string,
+  payload: ObjectUploadTokenPayload,
+): Promise<string> {
+  const payloadPart = base64UrlEncode(JSON.stringify(payload));
+  const signature = await hmacSha256Hex(uploadSecret, payloadPart);
+  return `${payloadPart}.${signature}`;
 }
 
 export async function verifyUploadToken(

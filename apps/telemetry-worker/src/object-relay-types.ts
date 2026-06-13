@@ -1,6 +1,9 @@
 export const DEFAULT_OBJECT_MAX_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_OBJECT_PREFIX = 'observability';
+export const DEFAULT_OBJECT_BATCH_MAX_BYTES = 20 * 1024 * 1024;
 export const MAX_TOKEN_OBJECTS = 1000;
+export const OBJECT_SCOPE_TTL_SECONDS = 10 * 60;
+export const OBJECT_UPLOAD_TOKEN_TTL_SECONDS = 5 * 60;
 
 export interface RateLimitBinding {
   limit(options: { key: string }): Promise<{ success: boolean }>;
@@ -19,11 +22,23 @@ export interface R2BucketBinding {
   ): Promise<unknown>;
 }
 
+export interface ObjectScopeBinding {
+  get(key: string): Promise<string | null>;
+  put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<unknown>;
+}
+
 export interface ObjectRelayEnv {
   TRACE_OBJECT_BUCKET?: R2BucketBinding;
+  TRACE_OBJECT_BATCH_MAX_BYTES?: string;
   TRACE_OBJECT_MAX_BYTES?: string;
   TRACE_OBJECT_PREFIX?: string;
+  TRACE_OBJECT_SCOPE_KV?: ObjectScopeBinding;
   TRACE_OBJECT_UPLOAD_SECRET?: string;
+  TELEMETRY_CLIENT_RATE_LIMITER?: RateLimitBinding;
   TELEMETRY_IP_RATE_LIMITER?: RateLimitBinding;
 }
 

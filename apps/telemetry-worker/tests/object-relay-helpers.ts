@@ -2,7 +2,11 @@ import { createHash, createHmac } from 'node:crypto';
 import { vi } from 'vitest';
 
 import type { Env } from '../src/index';
-import type { R2BucketBinding } from '../src/object-relay-types';
+import type {
+  ObjectClass,
+  ObjectScopeBinding,
+  R2BucketBinding,
+} from '../src/object-relay-types';
 
 export const env: Env = {
   LANGFUSE_PUBLIC_KEY: 'pk-lf-test',
@@ -24,6 +28,20 @@ export function makeRateLimiter(success: boolean) {
   };
 }
 
+export function makeScopeKv(seed: Record<string, string> = {}) {
+  const values = new Map(Object.entries(seed));
+  return {
+    get: vi.fn(async (key: string) => values.get(key) ?? null),
+    put: vi.fn(async (
+      key: string,
+      value: string,
+      _options?: { expirationTtl?: number },
+    ) => {
+      values.set(key, value);
+    }),
+  } satisfies ObjectScopeBinding;
+}
+
 export function makeObjectRelayRequest(
   body: string,
   headers: Record<string, string> = {},
@@ -36,6 +54,34 @@ export function makeObjectRelayRequest(
       ...headers,
     },
     body,
+  });
+}
+
+export function makeObjectAuthorizeRequest(options: {
+  readonly content: string;
+  readonly storageRef: string;
+  readonly objectClass?: ObjectClass;
+}): Request {
+  const objectClass = options.objectClass ?? 'attachment';
+  return new Request('https://telemetry.open-design.ai/api/objects/authorize', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Open-Design-Telemetry': 'object-ingestion-v1',
+    },
+    body: JSON.stringify({
+      client_id: 'installation-1',
+      project_id: 'proj-1',
+      run_id: 'run-1',
+      objects: [
+        {
+          storage_ref: options.storageRef,
+          object_class: objectClass,
+          size_bytes: new TextEncoder().encode(options.content).byteLength,
+          sha256: `sha256:${sha256(options.content)}`,
+        },
+      ],
+    }),
   });
 }
 

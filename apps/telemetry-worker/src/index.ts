@@ -1,9 +1,14 @@
 import {
+  handleObjectAuthorizeRequest,
   handleObjectBatchRequest,
-  hasObjectUploadAuthority,
+  hasObjectAuthorizeAuthority,
   type ObjectRelayEnv,
   type RateLimitBinding,
 } from './object-relay';
+import {
+  acceptedTraceCreateEventIds,
+  registerObjectUploadScopes,
+} from './object-relay-scope';
 
 const DEFAULT_LANGFUSE_BASE_URL = 'https://us.cloud.langfuse.com';
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -139,13 +144,18 @@ function isObjectBatchPath(request: Request): boolean {
   return pathname === '/api/objects/batch';
 }
 
+function isObjectAuthorizePath(request: Request): boolean {
+  const { pathname } = new URL(request.url);
+  return pathname === '/api/objects/authorize';
+}
+
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (request.method === 'GET' && isHealthPath(request)) {
     return jsonResponse(200, {
       ok: true,
       service: 'open-design-telemetry-relay',
       configured: hasLangfuseCredentials(env),
-      objectRelayConfigured: hasObjectUploadAuthority(env),
+      objectRelayConfigured: hasObjectAuthorizeAuthority(env),
       upstream: resolveLangfuseUrl(env),
     });
   }
@@ -156,6 +166,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (isObjectBatchPath(request)) {
     return handleObjectBatchRequest(request, env);
+  }
+  if (isObjectAuthorizePath(request)) {
+    return handleObjectAuthorizeRequest(request, env);
   }
 
   if (request.headers.get(RELAY_MARKER_HEADER) !== RELAY_MARKER_VALUE) {
@@ -200,6 +213,13 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     body: rawBody,
   });
   const upstreamBody = await upstream.text();
+  if (upstream.ok) {
+    await registerObjectUploadScopes(
+      env,
+      parsed,
+      acceptedTraceCreateEventIds(upstreamBody, parsed),
+    );
+  }
   return new Response(upstreamBody, {
     status: upstream.status,
     headers: {

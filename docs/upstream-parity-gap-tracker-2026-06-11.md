@@ -40,7 +40,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Landing/community/docs | `apps/landing-page` 270 files, `plugins/community` 100 files, `docs` 78 files | [#10](https://github.com/sunseol/opendesign-tauri/issues/10), [#23](https://github.com/sunseol/opendesign-tauri/issues/23), [#24](https://github.com/sunseol/opendesign-tauri/issues/24), [#25](https://github.com/sunseol/opendesign-tauri/issues/25), [#39](https://github.com/sunseol/opendesign-tauri/issues/39), [#40](https://github.com/sunseol/opendesign-tauri/issues/40), [#54](https://github.com/sunseol/opendesign-tauri/issues/54) | Not started |
 | Desktop and packaged runtime | `apps/desktop` 34 files, `apps/packaged` 28 files | [#14](https://github.com/sunseol/opendesign-tauri/issues/14), [#27](https://github.com/sunseol/opendesign-tauri/issues/27), [#37](https://github.com/sunseol/opendesign-tauri/issues/37), [#50](https://github.com/sunseol/opendesign-tauri/issues/50) | Not started |
 | Release, CI, tools, fixtures | `.github` 88 files, `tools/pack` 87 files, `tools/pr` 20 files, `tools/serve` 10 files | [#12](https://github.com/sunseol/opendesign-tauri/issues/12), [#28](https://github.com/sunseol/opendesign-tauri/issues/28), [#36](https://github.com/sunseol/opendesign-tauri/issues/36), [#45](https://github.com/sunseol/opendesign-tauri/issues/45), [#52](https://github.com/sunseol/opendesign-tauri/issues/52), [#53](https://github.com/sunseol/opendesign-tauri/issues/53) | Not started |
-| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker health, object-relay fail-closed path, IP throttling, token-required schema checks, and signed R2 write path covered |
+| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, and deploy docs covered |
 | Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | Not started |
 | Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path covered |
 
@@ -102,8 +102,9 @@ protect against unsafe parity claims.
   `/api/objects/batch` closed before reading bodies when upload authority is
   absent, IP-throttles configured object uploads before reading bodies, rejects
   marker-only uploads without a server-issued upload token, verifies signed
-  upload tokens, and writes authorized objects through the R2 binding. The
-  `/api/objects/authorize` endpoint and trace-scope registration remain open
-  under #32/#51.
+  upload tokens, writes authorized objects through the R2 binding, issues
+  `/api/objects/authorize` upload tokens from KV-registered trace scopes, and
+  registers object scopes only for accepted `trace-create` events. Cloudflare
+  KV namespace provisioning remains a deployment action under #51/#52.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.

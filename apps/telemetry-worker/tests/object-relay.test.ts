@@ -4,9 +4,11 @@ import worker from '../src/index';
 import {
   base64,
   env,
+  makeObjectAuthorizeRequest,
   makeObjectRelayRequest,
   makePutSpy,
   makeRateLimiter,
+  makeScopeKv,
   makeSignedObjectRelayRequest,
   objectUploadSecret,
   sha256,
@@ -84,6 +86,32 @@ describe('telemetry worker object relay', () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: 'body.upload_token must be a string',
+    });
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('rejects object authorization metadata without registered telemetry scope', async () => {
+    const put = makePutSpy();
+    const scopeKv = makeScopeKv();
+    const storageRef =
+      'od://objects/workspaces/unknown/projects/proj-1/runs/run-1/attachment/att-1/brief.txt';
+
+    const response = await worker.fetch(
+      makeObjectAuthorizeRequest({
+        content: 'hello object',
+        storageRef,
+      }),
+      {
+        ...env,
+        TRACE_OBJECT_BUCKET: { put },
+        TRACE_OBJECT_SCOPE_KV: scopeKv,
+        TRACE_OBJECT_UPLOAD_SECRET: objectUploadSecret,
+      },
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: 'object upload authority is not registered',
     });
     expect(put).not.toHaveBeenCalled();
   });
