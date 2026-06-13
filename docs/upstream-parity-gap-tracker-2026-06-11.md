@@ -121,6 +121,10 @@ protect against unsafe parity claims.
 - Privacy boundary #48 now rejects oversized prompt image attachments before
   agent spawn and fails loudly when accepted upload paths cannot be statted,
   instead of silently dropping required image context from a run.
+  GitHub design imports now preserve Swift/native design-token source instead
+  of letting editor or CI config files outrank project evidence, and SwiftUI
+  color declarations can seed design-system swatches without exposing local
+  paths.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

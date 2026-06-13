@@ -589,10 +589,12 @@ function extractDirectoryEntries(value: unknown): GithubDirectoryEntry[] {
   return [...entries.values()].sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function scoreDesignFile(repoPath: string): number {
+export function scoreDesignFile(repoPath: string): number {
   const normalized = repoPath.toLowerCase();
   if (shouldSkipRepoPath(normalized)) return -1;
   let score = 0;
+  if (/(^|\/)(color|colors|colour|colours|theme|themes?|palette|palettes|typography|type|fonts?|spacing|sizing|metrics|dimens|tokens?|designsystem|design-?system|design|styles?|styling|appearance|brand|branding)[a-z0-9_]*\.(swift|kt|kts|java|dart|scala|cs|m|mm)$/u.test(normalized)) score += 95;
+  if (/\.(swift|kt|kts|java|scala|go|rs|rb|py|php|cs|dart|vue|svelte|astro|ex|exs|elm|c|cc|cpp|cxx|h|hpp|hh|m|mm)$/u.test(normalized)) score += 40;
   if (/(^|\/)readme\.(md|mdx|txt|rst)$/u.test(normalized)) score += 100;
   if (/(^|\/)package\.json$/u.test(normalized)) score += 95;
   if (/(^|\/)(tailwind|theme|themes?|themeprovider|antdprovider|tokens?|colors?|typography|design-system|design|constant|constants|env|style|styles)\.(config\.)?(ts|tsx|js|jsx|json|css|scss|less|md)$/u.test(normalized)) score += 95;
@@ -639,9 +641,10 @@ function scoreDesignDirectory(repoPath: string): number {
   return score;
 }
 
-function shouldSkipRepoPath(normalizedPath: string): boolean {
+export function shouldSkipRepoPath(normalizedPath: string): boolean {
   if (isDesignAssetDirectory(normalizedPath) || isDesignAssetPath(normalizedPath)) return false;
-  return /(^|\/)(node_modules|vendor|dist|build|coverage|\.next|\.nuxt|\.git|out|target|storybook-static)\//u.test(normalizedPath)
+  return /(^|\/)\.(vscode|zed|idea|fleet|zenflow|github|husky|gradle|vs|turbo|cache|devcontainer)\//u.test(normalizedPath)
+    || /(^|\/)(node_modules|vendor|dist|build|coverage|\.next|\.nuxt|\.git|out|target|storybook-static)\//u.test(normalizedPath)
     || /(^|\/)(package-lock\.json|pnpm-lock\.ya?ml|yarn\.lock|bun\.lockb)$/u.test(normalizedPath)
     || /(^|\/)(__tests__|__snapshots__|test|tests)\//u.test(normalizedPath)
     || /\.(test|spec|bench)\.(tsx|ts|jsx|js)$/u.test(normalizedPath)
@@ -663,8 +666,8 @@ function isBinaryDesignAssetPath(normalizedPath: string): boolean {
   return /\.(png|jpe?g|webp|ico|ttf|otf|woff2?)$/u.test(normalizedPath);
 }
 
-function isTextSnapshotPath(normalizedPath: string): boolean {
-  return /\.(css|scss|less|tsx|ts|jsx|js|md|mdx|json|svg|txt|rst)$/u.test(normalizedPath);
+export function isTextSnapshotPath(normalizedPath: string): boolean {
+  return /\.(css|scss|less|tsx|ts|jsx|js|mjs|cjs|md|mdx|json|jsonc|svg|txt|rst|yaml|yml|toml|xml|swift|kt|kts|java|scala|go|rs|rb|py|php|cs|dart|vue|svelte|astro|ex|exs|elm|c|cc|cpp|cxx|h|hpp|hh|m|mm)$/u.test(normalizedPath);
 }
 
 function selectDesignFiles(paths: string[], maxFiles: number): string[] {
