@@ -3038,6 +3038,55 @@ function resolveChatRunShutdownGraceMs() {
   return Math.max(0, Math.floor(raw));
 }
 
+type ClaudeStreamJsonBookkeepingRun = {
+  stdinOpen?: boolean;
+  pendingHostAnswers?: Set<string>;
+  turnCompletedCleanly?: boolean;
+  child?: {
+    stdin?: {
+      destroyed?: boolean;
+      end: () => void;
+    } | null;
+  } | null;
+};
+
+export function applyClaudeStreamJsonRunBookkeeping(
+  run: ClaudeStreamJsonBookkeepingRun,
+  ev: unknown,
+): void {
+  if (!ev || typeof ev !== 'object') return;
+  const event = ev as {
+    type?: unknown;
+    name?: unknown;
+    id?: unknown;
+    stopReason?: unknown;
+  };
+
+  if (
+    run.stdinOpen &&
+    event.type === 'tool_use' &&
+    (event.name === 'AskUserQuestion' || event.name === 'ask_user_question') &&
+    typeof event.id === 'string'
+  ) {
+    if (!run.pendingHostAnswers) run.pendingHostAnswers = new Set();
+    run.pendingHostAnswers.add(event.id);
+    return;
+  }
+
+  const cleanTerminalTurn =
+    ((event.type === 'turn_end' && event.stopReason !== 'tool_use') ||
+      (event.type === 'usage' && event.stopReason !== 'tool_use')) &&
+    (!run.pendingHostAnswers || run.pendingHostAnswers.size === 0);
+  if (!cleanTerminalTurn) return;
+
+  run.turnCompletedCleanly = true;
+  if (!run.stdinOpen) return;
+  if (run.child?.stdin && !run.child.stdin.destroyed) {
+    try { run.child.stdin.end(); } catch {}
+  }
+  run.stdinOpen = false;
+}
+
 function resolveAcpStageTimeoutMs(): number | undefined {
   // Per-stage silence watchdog for ACP chat sessions. Defaults are owned by
   // `attachAcpSession` in acp.ts; this resolver only applies when an operator
@@ -10733,52 +10782,8 @@ export async function startServer({
         lastAgentEventPhase = summarizeAgentEventForInactivity(ev);
         noteAgentActivity();
         send('agent', ev);
-        // Stream-json input mode keeps the child's stdin open across the
-        // turn so we can answer interactive tools like `AskUserQuestion`
-        // with a real `tool_result`. The child has no other way to know
-        // the conversation is over, though — without an EOF it sits idle
-        // until the inactivity watchdog kills it. Bookkeeping here:
-        //   - tool_use(AskUserQuestion): record the id so we know we owe
-        //     the model a tool_result before the turn can end.
-        //   - turn_end (per-turn synthesized from `stop_reason`): fire on
-        //     `end_turn` etc. but NOT on `tool_use` — that stop reason
-        //     means the model paused mid-tool, not "turn complete".
-        //   - usage (session result at EOF in single-shot mode).
         try {
-          if (run.stdinOpen) {
-            if (
-              ev &&
-              typeof ev === 'object' &&
-              ev.type === 'tool_use' &&
-              (ev.name === 'AskUserQuestion' || ev.name === 'ask_user_question') &&
-              typeof ev.id === 'string'
-            ) {
-              if (!run.pendingHostAnswers) run.pendingHostAnswers = new Set();
-              run.pendingHostAnswers.add(ev.id);
-            } else if (
-              ev &&
-              typeof ev === 'object' &&
-              ((ev.type === 'turn_end' &&
-                // `stop_reason: tool_use` means the model paused to wait
-                // for tool execution (claude-code is about to run an
-                // internal tool, or we owe a host tool_result). Either
-                // way the conversation is still in flight — do not close.
-                ev.stopReason !== 'tool_use') ||
-                ev.type === 'usage') &&
-              (!run.pendingHostAnswers || run.pendingHostAnswers.size === 0)
-            ) {
-              // Per-turn `turn_end` (synthesized from
-              // `assistant.message.stop_reason` in `claude-stream`) is the
-              // primary close signal; `usage` is the session-level result
-              // that fires at EOF in single-shot mode. Either is a valid
-              // "this turn is done" cue, but only when there's no host
-              // answer outstanding AND the model isn't paused mid-tool.
-              if (run.child && run.child.stdin && !run.child.stdin.destroyed) {
-                try { run.child.stdin.end(); } catch {}
-              }
-              run.stdinOpen = false;
-            }
-          }
+          applyClaudeStreamJsonRunBookkeeping(run, ev);
         } catch {}
       });
       child.stdout.on('data', (chunk) => claude.feed(chunk));
