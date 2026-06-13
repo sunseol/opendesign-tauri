@@ -1,10 +1,15 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
 
 import {
   fetchAIHubMixImageModels,
   fetchAIHubMixModels,
   mergeAihubmixImageModels,
   mergeAihubmixModels,
+  useAIHubMixModels,
+  useByokImageModelOptions,
 } from '../../src/media/aihubmix-image-models';
 import type { MediaModel } from '../../src/media/models';
 
@@ -99,6 +104,46 @@ describe('AIHubMix media catalog helpers', () => {
       '/api/media/providers/aihubmix/models?type=image_generation',
       { signal: undefined },
     );
+  });
+
+  it('does not fetch live catalogues when the hook is disabled', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useAIHubMixModels('image_generation', false));
+
+    expect(result.current).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uses static BYOK image seeds until the AIHubMix live catalogue loads', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        models: [{ id: 'aihubmix-qwen-image-2-pro', label: 'Qwen Image 2 Pro' }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useByokImageModelOptions('aihubmix'));
+
+    expect(result.current.map((model) => model.id)).toContain('aihubmix-gpt-image-1');
+    await waitFor(() => {
+      expect(result.current.map((model) => model.id)).toEqual([
+        'aihubmix-qwen-image-2-pro',
+      ]);
+    });
+  });
+
+  it('uses static provider options without fetching for non-AIHubMix providers', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useByokImageModelOptions('openai'));
+
+    expect(result.current.every((model) => model.provider === 'openai')).toBe(true);
+    expect(result.current.length).toBeGreaterThan(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

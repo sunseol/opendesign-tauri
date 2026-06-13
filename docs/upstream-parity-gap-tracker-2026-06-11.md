@@ -146,6 +146,9 @@ protect against unsafe parity claims.
   Live AIHubMix media catalogue fetch/merge helpers now map image, video, and
   speech catalogue rows into media models and replace static AIHubMix seeds only
   after a live catalogue arrives.
+  Shared BYOK media option hooks now expose those live AIHubMix image, video,
+  and speech catalogues while preserving static provider options for every
+  non-AIHubMix picker.
   AIHubMix is now a first-class BYOK chat protocol in the web metadata and
   dispatcher, routing through `/api/proxy/aihubmix/stream` with project context.
   Anthropic-compatible fallback routing is now centralized in

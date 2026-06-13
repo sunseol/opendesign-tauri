@@ -1,4 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
+
 import type { MediaModel } from './models';
+import { AUDIO_MODELS_BY_KIND, IMAGE_MODELS, VIDEO_MODELS } from './models';
 
 export type AIHubMixCatalogType = 'image_generation' | 'video' | 'tts';
 
@@ -75,3 +78,94 @@ export function mergeAihubmixModels(
 }
 
 export const mergeAihubmixImageModels = mergeAihubmixModels;
+
+const cachedModels = new Map<AIHubMixCatalogType, MediaModel[]>();
+const inFlight = new Map<AIHubMixCatalogType, Promise<MediaModel[]>>();
+
+function loadOnce(type: AIHubMixCatalogType): Promise<MediaModel[]> {
+  const cached = cachedModels.get(type);
+  if (cached && cached.length > 0) return Promise.resolve(cached);
+  const existing = inFlight.get(type);
+  if (existing) return existing;
+  const pending = fetchAIHubMixModels(type)
+    .then((models) => {
+      cachedModels.set(type, models);
+      return models;
+    })
+    .catch((error: unknown) => {
+      inFlight.delete(type);
+      if (error instanceof Error) return [];
+      throw error;
+    });
+  inFlight.set(type, pending);
+  return pending;
+}
+
+export function useAIHubMixModels(
+  type: AIHubMixCatalogType,
+  enabled = true,
+): MediaModel[] {
+  const [models, setModels] = useState<MediaModel[]>(() => cachedModels.get(type) ?? []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    void loadOnce(type).then((fetched) => {
+      if (active) setModels(fetched);
+    });
+    return () => {
+      active = false;
+    };
+  }, [type, enabled]);
+
+  return models;
+}
+
+export function useAIHubMixImageModels(enabled = true): MediaModel[] {
+  return useAIHubMixModels('image_generation', enabled);
+}
+
+export function useAIHubMixVideoModels(enabled = true): MediaModel[] {
+  return useAIHubMixModels('video', enabled);
+}
+
+export function useAIHubMixAudioModels(enabled = true): MediaModel[] {
+  return useAIHubMixModels('tts', enabled);
+}
+
+export function useByokImageModelOptions(provider: string | undefined): MediaModel[] {
+  const dynamic = useAIHubMixImageModels(provider === 'aihubmix');
+  return useMemo(() => {
+    if (provider === 'aihubmix') {
+      return mergeAihubmixModels(IMAGE_MODELS, dynamic).filter(
+        (model) => model.provider === 'aihubmix',
+      );
+    }
+    return IMAGE_MODELS.filter((model) => model.provider === provider);
+  }, [provider, dynamic]);
+}
+
+export function useByokVideoModelOptions(provider: string | undefined): MediaModel[] {
+  const dynamic = useAIHubMixVideoModels(provider === 'aihubmix');
+  return useMemo(() => {
+    if (provider === 'aihubmix') {
+      return mergeAihubmixModels(VIDEO_MODELS, dynamic).filter(
+        (model) => model.provider === 'aihubmix',
+      );
+    }
+    return VIDEO_MODELS.filter((model) => model.provider === provider);
+  }, [provider, dynamic]);
+}
+
+export function useByokSpeechModelOptions(provider: string | undefined): MediaModel[] {
+  const dynamic = useAIHubMixAudioModels(provider === 'aihubmix');
+  const speechSeeds = useMemo(() => AUDIO_MODELS_BY_KIND.speech, []);
+  return useMemo(() => {
+    if (provider === 'aihubmix') {
+      return mergeAihubmixModels(speechSeeds, dynamic).filter(
+        (model) => model.provider === 'aihubmix',
+      );
+    }
+    return speechSeeds.filter((model) => model.provider === provider);
+  }, [provider, dynamic, speechSeeds]);
+}
