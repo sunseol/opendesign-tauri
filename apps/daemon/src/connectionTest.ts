@@ -210,6 +210,27 @@ function agentTimeoutMs(): number {
     DEFAULT_AGENT_TIMEOUT_MS,
   );
 }
+
+const LOOPBACK_NO_PROXY_TOKENS = ['localhost', '127.0.0.1', '[::1]'];
+
+export function mergeNoProxyWithLoopbackDefaults(noProxy: string | undefined): string | null {
+  if (noProxy?.split(/[\s,]+/).some((token) => token.trim() === '*')) return '*';
+
+  const seen = new Set<string>();
+  const values: string[] = [];
+  for (const rawToken of [
+    ...(noProxy ? noProxy.split(/[\s,]+/) : []),
+    ...LOOPBACK_NO_PROXY_TOKENS,
+  ]) {
+    const token = rawToken.trim() === '::1' ? '[::1]' : rawToken.trim();
+    if (!token || seen.has(token)) continue;
+    seen.add(token);
+    values.push(token);
+  }
+
+  return values.length > 0 ? values.join(',') : null;
+}
+
 const AGENT_COMPLETION_DEBOUNCE_MS = 500;
 const AGENT_KILL_GRACE_MS = 2_000;
 // Truncates the assistant reply we surface in the success copy so a

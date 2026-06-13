@@ -225,6 +225,7 @@ import {
   deriveConfigureGlobals,
 } from '@open-design/contracts/analytics';
 import {
+  mergeNoProxyWithLoopbackDefaults,
   redactSecrets,
   testAgentConnection,
   testProviderConnection,
@@ -243,6 +244,7 @@ import {
 import { listPromptTemplates, readPromptTemplate } from './prompt-templates.js';
 import { buildDocumentPreview } from './document-preview.js';
 import { lintArtifact, renderFindingsForAgent } from './lint-artifact.js';
+import { isSandboxModeEnabled } from './sandbox-mode.js';
 import { loadCraftSections } from './craft.js';
 import { skillCwdAliasSegment, stageActiveSkill } from './cwd-aliases.js';
 import { buildDesktopPdfExportInput } from './pdf-export.js';
@@ -1559,6 +1561,14 @@ export function createAgentRuntimeEnv(
     env.OD_TOOL_TOKEN = toolTokenGrant.token;
   } else {
     delete env.OD_TOOL_TOKEN;
+  }
+
+  if (isSandboxModeEnabled(process.env)) {
+    const noProxy = mergeNoProxyWithLoopbackDefaults(env.NO_PROXY ?? env.no_proxy);
+    if (noProxy) {
+      env.NO_PROXY = noProxy;
+      if (process.platform !== 'win32') env.no_proxy = noProxy;
+    }
   }
 
   return env;

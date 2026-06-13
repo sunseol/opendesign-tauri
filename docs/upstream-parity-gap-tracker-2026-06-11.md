@@ -167,8 +167,10 @@ protect against unsafe parity claims.
   at import, file listing, and run start while preserving project detail
   visibility for already-linked folders. Agent spawn env now pins sandbox
   homes from resolved daemon data roots, and media OAuth fallback skips host
-  auth files while sandboxed. Broader sandbox proxy, resume, registry, and
-  route parity remains open under #7/#33/#48.
+  auth files while sandboxed. Sandboxed agent callback env also merges
+  loopback NO_PROXY entries so inherited host proxies do not intercept daemon
+  callbacks. Broader sandbox resume, registry, and route parity remains open
+  under #7/#33/#48.
 - Curated data #54 has upstream-identical `data/` assets and a root guard test
   for contributor/event/card linkage, plugin preview manifest shape, and the
   documented remote-only preview id set. Runtime/community rendering remains

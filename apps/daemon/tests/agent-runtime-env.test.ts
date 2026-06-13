@@ -6,6 +6,20 @@ import { createAgentRuntimeEnv, createAgentRuntimeToolPrompt } from '../src/serv
 import { applyAgentLaunchEnv } from '../src/runtimes/launch.js';
 import { spawnEnvForAgent } from '../src/runtimes/env.js';
 
+async function withSandboxMode<T>(run: () => T | Promise<T>): Promise<T> {
+  const previous = process.env.OD_SANDBOX_MODE;
+  process.env.OD_SANDBOX_MODE = '1';
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.OD_SANDBOX_MODE;
+    } else {
+      process.env.OD_SANDBOX_MODE = previous;
+    }
+  }
+}
+
 describe('agent runtime tool environment', () => {
   it('injects daemon URL and run-scoped tool token into agent sessions', () => {
     const env = createAgentRuntimeEnv(
@@ -85,6 +99,35 @@ describe('agent runtime tool environment', () => {
     );
 
     expect(env.OD_DATA_DIR).toBe(process.env.OD_DATA_DIR);
+  });
+
+  it('keeps non-sandbox NO_PROXY behavior unchanged', () => {
+    const env = createAgentRuntimeEnv(
+      { PATH: '/bin', HTTP_PROXY: 'http://127.0.0.1:9', NO_PROXY: '' },
+      'http://127.0.0.1:7456',
+      { token: 'fresh-token' },
+      '/opt/open-design/bin/node',
+    );
+
+    expect(env.HTTP_PROXY).toBe('http://127.0.0.1:9');
+    expect(env.NO_PROXY).toBe('');
+    expect(env.no_proxy).toBeUndefined();
+  });
+
+  it('adds loopback NO_PROXY entries for sandboxed agent callbacks', async () => {
+    await withSandboxMode(async () => {
+      const env = createAgentRuntimeEnv(
+        { PATH: '/bin', HTTP_PROXY: 'http://proxy.example:8080', NO_PROXY: '.corp' },
+        'http://127.0.0.1:7456',
+        { token: 'fresh-token' },
+        '/opt/open-design/bin/node',
+      );
+
+      expect(env.NO_PROXY).toBe('.corp,localhost,127.0.0.1,[::1]');
+      if (process.platform !== 'win32') {
+        expect(env.no_proxy).toBe('.corp,localhost,127.0.0.1,[::1]');
+      }
+    });
   });
 
   it('describes daemon URL and token availability without exposing the token', () => {

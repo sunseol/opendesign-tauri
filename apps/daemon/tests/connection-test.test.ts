@@ -10,6 +10,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import {
   createAgentSink,
   isSmokeOkReply,
+  mergeNoProxyWithLoopbackDefaults,
   redactSecrets,
   resolveConnectionTestTimeoutMs,
   testAgentConnection,
@@ -2297,6 +2298,18 @@ setInterval(() => {}, 1000);
 });
 
 describe('connection test helpers', () => {
+  it.each([
+    ['*', '*'],
+    ['*,.corp.example', '*'],
+    [' * , .corp.example ', '*'],
+    ['* .corp.example', '*'],
+    ['.corp.example', '.corp.example,localhost,127.0.0.1,[::1]'],
+    ['::1', '[::1],localhost,127.0.0.1'],
+    [undefined, 'localhost,127.0.0.1,[::1]'],
+  ])('mergeNoProxyWithLoopbackDefaults(%p)', (input, expected) => {
+    expect(mergeNoProxyWithLoopbackDefaults(input)).toBe(expected);
+  });
+
   it('redacts the exact submitted provider key when it appears in body text', () => {
     const detail = redactSecrets(
       'Incorrect API key provided: sk-test-raw-secret.',
