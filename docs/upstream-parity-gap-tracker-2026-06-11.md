@@ -135,6 +135,9 @@ protect against unsafe parity claims.
   explicit error handlers, scrubs stack file paths, buffers early events until
   `/api/analytics/config` returns, and keeps product analytics consent separate
   from PostHog key/host availability for stability reporting.
+  The integrations Composio API-key gate now links to the Composio dashboard
+  and emits the `gate_card` click element so the key-discovery funnel is
+  measurable from the blocked connector surface.
 - Tools-serve #52 matches the upstream fixture package except for the fork's
   Tauri metadata assertion. Its Vitest suite, typecheck, and a live
   `pnpm tools-serve start updater --channel beta --platform win --include-payload`

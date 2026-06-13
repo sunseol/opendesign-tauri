@@ -87,6 +87,29 @@ describe('ConnectorsBrowser', () => {
     expect(screen.getByTestId('connector-grid-wrap').className).toContain('is-masked');
   });
 
+  it('links the Composio key gate to the API key page and tracks the gate click', async () => {
+    vi.mocked(fetchConnectors).mockResolvedValue([configuredComposioConnector]);
+    vi.mocked(fetchConnectorDiscovery).mockResolvedValue([configuredComposioConnector]);
+    vi.mocked(fetchConnectorStatuses).mockResolvedValue({});
+    const onConnectorsTabClick = vi.fn();
+
+    render(
+      <ConnectorsBrowser
+        composioConfigured={false}
+        onConnectorsTabClick={onConnectorsTabClick}
+      />,
+    );
+
+    const gateLink = await screen.findByRole('link', { name: /Get API Key/i });
+    expect(gateLink.getAttribute('href')).toBe('https://app.composio.dev');
+    expect(gateLink.getAttribute('target')).toBe('_blank');
+    expect(gateLink.getAttribute('rel')).toBe('noreferrer');
+
+    fireEvent.click(gateLink);
+
+    expect(onConnectorsTabClick).toHaveBeenCalledWith('gate_card');
+  });
+
   it('keeps discovered tools when discovery resolves before the base catalog', async () => {
     const base = deferred<ConnectorDetail[]>();
     const discovery = deferred<ConnectorDetail[]>();
