@@ -7,7 +7,7 @@
 // surface by lifting its plugin orchestration up here so the prompt
 // textarea can live centered in the hero.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ApplyResult,
   ConnectorDetail,
@@ -48,6 +48,7 @@ import type {
 } from '../types';
 import { inlineMentionToken } from '../utils/inlineMentions';
 import { missingRequiredInputs, pluginInputsAreValid } from '../utils/pluginRequiredInputs';
+import { smoothScrollToTop } from '../utils/smoothScrollToTop';
 import { HomeHero } from './HomeHero';
 import { findChip, HOME_HERO_CHIPS, type HomeHeroChip } from './home-hero/chips';
 import {
@@ -211,6 +212,7 @@ export function HomeView({
 }: Props) {
   const { locale, t } = useI18n();
   const analytics = useAnalytics();
+  const homeViewRef = useRef<HTMLDivElement | null>(null);
   // P0 page_view page_name=home — fire once on mount. ref-keyed to survive
   // re-renders that flip parent state without remounting HomeView.
   const homePageViewFiredRef = useRef(false);
@@ -270,6 +272,15 @@ export function HomeView({
   const consumedHandoffIdRef = useRef<number | null>(null);
   const pendingPromptFocusEndRef = useRef(false);
   const activePluginApplyRequestRef = useRef(0);
+
+  const scrollHomeToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      const scrollContainer = homeViewRef.current?.closest('.entry-main--scroll');
+      if (scrollContainer instanceof HTMLElement) {
+        smoothScrollToTop(scrollContainer);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -407,6 +418,7 @@ export function HomeView({
       if (promptHandoff.focus) {
         focusPromptAtEnd();
       }
+      scrollHomeToTop();
       return;
     }
 
@@ -424,7 +436,8 @@ export function HomeView({
     setPendingAuthoringPrompt(promptHandoff.prompt);
     setPendingAuthoringInputs(promptHandoff.inputs);
     setPendingAuthoringChipId('create-plugin');
-  }, [promptHandoff]);
+    scrollHomeToTop();
+  }, [promptHandoff, scrollHomeToTop]);
 
   const activeContextItemCount = useMemo(
     () =>
@@ -1287,7 +1300,7 @@ export function HomeView({
   }
 
   return (
-    <div className="home-view" data-testid="home-view">
+    <div className="home-view" data-testid="home-view" ref={homeViewRef}>
       <HomeHero
         ref={inputRef}
         prompt={prompt}
