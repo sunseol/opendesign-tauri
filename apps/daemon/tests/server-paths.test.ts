@@ -7,6 +7,7 @@ import {
   resolveProcessResourcesPath,
   resolveProjectRoot,
 } from '../src/server.js';
+import { resolveProjectRootFromNestedModule } from '../src/project-root.js';
 
 describe('resolveProjectRoot', () => {
   it('resolves the repository root from the source daemon directory', () => {
@@ -31,6 +32,24 @@ describe('resolveProjectRoot', () => {
     const root = path.resolve(import.meta.dirname, '../../..');
 
     expect(resolveProjectRoot(path.join(root, 'apps', 'daemon', 'src'))).toBe(root);
+  });
+
+  it('resolves the repository root from nested source modules', () => {
+    const root = path.resolve(import.meta.dirname, '../../..');
+
+    expect(
+      resolveProjectRootFromNestedModule(path.join(root, 'apps', 'daemon', 'src', 'runtimes')),
+    ).toBe(root);
+  });
+
+  it('resolves the repository root from nested compiled modules', () => {
+    const root = path.resolve(import.meta.dirname, '../../..');
+
+    expect(
+      resolveProjectRootFromNestedModule(
+        path.join(root, 'apps', 'daemon', 'dist', 'runtimes', 'defs'),
+      ),
+    ).toBe(root);
   });
 });
 

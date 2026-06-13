@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+import { resolveProjectRootFromNestedModule } from '../project-root.js';
 import {
   isSandboxModeEnabled,
   resolveSandboxRuntimeConfigFromEnv,
@@ -15,9 +16,8 @@ import type {
   RuntimeModelOption,
 } from './types.js';
 
-const RUNTIME_PROJECT_ROOT = path.resolve(
+const RUNTIME_PROJECT_ROOT = resolveProjectRootFromNestedModule(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../..',
 );
 
 function isInsideDir(parent: string, child: string): boolean {

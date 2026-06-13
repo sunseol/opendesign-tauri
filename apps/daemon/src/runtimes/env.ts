@@ -1,8 +1,9 @@
 import { homedir } from 'node:os';
-import path, { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { amrVelaProfileEnv } from '../integrations/vela-profile.js';
 import { resolveProjectRelativePath } from '../home-expansion.js';
+import { resolveProjectRootFromNestedModule } from '../project-root.js';
 import {
   applySandboxRuntimeEnv,
   isSandboxModeEnabled,
@@ -13,9 +14,8 @@ import { expandConfiguredEnv } from './paths.js';
 
 type RuntimeEnvMap = NodeJS.ProcessEnv | Record<string, string>;
 
-const RUNTIME_PROJECT_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../../..',
+const RUNTIME_PROJECT_ROOT = resolveProjectRootFromNestedModule(
+  dirname(fileURLToPath(import.meta.url)),
 );
 
 // Build the env passed to spawn() for a given agent adapter.

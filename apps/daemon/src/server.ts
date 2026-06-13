@@ -23,6 +23,7 @@ import {
 } from './prompts/system.js';
 import { buildChatRunPromptTelemetry } from './chat-run-prompt-telemetry.js';
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
+import { resolveProjectRoot } from './project-root.js';
 import {
   applyBakedPreviews,
   PLUGIN_PREVIEWS_ROUTE,
@@ -454,12 +455,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 const DAEMON_CLI_PATH_ENV = 'OD_DAEMON_CLI_PATH';
-export function resolveProjectRoot(moduleDir: string): string {
-  const base = path.basename(moduleDir);
-  const daemonDir =
-    base === 'dist' || base === 'src' ? path.dirname(moduleDir) : moduleDir;
-  return path.resolve(daemonDir, '../..');
-}
+
+export { resolveProjectRoot };
 
 function cleanOptionalPath(value: string | undefined): string | null {
   return typeof value === 'string' && value.trim().length > 0
