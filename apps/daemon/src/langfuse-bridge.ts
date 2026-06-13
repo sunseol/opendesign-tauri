@@ -28,6 +28,7 @@ import {
   type ToolCallSummary,
   type TurnInfo,
 } from './langfuse-trace.js';
+import type { PromptStackTelemetry } from './prompt-telemetry.js';
 import { redactSecrets } from './redact.js';
 import type { TraceObjectUploadManifests } from './trace-object-manifest.js';
 
@@ -57,6 +58,7 @@ interface DaemonRunRecord {
   clientType?: 'desktop' | 'web' | 'unknown';
   projectMetadata?: Record<string, unknown> | null;
   projectAttachmentPaths?: string[];
+  promptTelemetry?: PromptStackTelemetry;
 }
 
 export interface ReportRunCompletedFromDaemonOpts {
@@ -393,6 +395,7 @@ export async function reportRunCompletedFromDaemon(
       prefs,
       ...(turn ? { turn } : {}),
       runtime,
+      ...(run.promptTelemetry ? { promptTelemetry: run.promptTelemetry } : {}),
     });
 
     if (registrationManifests) {

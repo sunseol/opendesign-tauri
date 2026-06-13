@@ -40,7 +40,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Landing/community/docs | `apps/landing-page` 270 files, `plugins/community` 100 files, `docs` 78 files | [#10](https://github.com/sunseol/opendesign-tauri/issues/10), [#23](https://github.com/sunseol/opendesign-tauri/issues/23), [#24](https://github.com/sunseol/opendesign-tauri/issues/24), [#25](https://github.com/sunseol/opendesign-tauri/issues/25), [#39](https://github.com/sunseol/opendesign-tauri/issues/39), [#40](https://github.com/sunseol/opendesign-tauri/issues/40), [#54](https://github.com/sunseol/opendesign-tauri/issues/54) | Not started |
 | Desktop and packaged runtime | `apps/desktop` 34 files, `apps/packaged` 28 files | [#14](https://github.com/sunseol/opendesign-tauri/issues/14), [#27](https://github.com/sunseol/opendesign-tauri/issues/27), [#37](https://github.com/sunseol/opendesign-tauri/issues/37), [#50](https://github.com/sunseol/opendesign-tauri/issues/50) | Not started |
 | Release, CI, tools, fixtures | `.github` 88 files, `tools/pack` 87 files, `tools/pr` 20 files, `tools/serve` 10 files | [#12](https://github.com/sunseol/opendesign-tauri/issues/12), [#28](https://github.com/sunseol/opendesign-tauri/issues/28), [#36](https://github.com/sunseol/opendesign-tauri/issues/36), [#45](https://github.com/sunseol/opendesign-tauri/issues/45), [#52](https://github.com/sunseol/opendesign-tauri/issues/52), [#53](https://github.com/sunseol/opendesign-tauri/issues/53) | Not started |
-| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, and deploy docs covered |
+| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#32](https://github.com/sunseol/opendesign-tauri/issues/32), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, prompt-stack diagnostics, and deploy docs covered |
 | Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | Not started |
 | Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path covered |
 
@@ -110,7 +110,9 @@ protect against unsafe parity claims.
   relay URL derivation, authorize-before-batch uploads, registration-only
   manifests, oversized-object handling, and Langfuse bridge sequencing that
   registers trace-safe manifests before daemon artifact uploads. Langfuse trace
-  payloads now also accept redacted prompt-stack telemetry and expose upstream
-  `promptStack_*` query metadata plus structured generation input.
+  payloads now also accept redacted prompt-stack telemetry, `startChatRun`
+  captures the composed prompt parts on the run record, and the daemon bridge
+  forwards upstream `promptStack_*` query metadata plus structured generation
+  input.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.

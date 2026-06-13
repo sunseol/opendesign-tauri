@@ -18,6 +18,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type { TelemetryPrefs } from './app-config.js';
+import {
+  buildPromptStackFlatMetadata,
+  promptStackWithoutContent,
+  structuredPromptStackInput,
+  type PromptStackTelemetry,
+} from './prompt-telemetry.js';
 import type {
   ArtifactManifestEntry,
   AttachmentManifestEntry,
@@ -25,6 +31,7 @@ import type {
   ObjectManifestCompleteness,
 } from './trace-object-manifest-types.js';
 
+export type { PromptStackTelemetry } from './prompt-telemetry.js';
 export type {
   ArtifactManifestEntry,
   AttachmentManifestEntry,
@@ -138,50 +145,6 @@ export interface TurnInfo {
   skillId?: string;
   /** Design system id selected for this turn (if any). */
   designSystemId?: string;
-}
-
-export type PromptTelemetrySectionKind =
-  | 'formOverride'
-  | 'daemonSystemPrompt'
-  | 'runtimeToolPrompt'
-  | 'researchCommandContract'
-  | 'runContextPrompt'
-  | 'clientSystemPrompt'
-  | 'echoGuard'
-  | 'userRequest'
-  | 'skillPrompt'
-  | 'designSystemPrompt'
-  | 'pluginStagePrompt'
-  | 'cwdHint'
-  | 'linkedDirsHint'
-  | 'attachments'
-  | 'commentAttachments'
-  | 'promptImagePaths';
-
-export interface PromptTelemetrySection {
-  kind: PromptTelemetrySectionKind;
-  ordinal: number;
-  present: boolean;
-  contentMode: 'redacted-section-content' | 'metadata-only';
-  rawBytes: number;
-  redactedBytes: number;
-  fingerprint: string;
-  truncated: boolean;
-  truncationReason?: 'section_byte_limit' | 'total_budget_exceeded';
-  redactedContent?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface PromptStackTelemetry {
-  redactionVersion: string;
-  promptFingerprint: string;
-  stackFingerprint: string;
-  rawBytes: number;
-  redactedBytes: number;
-  sectionCount: number;
-  redactedContentBytes: number;
-  redactedContentBudgetBytes: number;
-  sections: PromptTelemetrySection[];
 }
 
 export interface ReportContext {
@@ -304,60 +267,6 @@ function buildTagList(ctx: ReportContext): string[] {
   }
   if (ctx.extraTags?.length) tags.push(...ctx.extraTags);
   return tags;
-}
-
-function promptStackWithoutContent(
-  telemetry: PromptStackTelemetry,
-): PromptStackTelemetry {
-  return {
-    ...telemetry,
-    redactedContentBytes: 0,
-    sections: telemetry.sections.map(({ redactedContent: _content, ...section }) => section),
-  };
-}
-
-function structuredPromptStackInput(
-  telemetry: PromptStackTelemetry,
-): Record<string, unknown> {
-  return {
-    type: 'open-design.prompt-stack',
-    redactionVersion: telemetry.redactionVersion,
-    promptFingerprint: telemetry.promptFingerprint,
-    stackFingerprint: telemetry.stackFingerprint,
-    sectionCount: telemetry.sectionCount,
-    redactedContentBytes: telemetry.redactedContentBytes,
-    redactedContentBudgetBytes: telemetry.redactedContentBudgetBytes,
-    sections: telemetry.sections.map((section) => ({
-      kind: section.kind,
-      ordinal: section.ordinal,
-      contentMode: section.contentMode,
-      rawBytes: section.rawBytes,
-      redactedBytes: section.redactedBytes,
-      fingerprint: section.fingerprint,
-      truncated: section.truncated,
-      ...(section.truncationReason
-        ? { truncationReason: section.truncationReason }
-        : {}),
-      ...(section.redactedContent !== undefined
-        ? { redactedContent: section.redactedContent }
-        : {}),
-      ...(section.metadata ? { metadata: section.metadata } : {}),
-    })),
-  };
-}
-
-function buildPromptStackFlatMetadata(
-  telemetry: PromptStackTelemetry,
-): Record<string, unknown> {
-  return {
-    promptStack_redactionVersion: telemetry.redactionVersion,
-    promptStack_promptFingerprint: telemetry.promptFingerprint,
-    promptStack_stackFingerprint: telemetry.stackFingerprint,
-    promptStack_sectionCount: telemetry.sectionCount,
-    promptStack_redactedContentBytes: telemetry.redactedContentBytes,
-    promptStack_redactedContentBudgetBytes:
-      telemetry.redactedContentBudgetBytes,
-  };
 }
 
 export function buildTracePayload(ctx: ReportContext): unknown[] {

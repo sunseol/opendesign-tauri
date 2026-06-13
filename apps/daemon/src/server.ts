@@ -21,6 +21,7 @@ import {
   resolveExclusiveSurface,
   shouldRenderCodexImagegenOverride,
 } from './prompts/system.js';
+import { buildChatRunPromptTelemetry } from './chat-run-prompt-telemetry.js';
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
 import {
   applyBakedPreviews,
@@ -9368,13 +9369,41 @@ export async function startServer({
       ...(activeStageBlocks ? { activeStageBlocks } : {}),
       userInstructions,
     });
+    const promptTelemetryParts = {
+      skillPrompt: skillBody,
+      designSystemPrompt: [
+        designSystemUsageMd,
+        designSystemBody,
+        designSystemTokensCss,
+        designSystemComponentsManifest,
+        designSystemFixtureHtml,
+        designSystemPullIndex,
+        craftBody,
+      ]
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .filter(Boolean)
+        .join('\n\n---\n\n'),
+      pluginStagePrompt: [
+        pluginBlock,
+        ...(Array.isArray(activeStageBlocks) ? activeStageBlocks : []),
+      ]
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .filter(Boolean)
+        .join('\n\n---\n\n'),
+    };
     // The chat handler also needs to know where the active skill lives
     // on disk so it can stage a per-project copy of its side files
     // before spawning the agent. Returning that here avoids a second
     // `listSkills()` scan in `startChatRun`. critiqueShouldRun threads
     // the same panel-eligibility decision down to the spawn-path
     // orchestrator gate so prompt and orchestrator stay in lockstep.
-    return { prompt, activeSkillDir, activeSkillDirs, critiqueShouldRun };
+    return {
+      prompt,
+      activeSkillDir,
+      activeSkillDirs,
+      critiqueShouldRun,
+      promptTelemetryParts,
+    };
   };
 
   // Plan §3.I1 / §3.D / spec §10.1: fire the pipeline schedule on a
@@ -9708,6 +9737,7 @@ export async function startServer({
       prompt: daemonSystemPrompt,
       activeSkillDirs,
       critiqueShouldRun,
+      promptTelemetryParts,
     } =
       await composeDaemonSystemPrompt({
         agentId,
@@ -9827,6 +9857,9 @@ export async function startServer({
       safeImages,
       amrStagedImages,
     );
+    const imagePathHint = promptImagePaths.length
+      ? `\n\n${promptImagePaths.map((p) => `@${p}`).join(' ')}`
+      : '';
     const composed = [
       instructionPrompt
         ? `# Instructions (read first)\n\n${instructionPrompt}${cwdHint}${linkedDirsHint}${ECHO_GUARD}\n\n---\n`
@@ -9836,10 +9869,32 @@ export async function startServer({
             ? `# Instructions${linkedDirsHint}${ECHO_GUARD}\n\n---\n`
             : '',
       `# User request\n\n${userRequestPrompt}${attachmentHint}${commentHint}`,
-      promptImagePaths.length
-        ? `\n\n${promptImagePaths.map((p) => `@${p}`).join(' ')}`
-        : '',
+      imagePathHint,
     ].join('');
+    run.promptTelemetry = buildChatRunPromptTelemetry({
+      composedPrompt: composed,
+      formOverride: codexImagegenOverride,
+      daemonSystemPrompt,
+      runtimeToolPrompt,
+      researchCommandContract,
+      runContextPrompt,
+      clientSystemPrompt: clientInstructionPrompt,
+      echoGuard: ECHO_GUARD,
+      userRequestPrompt,
+      skillPrompt: promptTelemetryParts?.skillPrompt,
+      designSystemPrompt: promptTelemetryParts?.designSystemPrompt,
+      pluginStagePrompt: promptTelemetryParts?.pluginStagePrompt,
+      cwdHint,
+      cwd,
+      linkedDirsHint,
+      linkedDirs,
+      attachmentHint,
+      attachments: safeAttachments,
+      commentHint,
+      commentAttachments: safeCommentAttachments,
+      imagePathHint,
+      promptImagePaths,
+    });
     // Per-agent model + reasoning the user picked in the model menu.
     // Trust the value when it matches the most recent /api/agents listing
     // (live or fallback). Otherwise allow it through if it passes a
