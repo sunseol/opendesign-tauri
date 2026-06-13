@@ -46,6 +46,46 @@ describe('validateArtifactManifestInput', () => {
     expect(res.ok).toBe(false);
   });
 
+  it('preserves primary true for multi-file artifact manifests', () => {
+    const res = validateArtifactManifestInput({ ...validBase(), primary: true }, 'index.html');
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value?.primary).toBe(true);
+  });
+
+  it('normalizes primary artifact paths', () => {
+    const res = validateArtifactManifestInput(
+      { ...validBase(), primary: 'preview\\hero.html' },
+      'index.html',
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value?.primary).toBe('preview/hero.html');
+  });
+
+  it('rejects unsafe primary artifact paths', () => {
+    const res = validateArtifactManifestInput(
+      { ...validBase(), primary: '../secret.html' },
+      'index.html',
+    );
+    expect(res.ok).toBe(false);
+  });
+
+  it('uses a safe manifest entry when provided', () => {
+    const res = validateArtifactManifestInput(
+      { ...validBase(), entry: 'nested\\index.html' },
+      'fallback.html',
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value?.entry).toBe('nested/index.html');
+  });
+
+  it('rejects unsafe manifest entries', () => {
+    const res = validateArtifactManifestInput(
+      { ...validBase(), entry: '../secret.html' },
+      'fallback.html',
+    );
+    expect(res.ok).toBe(false);
+  });
+
   it('defaults status to complete when missing', () => {
     const res = validateArtifactManifestInput(validBase(), 'index.html');
     expect(res.ok).toBe(true);
