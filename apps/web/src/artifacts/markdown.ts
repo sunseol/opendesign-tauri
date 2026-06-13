@@ -45,15 +45,16 @@ function formatInline(raw: string): string {
 
 function normalizeSafeHref(href: string): string | null {
   const decoded = href.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  const stripped = decoded.replace(/[!"')}\],.;:\s]+$/, '');
   if (
-    decoded.startsWith('#') ||
-    decoded.startsWith('/') ||
-    decoded.startsWith('./') ||
-    decoded.startsWith('../') ||
-    /^https?:\/\//i.test(decoded) ||
-    /^mailto:/i.test(decoded)
+    stripped.startsWith('#') ||
+    stripped.startsWith('/') ||
+    stripped.startsWith('./') ||
+    stripped.startsWith('../') ||
+    /^https?:\/\//i.test(stripped) ||
+    /^mailto:/i.test(stripped)
   ) {
-    return decoded;
+    return stripped;
   }
   return null;
 }
