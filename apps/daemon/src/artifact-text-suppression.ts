@@ -1,6 +1,6 @@
 type EventSink = (event: { type: 'text_delta'; delta: string }) => void;
 
-const ARTIFACT_OPEN_RE = /(?:<\s*\|?\s*DSML[\s,]+artifact\b[^>]*>|<\s*artifact\b[^>]*>)/i;
+const ARTIFACT_OPEN_RE = /(?:<\s*\|?\s*DSML[\s,]+artifact\b[^>]*>|<\s*artifact\b[^>]*>)/ig;
 const DSML_ARTIFACT_CLOSE_RE = /(?:<\/artifact>|<\/\s*\|?\s*DSML\s*>|<\s*\|?\s*\/\s*DSML\s*\|?\s*>)/i;
 const DSML_OPEN_CANONICAL = 'dsmlartifact';
 const ARTIFACT_OPEN_CANONICAL = 'artifact';
@@ -34,11 +34,11 @@ export function createDsmlArtifactTextSuppressor(): ArtifactTextSuppressor {
       return strip(current.slice(end));
     }
 
-    const open = ARTIFACT_OPEN_RE.exec(current);
-    if (open && open.index !== undefined) {
+    const open = findStandaloneArtifactOpen(current);
+    if (open) {
       suppressing = true;
       const prefix = current.slice(0, open.index);
-      const tail = current.slice(open.index + open[0].length);
+      const tail = current.slice(open.index + open.text.length);
       return `${prefix}${strip(tail)}`;
     }
 
@@ -82,11 +82,38 @@ function possibleDsmlArtifactOpenStart(text: string): number {
   let index = text.lastIndexOf('<');
   while (index >= min) {
     const tail = text.slice(index);
-    if (isPossibleDsmlArtifactOpen(tail)) return index;
+    if (
+      isStandaloneArtifactOpenPosition(text, index) &&
+      isPossibleDsmlArtifactOpen(tail)
+    ) return index;
     if (index === 0) break;
     index = text.lastIndexOf('<', index - 1);
   }
   return -1;
+}
+
+function findStandaloneArtifactOpen(text: string): { index: number; text: string } | null {
+  ARTIFACT_OPEN_RE.lastIndex = 0;
+  let match = ARTIFACT_OPEN_RE.exec(text);
+  while (match && match.index !== undefined) {
+    if (isStandaloneArtifactOpenPosition(text, match.index)) {
+      return { index: match.index, text: match[0] };
+    }
+    match = ARTIFACT_OPEN_RE.exec(text);
+  }
+  return null;
+}
+
+function isStandaloneArtifactOpenPosition(text: string, index: number): boolean {
+  if (index <= 0) return true;
+  const previousNewline = Math.max(
+    text.lastIndexOf('\n', index - 1),
+    text.lastIndexOf('\r', index - 1),
+  );
+  if (previousNewline === -1) {
+    return text.slice(0, index).trim().length === 0;
+  }
+  return text.slice(previousNewline + 1, index).trim().length === 0;
 }
 
 function isPossibleDsmlArtifactOpen(text: string): boolean {

@@ -332,6 +332,31 @@ test('attachAcpSession suppresses split raw artifact open tags', () => {
   assert.deepEqual(textDeltas(events), ['Done\n\n', 'Tail']);
 });
 
+test('attachAcpSession preserves inline literal artifact examples', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+  const literal = 'To show the syntax, write <artifact identifier="page">literal</artifact> in docs.';
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'document artifact syntax',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: literal },
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  assert.deepEqual(textDeltas(events), [literal]);
+});
+
 test('attachAcpSession converts cumulative ACP message snapshots into deltas', () => {
   const child = new FakeAcpChild();
   const events: Array<{ event: string; payload: unknown }> = [];

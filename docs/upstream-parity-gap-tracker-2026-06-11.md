@@ -129,6 +129,14 @@ protect against unsafe parity claims.
 - AMR/BYOK/model-provider parity #4/#29/#30 now carries project-screen BYOK
   model changes from the avatar menu into the saved app config, using the
   selected provider's own model list instead of the broad protocol fallback.
+  AMR DSML artifact echoes now stay quiet for standalone generated artifact
+  blocks while preserving literal inline `<artifact>` documentation examples,
+  covering the user-visible part of upstream #4068 without adopting the
+  larger ACP state-machine rewrite. Upstream #4075's blocking per-run
+  `vela model list` preflight is already absent in this fork: `/api/amr/models`
+  uses `AmrModelLoadingCache`, AMR spawn env backfills `HOME`, and chat runs
+  pass the selected model to ACP/Vela instead of fail-closing on a fresh
+  catalog probe.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

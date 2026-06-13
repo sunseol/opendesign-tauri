@@ -66,3 +66,11 @@ test('DSML artifact suppressor strips split legacy artifact open tags', () => {
   );
   assert.equal(suppressor.strip('</artifact>Tail'), 'Tail');
 });
+
+test('DSML artifact suppressor preserves inline literal artifact examples', () => {
+  const suppressor = createDsmlArtifactTextSuppressor();
+  const literal = 'Document the syntax as <artifact identifier="page">literal</artifact> in prose.';
+
+  assert.equal(suppressor.strip(literal), literal);
+  assert.equal(suppressor.flush(), '');
+});
