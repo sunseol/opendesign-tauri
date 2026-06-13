@@ -141,6 +141,8 @@ protect against unsafe parity claims.
   Media picker readiness now shares a guarded provider/model predicate so
   OpenAI OAuth-only auth does not masquerade as a configured media key while
   daemon-restored key markers still enable supported media models.
+  Media project metadata can now derive a run-scoped execution policy that
+  constrains image/video/audio requests to the selected surface and model.
   AMR DSML artifact echoes now stay quiet for standalone generated artifact
   blocks while preserving literal inline `<artifact>` documentation examples,
   covering the user-visible part of upstream #4068 without adopting the
