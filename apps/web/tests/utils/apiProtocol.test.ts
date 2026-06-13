@@ -7,6 +7,7 @@ import {
 import type { AppConfig } from '../../src/types';
 import {
   agentDisplayName,
+  agentIconId,
   agentModelDisplayName,
   exactAgentDisplayName,
 } from '../../src/utils/agentLabels';
@@ -76,6 +77,14 @@ describe('api protocol labels', () => {
     expect(exactAgentDisplayName('Codebuddy Code')).toBe('Codebuddy');
     expect(exactAgentDisplayName('cbc')).toBe('Codebuddy');
     expect(agentDisplayName('/usr/local/bin/codebuddy')).toBe('Codebuddy');
+  });
+
+  it('maps agent identifiers to stable icon ids without dropping local aliases', () => {
+    expect(agentIconId('/opt/homebrew/bin/qodercli')).toBe('qoder');
+    expect(agentIconId(null, 'Claude Code · claude-sonnet-4-6')).toBe('claude');
+    expect(agentIconId('agy')).toBe('antigravity');
+    expect(agentIconId('codebuddy')).toBe('codebuddy');
+    expect(agentIconId('custom-agent')).toBe('custom-agent');
   });
 
   it('includes explicit Qoder models but hides the default model', () => {
