@@ -261,6 +261,7 @@ function validateSource(errors: string[], value: unknown): void {
     return;
   }
 
+  // shadcn registry import.
   expectNonEmptyString(errors, "$.source.reference", value.reference);
   if (value.registryUrl !== undefined) expectNonEmptyString(errors, "$.source.registryUrl", value.registryUrl);
   if (value.item !== undefined) expectNonEmptyString(errors, "$.source.item", value.item);

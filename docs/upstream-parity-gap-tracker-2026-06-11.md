@@ -34,7 +34,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, and sandbox runtime isolation wired |
 | Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle and integrations analytics contract drift covered |
 | Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - shared React primitive package imported with build/typecheck and root guard coverage |
-| Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | Not started |
+| Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | In progress - 150 official design-system 2.0 backfill outputs imported and guarded; shadcn/import/editing flows remain open |
 | Plugins and marketplace | `plugins` 596 files | [#5](https://github.com/sunseol/opendesign-tauri/issues/5), [#21](https://github.com/sunseol/opendesign-tauri/issues/21), [#22](https://github.com/sunseol/opendesign-tauri/issues/22), [#47](https://github.com/sunseol/opendesign-tauri/issues/47) | In progress - Hallmark and the #4127 community slide/deck plugin pack are registered with folder-backed marketplace coverage |
 | Skills/templates/prompts | `skills` 94 files, `design-templates` 23 files, `prompt-templates` 5 files | [#49](https://github.com/sunseol/opendesign-tauri/issues/49), [#38](https://github.com/sunseol/opendesign-tauri/issues/38), [#21](https://github.com/sunseol/opendesign-tauri/issues/21) | In progress - community skill-to-plugin slide/deck pack imported; broader skills/templates/prompts parity still open |
 | Landing/community/docs | `apps/landing-page` 270 files, `plugins/community` 100 files, `docs` 78 files | [#10](https://github.com/sunseol/opendesign-tauri/issues/10), [#13](https://github.com/sunseol/opendesign-tauri/issues/13), [#23](https://github.com/sunseol/opendesign-tauri/issues/23), [#24](https://github.com/sunseol/opendesign-tauri/issues/24), [#25](https://github.com/sunseol/opendesign-tauri/issues/25), [#39](https://github.com/sunseol/opendesign-tauri/issues/39), [#40](https://github.com/sunseol/opendesign-tauri/issues/40), [#54](https://github.com/sunseol/opendesign-tauri/issues/54) | In progress - fork governance links, template guard, and #4257/#4258 footer masthead/mobile clipping parity covered |
@@ -196,6 +196,13 @@ protect against unsafe parity claims.
   styles, build/typecheck scripts, lockfile importer, and a root guard test for
   the package contract. App-wide token harmonization and visual smoke coverage
   remain tracked under #9/#26/#35/#44.
+- Design-system catalog #34 now has 150 migrated project manifests, derived
+  design token JSON, Tailwind v4 outputs, component manifests, preview pages,
+  and source evidence files, plus a root guard test that fails if any official
+  catalog package loses its 2.0 backfill outputs. `pnpm guard` validates the
+  full catalog, token schema/default parity, prompt flag behavior, and
+  component manifest extraction. Interactive shadcn import/edit/pin/switch
+  behavior remains tracked under #35.
 - Daemon runtime #7 now stages Grok Build prompts through daemon-owned temp
   files for chat runs and Settings connection tests, with cleanup on spawn
   failures, cancellations, critique runs, and child exit. The sensitive PDF
