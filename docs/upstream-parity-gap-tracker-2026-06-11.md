@@ -124,7 +124,8 @@ protect against unsafe parity claims.
   GitHub design imports now preserve Swift/native design-token source instead
   of letting editor or CI config files outrank project evidence, and SwiftUI
   color declarations can seed design-system swatches without exposing local
-  paths.
+  paths. Chat composer paperclip uploads now emit `file_upload_result` telemetry
+  for success, partial failure, and rejected upload attempts.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

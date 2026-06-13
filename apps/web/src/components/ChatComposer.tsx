@@ -13,7 +13,9 @@ import type { Dict } from '../i18n/types';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackChatPanelClick,
+  trackFileUploadResult,
 } from '../analytics/events';
+import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { IMAGE_MODELS } from "../media/models";
 import { projectRawUrl, uploadProjectFiles, openFolderDialog, fetchConnectors } from "../providers/registry";
 import { patchProject } from "../state/projects";
@@ -757,6 +759,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       if (files.length === 0) return;
       const id = await ensureProject();
       if (!id) return;
+      const cohort = deriveUploadCohort(files);
       setUploading(true);
       setUploadError(null);
       try {
@@ -774,7 +777,34 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               : `Attachment upload failed for ${failedCount} file(s)${detail}.`,
           );
           console.warn('Some attachments failed to upload', result.failed);
+          trackFileUploadResult(analytics.track, {
+            page_name: 'chat_panel',
+            area: 'chat_composer',
+            project_id: id,
+            ...cohort,
+            result: 'failed',
+            ...(result.error ? { error_code: result.error } : {}),
+          });
+        } else if (result.uploaded.length > 0) {
+          trackFileUploadResult(analytics.track, {
+            page_name: 'chat_panel',
+            area: 'chat_composer',
+            project_id: id,
+            ...cohort,
+            result: 'success',
+          });
         }
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        setUploadError(`Attachment upload failed for ${files.length} file(s) (${detail}).`);
+        trackFileUploadResult(analytics.track, {
+          page_name: 'chat_panel',
+          area: 'chat_composer',
+          project_id: id,
+          ...cohort,
+          result: 'failed',
+          error_code: detail,
+        });
       } finally {
         setUploading(false);
       }
