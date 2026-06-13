@@ -2,6 +2,10 @@
 
 import dynamic from 'next/dynamic';
 
+import { installErrorHandlers } from '../../src/analytics/error-tracking';
+
+installErrorHandlers();
+
 // The product is a fully client-driven SPA — every component reads
 // localStorage, window.location, etc. — so we opt out of static-time
 // rendering for the entire tree. This keeps `next build --output export`

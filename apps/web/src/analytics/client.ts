@@ -11,8 +11,12 @@ import {
   type AnalyticsConfigureGlobals,
 } from '@open-design/contracts/analytics';
 import { scrubBeforeSend } from './scrub';
+import {
+  clearExceptionTrackingContext,
+  setExceptionTrackingContext,
+} from './error-tracking';
 
-interface AnalyticsContext {
+export interface AnalyticsContext {
   anonymousId: string;
   sessionId: string;
   clientType: AnalyticsClientType;
@@ -109,6 +113,44 @@ export function setAnalyticsUserId(userId: string | null): void {
   }
 }
 
+let exceptionBootstrapPromise: Promise<void> | null = null;
+export function bootstrapExceptionTracking(
+  context: AnalyticsContext,
+): Promise<void> {
+  if (exceptionBootstrapPromise) return exceptionBootstrapPromise;
+  const pending = (async () => {
+    try {
+      const res = await fetch('/api/analytics/config');
+      if (!res.ok) {
+        clearExceptionTrackingContext();
+        return;
+      }
+      const cfg = (await res.json()) as AnalyticsConfigResponse;
+      if (!cfg.key || !cfg.host) {
+        clearExceptionTrackingContext();
+        return;
+      }
+      const distinctId =
+        (typeof cfg.installationId === 'string' && cfg.installationId) ||
+        context.anonymousId;
+      setExceptionTrackingContext({
+        apiKey: cfg.key,
+        host: cfg.host,
+        distinctId,
+        appVersion: context.appVersion,
+        sessionId: context.sessionId,
+        telemetryEnv: cfg.env || 'unknown',
+      });
+    } catch {
+    }
+  })();
+  exceptionBootstrapPromise = pending;
+  void pending.finally(() => {
+    if (exceptionBootstrapPromise === pending) exceptionBootstrapPromise = null;
+  });
+  return pending;
+}
+
 export async function getAnalyticsClient(
   context: AnalyticsContext,
 ): Promise<PostHog | null> {
@@ -127,14 +169,17 @@ export async function getAnalyticsClient(
       if (!res.ok) return null;
       const cfg = (await res.json()) as AnalyticsConfigResponse;
       if (!cfg.enabled || !cfg.key || !cfg.host) return null;
+      const telemetryEnv = cfg.env || 'unknown';
       const distinctId =
         (typeof cfg.installationId === 'string' && cfg.installationId) ||
         context.anonymousId;
       resolvedDeviceId = distinctId;
       const mod = await import('posthog-js');
       const posthog = mod.default;
-      posthog.init(cfg.key, {
-        api_host: cfg.host,
+      const cfgKey = cfg.key;
+      const cfgHost = cfg.host;
+      posthog.init(cfgKey, {
+        api_host: cfgHost,
         // Identify by installationId when present so daemon-side captures
         // (which also key off installationId via the analytics context
         // header) land on the same person record. Falls back to the
@@ -164,7 +209,7 @@ export async function getAnalyticsClient(
           web_vitals: true,
           network_timing: true,
         },
-        capture_exceptions: true,
+        capture_exceptions: false,
 
         // --- Privacy defenses -----------------------------------------
         // 1. scrub.ts runs on every outgoing event and strips $el_text
@@ -192,6 +237,7 @@ export async function getAnalyticsClient(
         loaded: (instance) => {
           lastRegisterPayload = {
             event_schema_version: EVENT_SCHEMA_VERSION,
+            env: telemetryEnv,
             ui_version: context.appVersion,
             app_version: context.appVersion,
             client_type: context.clientType,
@@ -204,6 +250,14 @@ export async function getAnalyticsClient(
             ...(registeredUserId ? { user_id: registeredUserId } : {}),
           };
           instance.register(lastRegisterPayload);
+          setExceptionTrackingContext({
+            apiKey: cfgKey,
+            host: cfgHost,
+            distinctId,
+            appVersion: context.appVersion,
+            sessionId: context.sessionId,
+            telemetryEnv,
+          });
         },
       });
       client = posthog;

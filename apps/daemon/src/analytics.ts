@@ -22,7 +22,7 @@ import {
   type AnalyticsConfigResponse,
   EVENT_SCHEMA_VERSION,
 } from '@open-design/contracts/analytics';
-import { readAppConfig } from './app-config.js';
+import { readAppConfig, type AppConfigPrefs } from './app-config.js';
 import { readTelemetryEnvironment } from './telemetry-environment.js';
 
 const DEFAULT_HOST = 'https://us.i.posthog.com';
@@ -73,9 +73,6 @@ export function readPosthogConfig(
   return { key, host, env: readTelemetryEnvironment(env) };
 }
 
-// Baseline wire response for GET /api/analytics/config — checks only the
-// env-var gate. The route handler in server.ts further narrows this with
-// the user's telemetry.metrics consent before sending it to the client.
 export function readPublicConfigResponse(
   env: NodeJS.ProcessEnv = process.env,
 ): AnalyticsConfigResponse {
@@ -83,6 +80,22 @@ export function readPublicConfigResponse(
   const telemetryEnv = cfg?.env ?? readTelemetryEnvironment(env);
   if (!cfg) return { enabled: false, env: telemetryEnv, key: null, host: null };
   return { enabled: true, env: cfg.env, key: cfg.key, host: cfg.host };
+}
+
+export function applyAppConfigToPublicConfigResponse(
+  baseline: AnalyticsConfigResponse,
+  appCfg: Pick<AppConfigPrefs, 'installationId' | 'telemetry'> = {},
+): AnalyticsConfigResponse {
+  if (!baseline.key || !baseline.host) return baseline;
+  const installationId =
+    typeof appCfg.installationId === 'string' && appCfg.installationId
+      ? appCfg.installationId
+      : null;
+  return {
+    ...baseline,
+    enabled: appCfg.telemetry?.metrics === true,
+    installationId,
+  };
 }
 
 export interface AnalyticsService {

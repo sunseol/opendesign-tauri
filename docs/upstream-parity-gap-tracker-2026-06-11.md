@@ -116,6 +116,9 @@ protect against unsafe parity claims.
   input.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
-  local duplicate calculation.
+  local duplicate calculation. Browser exception/safety telemetry now installs
+  explicit error handlers, scrubs stack file paths, buffers early events until
+  `/api/analytics/config` returns, and keeps product analytics consent separate
+  from PostHog key/host availability for stability reporting.
 - GitHub workflow approval remains external maintainer action; it is tracked as
   release/governance work, not as a code fix.

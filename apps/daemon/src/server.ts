@@ -212,6 +212,7 @@ import { createChatRunService } from './runs.js';
 import { deriveRunErrorCode, runResultFromStatus } from './run-result.js';
 import { reportRunCompletedFromDaemon } from './langfuse-bridge.js';
 import {
+  applyAppConfigToPublicConfigResponse,
   createAnalyticsService,
   newInsertId,
   readAnalyticsContext,
@@ -4359,10 +4360,6 @@ export async function startServer({
     readAnalyticsContext,
   };
 
-  // PostHog runtime config — gated on BOTH a server-side key (POSTHOG_KEY)
-  // and the user's opt-in metrics consent (Privacy → "Share usage data").
-  // The web bundle short-circuits when enabled=false so opt-out behaviour
-  // is instant after the user toggles metrics off and reloads.
   app.get('/api/analytics/config', async (_req, res) => {
     const baseline = readPublicConfigResponse();
     if (!baseline.enabled) {
@@ -4371,21 +4368,10 @@ export async function startServer({
     }
     try {
       const appCfg = await readAppConfig(RUNTIME_DATA_DIR);
-      const consentGranted = appCfg.telemetry?.metrics === true;
-      if (!consentGranted) {
-        res.json({ enabled: false, key: null, host: null });
-        return;
-      }
-      // Echo the installationId so the web client uses the same anonymous
-      // id PostHog already saw on prior runs (and that Langfuse uses too).
-      const installationId =
-        typeof appCfg.installationId === 'string' && appCfg.installationId
-          ? appCfg.installationId
-          : null;
-      res.json({ ...baseline, installationId });
+      res.json(applyAppConfigToPublicConfigResponse(baseline, appCfg));
     } catch {
       // If the config file is unreadable, fail closed — no events.
-      res.json({ enabled: false, key: null, host: null });
+      res.json({ ...baseline, enabled: false });
     }
   });
 

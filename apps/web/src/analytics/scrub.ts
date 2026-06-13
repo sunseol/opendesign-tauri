@@ -59,17 +59,17 @@ function scrubUrl(url: unknown): unknown {
 // builds expose `file:///Applications/Open Design.app/Contents/Resources/…`
 // which leaks both the install root and the user's home dir in homebrew /
 // custom installs. Reduce to the repo-relative tail.
-function scrubFilePath(value: unknown): unknown {
+export function scrubFilePath(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   // file:///abs/path/.../apps/web/src/foo.tsx → app://apps/web/src/foo.tsx
   // /Users/<user>/.../apps/web/src/foo.tsx    → app://apps/web/src/foo.tsx
   return value.replace(
-    /(?:file:\/\/)?[^\s]*\/((?:apps|packages|tools)\/[^\s]+)/g,
+    /(?:file:\/\/)?[^()\n]*?\/((?:apps|packages|tools)\/[^\s)]+)/g,
     'app://$1',
   );
 }
 
-function scrubExceptionList(
+export function scrubExceptionList(
   list: Array<Record<string, unknown>>,
 ): Array<Record<string, unknown>> {
   return list.map((entry) => {

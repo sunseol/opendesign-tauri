@@ -20,6 +20,7 @@ import {
 import {
   applyConsent,
   applyIdentity,
+  bootstrapExceptionTracking,
   capture,
   getAnalyticsClient,
   getResolvedAnonymousId,
@@ -141,13 +142,15 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const [resolvedAnonId, setResolvedAnonId] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void getAnalyticsClient({
+    const context = {
       anonymousId: identity.anonymousId,
       sessionId: identity.sessionId,
       clientType: identity.clientType,
       locale,
       appVersion,
-    }).then(() => {
+    };
+    void bootstrapExceptionTracking(context);
+    void getAnalyticsClient(context).then(() => {
       if (cancelled) return;
       const resolved = getResolvedAnonymousId();
       if (resolved) setResolvedAnonId(resolved);
