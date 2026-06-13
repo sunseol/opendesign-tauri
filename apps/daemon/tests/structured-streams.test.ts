@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createClaudeStreamHandler } from '../src/claude-stream.js';
 import { createCopilotStreamHandler } from '../src/copilot-stream.js';
+import { createJsonEventStreamHandler } from '../src/json-event-stream.js';
 import { mapPiRpcEvent } from '../src/pi-rpc.js';
 
 describe('structured agent stream fixtures', () => {
@@ -141,6 +142,51 @@ describe('structured agent stream fixtures', () => {
       input: {
         todos: [{ content: 'Run QA', status: 'pending' }],
       },
+    });
+  });
+
+  it('emits text and tool events from Kimi Code stream-json messages', () => {
+    const events: unknown[] = [];
+    const handler = createJsonEventStreamHandler('kimi', (event: unknown) => events.push(event));
+
+    handler.feed(`${JSON.stringify({
+      role: 'assistant',
+      content: 'Working on it',
+    })}\n${JSON.stringify({
+      role: 'assistant',
+      content: '',
+      tool_calls: [
+        {
+          id: 'kimi-call-1',
+          type: 'function',
+          function: {
+            name: 'TodoWrite',
+            arguments: JSON.stringify({ todos: [{ content: 'Run QA', status: 'pending' }] }),
+          },
+        },
+      ],
+    })}\n${JSON.stringify({
+      role: 'tool',
+      tool_call_id: 'kimi-call-1',
+      content: 'written',
+    })}\n`);
+    handler.flush();
+
+    expect(events).toContainEqual({
+      type: 'text_delta',
+      delta: 'Working on it',
+    });
+    expect(events).toContainEqual({
+      type: 'tool_use',
+      id: 'kimi-call-1',
+      name: 'TodoWrite',
+      input: { todos: [{ content: 'Run QA', status: 'pending' }] },
+    });
+    expect(events).toContainEqual({
+      type: 'tool_result',
+      toolUseId: 'kimi-call-1',
+      content: 'written',
+      isError: false,
     });
   });
 });

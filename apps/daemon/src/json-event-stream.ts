@@ -240,6 +240,53 @@ function handleGeminiEvent(obj: unknown, onEvent: StreamEventHandler): boolean {
   return false;
 }
 
+function kimiToolInput(call: JsonObject): unknown {
+  const fn = isRecord(call.function) ? call.function : {};
+  const args = fn.arguments;
+  if (typeof args === 'string') {
+    return safeParseJson(args) ?? args;
+  }
+  return args ?? null;
+}
+
+function handleKimiEvent(obj: unknown, onEvent: StreamEventHandler): boolean {
+  if (!isRecord(obj)) return false;
+
+  if (obj.role === 'assistant') {
+    let handled = false;
+    if (typeof obj.content === 'string' && obj.content.length > 0) {
+      onEvent({ type: 'text_delta', delta: obj.content });
+      handled = true;
+    }
+    if (Array.isArray(obj.tool_calls)) {
+      for (const call of obj.tool_calls) {
+        if (!isRecord(call)) continue;
+        const fn = isRecord(call.function) ? call.function : {};
+        onEvent({
+          type: 'tool_use',
+          id: typeof call.id === 'string' ? call.id : '',
+          name: typeof fn.name === 'string' ? fn.name : 'tool',
+          input: kimiToolInput(call),
+        });
+      }
+      handled = true;
+    }
+    return handled;
+  }
+
+  if (obj.role === 'tool') {
+    onEvent({
+      type: 'tool_result',
+      toolUseId: obj.tool_call_id,
+      content: stringifyContent(obj.content),
+      isError: false,
+    });
+    return true;
+  }
+
+  return false;
+}
+
 function extractCursorText(message: unknown): string {
   const content = isRecord(message) ? message.content : undefined;
   const blocks = Array.isArray(content) ? content : [];
@@ -499,6 +546,7 @@ export function createJsonEventStreamHandler(kind: ParserKind, onEvent: StreamEv
 
     if (kind === 'opencode' && handleOpenCodeEvent(obj, onEvent, state)) return;
     if (kind === 'gemini' && handleGeminiEvent(obj, onEvent)) return;
+    if (kind === 'kimi' && handleKimiEvent(obj, onEvent)) return;
     if (kind === 'cursor-agent' && handleCursorEvent(obj, onEvent, state)) return;
     if (kind === 'codex' && handleCodexEvent(obj, onEvent, state)) return;
 

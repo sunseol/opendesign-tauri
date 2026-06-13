@@ -927,6 +927,7 @@ export function wellKnownUserToolchainBins(
     join(home, ".local", "bin"),
     join(home, ".vite-plus", "bin"),
     join(home, ".opencode", "bin"),
+    join(home, ".kimi-code", "bin"),
     join(home, ".bun", "bin"),
     join(home, ".volta", "bin"),
     join(home, ".asdf", "shims"),
