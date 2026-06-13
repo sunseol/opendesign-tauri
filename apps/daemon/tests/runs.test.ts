@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createChatRunService } from '../src/runs.js';
 
@@ -165,6 +165,78 @@ describe('chat run service shutdown', () => {
     expect(abort).toHaveBeenCalledTimes(1);
     expect(child.signals).toEqual(['SIGTERM']);
     expect(run.status).toBe('canceled');
+  });
+
+  describe('cancel kill fallback', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+    });
+
+    it('returns canceled status when canceling a run without a child', async () => {
+      const runs = createRuns();
+      const run = runs.create({ projectId: 'project-1', conversationId: 'conv-1' });
+      run.status = 'running';
+
+      const status = await runs.cancel(run);
+
+      expect(status).toMatchObject({
+        status: 'canceled',
+        signal: 'SIGTERM',
+        cancelRequested: true,
+      });
+      expect(run.status).toBe('canceled');
+    });
+
+    it('sends SIGTERM immediately and escalates to SIGKILL after the cancel grace window', async () => {
+      vi.useFakeTimers();
+      vi.stubEnv('OD_CHAT_RUN_CANCEL_GRACE_MS', '25');
+      const runs = createRuns();
+      const child = new FakeChildProcess({ closeOn: 'SIGKILL' });
+      const run = runs.create();
+      run.status = 'running';
+      (run as any).child = child;
+
+      const cancelPromise = runs.cancel(run);
+
+      expect(run.cancelRequested).toBe(true);
+      expect(child.signals).toEqual(['SIGTERM']);
+
+      await vi.advanceTimersByTimeAsync(24);
+      expect(child.signals).toEqual(['SIGTERM']);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(child.signals).toEqual(['SIGTERM', 'SIGKILL']);
+      await expect(cancelPromise).resolves.toMatchObject({
+        status: 'canceled',
+        signal: 'SIGKILL',
+      });
+    });
+
+    it('signals a process group before falling back to direct child signals', () => {
+      if (process.platform === 'win32') return;
+      const runs = createRuns();
+      const child = new FakeChildProcess({ closeOn: 'SIGTERM' });
+      const run = runs.create();
+      run.status = 'running';
+      (run as any).child = child;
+      (run as any).processGroupId = 4242;
+      const calls: Array<{ pid: number; signal: unknown }> = [];
+      const killSpy = vi.spyOn(process, 'kill').mockImplementation(((pid, signal) => {
+        calls.push({ pid, signal });
+        return true;
+      }) as typeof process.kill);
+
+      try {
+        expect(runs.signalChild(run, 'SIGTERM')).toBe(true);
+      } finally {
+        killSpy.mockRestore();
+      }
+
+      expect(calls).toEqual([{ pid: -4242, signal: 'SIGTERM' }]);
+      expect(child.signals).toEqual([]);
+    });
   });
 });
 

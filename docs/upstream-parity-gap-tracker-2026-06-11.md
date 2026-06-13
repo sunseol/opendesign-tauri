@@ -274,7 +274,10 @@ protect against unsafe parity claims.
   writing to a running agent stdin, matching the sandbox orchestration
   chokepoint guard; the stdin write path is also extracted behind a
   pending-tool-id check so stale or duplicate tool results cannot reach the
-  child process.
+  child process. Chat-run cancellation now returns the final run snapshot and
+  escalates from SIGTERM to SIGKILL after the grace window, using process-group
+  signaling for spawned agents on Unix so child subprocesses cannot survive a
+  canceled run.
   Daemon/web stream error parity already covers upstream #4052: structured SSE
   errors are kept pending while retry decisions settle, then surfaced instead
   of falling back to generic lifecycle exit errors. The project-instructions UI
