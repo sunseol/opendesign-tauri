@@ -64,7 +64,15 @@ describe("copyBundledResourceTrees", () => {
       await mkdir(join(workspaceRoot, "prompt-templates", "image"), {
         recursive: true,
       });
+      await mkdir(join(workspaceRoot, "data", "plugin-previews"), {
+        recursive: true,
+      });
       await writeFile(promptTemplatePath, "{\"id\":\"sample\"}\n", "utf8");
+      await writeFile(
+        join(workspaceRoot, "data", "plugin-previews", "manifest.json"),
+        "{\"previews\":{}}\n",
+        "utf8",
+      );
       await writeFile(designTemplatePath, "# Orbit General\n", "utf8");
       await writeFile(communityPetPath, "{\"name\":\"sample\"}\n", "utf8");
       await writeFile(
@@ -82,6 +90,12 @@ describe("copyBundledResourceTrees", () => {
           "utf8",
         ),
       ).resolves.toBe("{\"id\":\"sample\"}\n");
+      await expect(
+        readFile(
+          join(resourceRoot, "data", "plugin-previews", "manifest.json"),
+          "utf8",
+        ),
+      ).resolves.toBe("{\"previews\":{}}\n");
       await expect(
         readFile(
           join(resourceRoot, "design-templates", "orbit-general", "SKILL.md"),

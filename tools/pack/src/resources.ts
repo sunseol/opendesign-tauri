@@ -64,6 +64,7 @@ const BUNDLED_RESOURCE_TREES = [
   { from: join("assets", "frames"), to: "frames" },
   { from: join("assets", "community-pets"), to: "community-pets" },
   { from: "prompt-templates", to: "prompt-templates" },
+  { from: join("data", "plugin-previews"), to: join("data", "plugin-previews") },
 ] as const;
 
 export async function copyBundledResourceTrees({

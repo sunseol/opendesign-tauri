@@ -79,10 +79,19 @@ describe('resolveDaemonResourceRoot', () => {
 });
 
 describe('resolveDaemonPluginPreviewsDir', () => {
-  it('defaults to the checked-in data/plugin-previews directory', () => {
+  it('resolves under the resource root in the packaged layout', () => {
+    const resourceRoot = '/Applications/Open Design.app/Contents/Resources/open-design';
+    const projectRoot = '/Applications/Open Design.app/Contents/Resources/app';
+
+    expect(resolveDaemonPluginPreviewsDir({ env: {}, resourceRoot, projectRoot })).toBe(
+      path.join(resourceRoot, 'data', 'plugin-previews'),
+    );
+  });
+
+  it('falls back to the checked-in data/plugin-previews directory', () => {
     const projectRoot = path.resolve(import.meta.dirname, '../../..');
 
-    expect(resolveDaemonPluginPreviewsDir({ env: {}, projectRoot })).toBe(
+    expect(resolveDaemonPluginPreviewsDir({ env: {}, resourceRoot: undefined, projectRoot })).toBe(
       path.join(projectRoot, 'data', 'plugin-previews'),
     );
   });
@@ -93,6 +102,7 @@ describe('resolveDaemonPluginPreviewsDir', () => {
     expect(
       resolveDaemonPluginPreviewsDir({
         env: { OD_PLUGIN_PREVIEWS_DIR: '.tmp/previews' },
+        resourceRoot: '/app/resources/open-design',
         projectRoot,
       }),
     ).toBe(path.join(projectRoot, '.tmp', 'previews'));
@@ -102,6 +112,7 @@ describe('resolveDaemonPluginPreviewsDir', () => {
     expect(
       resolveDaemonPluginPreviewsDir({
         env: { OD_PLUGIN_PREVIEWS_DIR: '/tmp/plugin-previews' },
+        resourceRoot: '/app/resources/open-design',
         projectRoot: '/repo',
       }),
     ).toBe('/tmp/plugin-previews');

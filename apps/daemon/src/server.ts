@@ -1022,13 +1022,18 @@ function resolveDaemonResourceDir(resourceRoot, segment, fallback) {
 
 export function resolveDaemonPluginPreviewsDir({
   env = process.env,
+  resourceRoot,
   projectRoot,
 }) {
   const override = env.OD_PLUGIN_PREVIEWS_DIR;
   if (override) {
     return path.isAbsolute(override) ? override : path.resolve(projectRoot, override);
   }
-  return path.join(projectRoot, 'data', 'plugin-previews');
+  return resolveDaemonResourceDir(
+    resourceRoot,
+    path.join('data', 'plugin-previews'),
+    path.join(projectRoot, 'data', 'plugin-previews'),
+  );
 }
 
 const DAEMON_RESOURCE_ROOT = resolveDaemonResourceRoot();
@@ -1039,6 +1044,7 @@ const DAEMON_RESOURCE_ROOT = resolveDaemonResourceRoot();
 const STATIC_DIR = path.join(PROJECT_ROOT, 'apps', 'web', 'out');
 const PLUGIN_PREVIEWS_DIR = resolveDaemonPluginPreviewsDir({
   env: process.env,
+  resourceRoot: DAEMON_RESOURCE_ROOT,
   projectRoot: PROJECT_ROOT,
 });
 const OD_BIN = resolveDaemonCliPath();
