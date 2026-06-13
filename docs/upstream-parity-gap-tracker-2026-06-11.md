@@ -31,7 +31,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | --- | ---: | --- | --- |
 | Upstream integration strategy | 956 upstream-only commits | [#1](https://github.com/sunseol/opendesign-tauri/issues/1) | Not started |
 | Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | Not started |
-| Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport and duplicate route guard wired |
+| Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#33](https://github.com/sunseol/opendesign-tauri/issues/33), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, and sandbox runtime isolation wired |
 | Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle and integrations analytics contract drift covered |
 | Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | Not started |
 | Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | Not started |
@@ -160,8 +160,11 @@ protect against unsafe parity claims.
   failures, cancellations, critique runs, and child exit. The sensitive PDF
   export/media-generate route guard is also installed, and the old inline
   duplicate handlers were removed after the extracted routes were verified.
-  Broader sandbox, resume, registry, and route parity remains open under
-  #7/#33/#48.
+  Sandbox hardening #33 now also resolves local agent profiles and executable
+  search roots from daemon-owned sandbox state when `OD_SANDBOX_MODE` is set,
+  preventing host `OD_AGENT_HOME` or profile config leakage into sandboxed
+  runtime bootstrap. Broader server-wide sandbox startup, resume, registry,
+  and route parity remains open under #7/#33/#48.
 - Curated data #54 has upstream-identical `data/` assets and a root guard test
   for contributor/event/card linkage, plugin preview manifest shape, and the
   documented remote-only preview id set. Runtime/community rendering remains
