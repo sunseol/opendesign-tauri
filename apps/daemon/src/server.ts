@@ -221,10 +221,17 @@ import {
   newInsertId,
   readAnalyticsContext,
   readPublicConfigResponse,
+  type AnalyticsContext,
 } from './analytics.js';
 import {
   agentIdToTracking,
   deriveConfigureGlobals,
+  modelIdForTracking,
+  type TrackingLangfuseDeliveryStatus,
+  type TrackingLangfuseDropReason,
+  type TrackingLangfuseReportResult,
+  type TrackingLangfuseReportSkipReason,
+  type TrackingRunResult,
 } from '@open-design/contracts/analytics';
 import {
   mergeNoProxyWithLoopbackDefaults,
@@ -345,6 +352,7 @@ import {
   getConversation,
   getDeployment,
   getDeploymentById,
+  getMessageTelemetryFinalizationState,
   getProject,
   getTemplate,
   insertConversation,
@@ -1981,6 +1989,7 @@ async function ensureGhReady() {
 }
 
 const TERMINAL_RUN_STATUSES = new Set(['succeeded', 'failed', 'canceled']);
+const LANGFUSE_TERMINAL_FALLBACK_DELAY_MS = 15_000;
 
 function reconcileAssistantMessageOnRunEnd(db, runs, run) {
   if (!run.assistantMessageId) return;
@@ -2200,6 +2209,131 @@ export function composeChatUserRequestForAgent(message, currentPrompt) {
   ].join('\n\n');
 }
 
+type LangfuseReportTrigger = 'final_message' | 'terminal_fallback';
+
+interface LangfuseReportDeliveryState {
+  langfuse_expected: boolean;
+  langfuse_delivery_status: TrackingLangfuseDeliveryStatus;
+  langfuse_drop_reason?: TrackingLangfuseDropReason;
+}
+
+interface FinalizedMessageTelemetryOptions {
+  analyticsContext?: AnalyticsContext | null;
+  projectId?: string;
+  conversationId?: string;
+  reportTrigger?: LangfuseReportTrigger;
+}
+
+interface TelemetryRunForReport {
+  id: string;
+  projectId?: string | null;
+  conversationId?: string | null;
+  status?: string;
+  agentId?: string | null;
+  model?: string | null;
+  errorCode?: string | null;
+  exitCode?: number | null;
+  signal?: string | null;
+}
+
+interface FinalizedMessageForTelemetry {
+  runId?: string;
+  runStatus?: string;
+  endedAt?: number;
+}
+
+interface TelemetryDesignForReport {
+  runs: {
+    get: (runId: string) => TelemetryRunForReport | null | undefined;
+  };
+  analytics?: {
+    capture?: (args: {
+      eventName: string;
+      context: AnalyticsContext;
+      appVersion: string;
+      properties: Record<string, unknown>;
+      insertId: string;
+    }) => void;
+  };
+  getAppVersion?: () => string;
+}
+
+type ReportRunCompletedForTelemetry = (
+  args: Parameters<typeof reportRunCompletedFromDaemon>[0],
+) => Promise<LangfuseReportDeliveryState | void> | LangfuseReportDeliveryState | void;
+
+function isLangfuseReportDeliveryState(value: unknown): value is LangfuseReportDeliveryState {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.langfuse_expected === 'boolean' &&
+    typeof record.langfuse_delivery_status === 'string'
+  );
+}
+
+function captureLangfuseReportResult({
+  design,
+  delivery,
+  durationMs,
+  options,
+  reportResult,
+  run,
+  runId,
+  skipReason,
+}: {
+  design: TelemetryDesignForReport;
+  delivery: LangfuseReportDeliveryState;
+  durationMs?: number;
+  options: FinalizedMessageTelemetryOptions;
+  reportResult: TrackingLangfuseReportResult;
+  run?: TelemetryRunForReport | null;
+  runId: string;
+  skipReason?: TrackingLangfuseReportSkipReason;
+}) {
+  const context = options.analyticsContext;
+  const capture = design.analytics?.capture;
+  if (!context || !capture) return;
+  const status = run?.status;
+  const terminalResult: TrackingRunResult | undefined =
+    typeof status === 'string' && TERMINAL_RUN_STATUSES.has(status)
+      ? runResultFromStatus(status)
+      : undefined;
+  const errorCode = run && terminalResult
+    ? deriveRunErrorCode({
+        status: status ?? 'failed',
+        errorCode: run.errorCode ?? null,
+        exitCode: run.exitCode ?? null,
+        signal: run.signal ?? null,
+      })
+    : undefined;
+  const reportTrigger = options.reportTrigger ?? 'final_message';
+  capture({
+    eventName: 'langfuse_report_result',
+    context,
+    appVersion: design.getAppVersion?.() ?? '0.0.0',
+    properties: {
+      page_name: 'chat_panel',
+      area: 'chat_panel',
+      project_id: options.projectId ?? run?.projectId ?? null,
+      conversation_id: options.conversationId ?? run?.conversationId ?? null,
+      run_id: runId,
+      langfuse_trace_id: runId,
+      langfuse_expected: delivery.langfuse_expected,
+      langfuse_delivery_status: delivery.langfuse_delivery_status,
+      ...(delivery.langfuse_drop_reason ? { langfuse_drop_reason: delivery.langfuse_drop_reason } : {}),
+      langfuse_report_result: reportResult,
+      langfuse_report_trigger: reportTrigger,
+      ...(skipReason ? { langfuse_report_skip_reason: skipReason } : {}),
+      ...(durationMs !== undefined ? { report_duration_ms: durationMs } : {}),
+      ...(terminalResult ? { result: terminalResult } : {}),
+      ...(errorCode ? { error_code: errorCode } : {}),
+      ...(run?.agentId ? { agent_provider_id: agentIdToTracking(run.agentId) } : {}),
+      ...(run?.model !== undefined ? { model_id: modelIdForTracking(run.model) } : {}),
+    },
+    insertId: `${runId}-langfuse-report-${reportTrigger}-${reportResult}${skipReason ? `-${skipReason}` : ''}`,
+  });
+}
+
 export function createFinalizedMessageTelemetryReporter({
   design,
   db,
@@ -2208,27 +2342,84 @@ export function createFinalizedMessageTelemetryReporter({
   getAppVersion = () => null,
   report = reportRunCompletedFromDaemon,
 }: {
-  design: any;
+  design: TelemetryDesignForReport;
   db: unknown;
   dataDir: string;
   reportedRuns: Set<string>;
-  getAppVersion?: () => any;
-  report?: typeof reportRunCompletedFromDaemon;
+  getAppVersion?: () => Parameters<typeof reportRunCompletedFromDaemon>[0]['appVersion'];
+  report?: ReportRunCompletedForTelemetry;
 }) {
-  return (saved, body = {}) => {
+  return (
+    saved: FinalizedMessageForTelemetry,
+    body = {},
+    options: FinalizedMessageTelemetryOptions = {},
+  ) => {
     if (!shouldReportRunCompletedFromMessage(saved, body)) return;
+    const runId = saved.runId ?? '';
     const run = design.runs.get(saved.runId);
-    if (!run || reportedRuns.has(run.id)) return;
-    reportedRuns.add(run.id);
-    void report({
-      db,
-      dataDir,
-      run,
-      persistedRunStatus: saved.runStatus,
-      persistedEndedAt: saved.endedAt,
-      appVersion: getAppVersion(),
-    });
+    const skippedDelivery: LangfuseReportDeliveryState = {
+      langfuse_expected: true,
+      langfuse_delivery_status: 'failed',
+      langfuse_drop_reason: 'network_error',
+    };
+    if (!run) {
+      captureLangfuseReportResult({
+        design,
+        delivery: skippedDelivery,
+        options,
+        reportResult: 'skipped',
+        runId,
+        skipReason: 'run_not_found',
+      });
+      return;
+    }
+    const reportTrigger = options.reportTrigger ?? 'final_message';
+    if (reportedRuns.has(run.id)) {
+      captureLangfuseReportResult({
+        design,
+        delivery: skippedDelivery,
+        options,
+        reportResult: 'skipped',
+        run,
+        runId: run.id,
+        skipReason: 'duplicate_run',
+      });
+      return;
+    }
+    if (reportTrigger !== 'terminal_fallback') {
+      reportedRuns.add(run.id);
+    }
+    void (async () => {
+      const startedAt = Date.now();
+      const delivery = await report({
+        db,
+        dataDir,
+        run,
+        persistedRunStatus: saved.runStatus,
+        persistedEndedAt: saved.endedAt,
+        appVersion: getAppVersion(),
+      });
+      if (!isLangfuseReportDeliveryState(delivery)) return;
+      captureLangfuseReportResult({
+        design,
+        delivery,
+        durationMs: Date.now() - startedAt,
+        options: { ...options, reportTrigger },
+        reportResult: delivery.langfuse_expected === false
+          ? 'skipped'
+          : delivery.langfuse_delivery_status === 'accepted'
+            ? 'accepted'
+            : 'failed',
+        run,
+        runId: run.id,
+        skipReason: delivery.langfuse_expected === false ? 'not_expected' : undefined,
+      });
+    })();
   };
+}
+
+export function shouldReportRunCompletionTelemetryFallbackStatus(status: unknown): boolean {
+  return status === 'failed' || status === 'canceled';
 }
 
 const CLOUDFLARE_PAGES_PROJECT_METADATA_KEY = 'cloudflarePagesProjectName';
@@ -4505,6 +4696,45 @@ export async function startServer({
     reportedRuns,
     getAppVersion: () => cachedAppVersion,
   });
+  const reportRunCompletionTelemetryFallback = ({
+    analyticsContext,
+    run,
+    status,
+  }: {
+    analyticsContext: AnalyticsContext | null;
+    run: TelemetryRunForReport & {
+      assistantMessageId?: string | null;
+      updatedAt?: number;
+    };
+    status: string;
+  }) => {
+    if (!shouldReportRunCompletionTelemetryFallbackStatus(status)) return;
+    const timer = setTimeout(() => {
+      if (reportedRuns.has(run.id)) return;
+      if (run.assistantMessageId) {
+        const messageTelemetry = getMessageTelemetryFinalizationState(db, run.assistantMessageId);
+        if (messageTelemetry.finalizedAt !== null) return;
+      }
+      reportFinalizedMessage(
+        {
+          id: run.assistantMessageId ?? `${run.id}-terminal`,
+          conversationId: run.conversationId,
+          endedAt: run.updatedAt,
+          role: 'assistant',
+          runId: run.id,
+          runStatus: status,
+        },
+        { telemetryFinalized: true },
+        {
+          analyticsContext,
+          conversationId: run.conversationId,
+          projectId: run.projectId,
+          reportTrigger: 'terminal_fallback',
+        },
+      );
+    }, LANGFUSE_TERMINAL_FALLBACK_DELAY_MS);
+    timer.unref?.();
+  };
 
   // DNS-aware wrapper. The sync `validateBaseUrl` only inspects the literal
   // hostname string, so a public DNS name pointing at an internal address
@@ -5003,6 +5233,11 @@ export async function startServer({
     });
     // Bump the parent project's updatedAt so the project list re-orders.
     updateProject(db, req.params.id, {});
+    reportFinalizedMessage(saved, m, {
+      analyticsContext: readAnalyticsContext(req),
+      projectId: req.params.id,
+      conversationId: req.params.cid,
+    });
     res.json({ message: saved });
   });
 
@@ -11368,6 +11603,13 @@ export async function startServer({
     // here so PostHog actually receives the event. Both fire under the
     // same insert_id prefix so any web-side mirror dedupes by $insert_id.
     const analyticsContext = readAnalyticsContext(req);
+    design.runs.wait(run).then((status: { status: string }) => {
+      reportRunCompletionTelemetryFallback({
+        analyticsContext,
+        run,
+        status: status.status,
+      });
+    }).catch(() => undefined);
     if (analyticsContext) {
       const reqBody = (req.body || {}) as Record<string, unknown>;
       const runInsertId = newInsertId();

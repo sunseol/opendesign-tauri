@@ -4,6 +4,7 @@ import {
   composeChatUserRequestForAgent,
   createFinalizedMessageTelemetryReporter,
   shouldReportRunCompletedFromMessage,
+  shouldReportRunCompletionTelemetryFallbackStatus,
   telemetryPromptFromRunRequest,
 } from '../src/server.js';
 
@@ -41,6 +42,13 @@ describe('Langfuse message finalization gate', () => {
         { telemetryFinalized: true },
       ),
     ).toBe(false);
+  });
+
+  it('schedules terminal fallback only for failed and canceled runs', () => {
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('failed')).toBe(true);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('canceled')).toBe(true);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('succeeded')).toBe(false);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('running')).toBe(false);
   });
 
   it('uses the explicit current prompt for telemetry instead of the full transcript', () => {
@@ -106,7 +114,13 @@ describe('Langfuse message finalization gate', () => {
       db: 'db',
       dataDir: '/tmp/od-data',
       reportedRuns: new Set<string>(),
-      getAppVersion: () => ({ version: '0.7.0', channel: 'beta', packaged: true }),
+      getAppVersion: () => ({
+        version: '0.7.0',
+        channel: 'beta',
+        packaged: true,
+        platform: 'darwin',
+        arch: 'arm64',
+      }),
       report,
     });
 
@@ -126,7 +140,78 @@ describe('Langfuse message finalization gate', () => {
       run,
       persistedRunStatus: 'succeeded',
       persistedEndedAt: 1234,
-      appVersion: { version: '0.7.0', channel: 'beta', packaged: true },
+      appVersion: {
+        version: '0.7.0',
+        channel: 'beta',
+        packaged: true,
+        platform: 'darwin',
+        arch: 'arm64',
+      },
     });
+  });
+
+  it('allows a real final message report after a terminal fallback report', async () => {
+    const run = {
+      id: 'run-failed-late-final',
+      projectId: 'project-1',
+      conversationId: 'conv-1',
+      assistantMessageId: 'assistant-1',
+      status: 'failed',
+      createdAt: 1,
+      updatedAt: 2,
+      events: [],
+    };
+    const capture = vi.fn<(event: { insertId: string }) => void>();
+    const reportedEndedAts: Array<number | undefined> = [];
+    const report = vi.fn(async (args: { persistedEndedAt?: number }) => {
+      reportedEndedAts.push(args.persistedEndedAt);
+      return {
+        langfuse_expected: true,
+        langfuse_delivery_status: 'accepted' as const,
+      };
+    });
+    const reporter = createFinalizedMessageTelemetryReporter({
+      design: {
+        analytics: { capture },
+        getAppVersion: () => '0.7.0',
+        runs: { get: vi.fn(() => run) },
+      },
+      db: 'db',
+      dataDir: '/tmp/od-data',
+      reportedRuns: new Set<string>(),
+      report,
+    });
+    const analyticsContext = {
+      deviceId: 'device-1',
+      sessionId: 'session-1',
+      clientType: 'desktop' as const,
+      locale: 'en',
+      requestId: 'request-1',
+    };
+
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1234 },
+      { telemetryFinalized: true },
+      { analyticsContext, reportTrigger: 'terminal_fallback' },
+    );
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1235 },
+      { telemetryFinalized: true },
+      { analyticsContext, reportTrigger: 'final_message' },
+    );
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1236 },
+      { telemetryFinalized: true },
+      { analyticsContext, reportTrigger: 'final_message' },
+    );
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledTimes(2);
+    expect(reportedEndedAts).toEqual([1234, 1235]);
+    expect(capture.mock.calls.map(([call]) => call.insertId)).toEqual(expect.arrayContaining([
+      'run-failed-late-final-langfuse-report-terminal_fallback-accepted',
+      'run-failed-late-final-langfuse-report-final_message-accepted',
+      'run-failed-late-final-langfuse-report-final_message-skipped-duplicate_run',
+    ]));
   });
 });

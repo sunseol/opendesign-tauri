@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import type { SkillInfo } from './skills.js';
 import type { DesignSystemSummary } from './design-systems.js';
 import type { RoutineRoutesService } from './routine-routes.js';
+import type { AnalyticsContext } from './analytics.js';
 
 export interface HttpDeps {
   createSseResponse: (...args: any[]) => any;
@@ -54,7 +55,16 @@ export interface RoutineDeps {
 }
 
 export interface TelemetryDeps {
-  reportFinalizedMessage: (saved: any, body?: any) => void;
+  reportFinalizedMessage: (
+    saved: any,
+    body?: any,
+    options?: {
+      analyticsContext?: AnalyticsContext | null;
+      projectId?: string;
+      conversationId?: string;
+      reportTrigger?: 'final_message' | 'terminal_fallback';
+    },
+  ) => void;
 }
 
 export interface ServerContext {

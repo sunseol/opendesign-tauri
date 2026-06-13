@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   closeDatabase,
+  getMessageTelemetryFinalizationState,
   insertConversation,
   insertProject,
   listMessages,
@@ -99,5 +100,37 @@ describe('preTurnFileNames persistence', () => {
     const [msg] = listMessages(db, 'conv-1');
     expect(msg).toBeDefined();
     expect(msg!.preTurnFileNames).toBeUndefined();
+  });
+
+  it('records telemetry finalization once without moving it on later updates', () => {
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    const now = seedConversation(db);
+
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'final',
+      runId: 'run-1',
+      runStatus: 'failed',
+      startedAt: now,
+      endedAt: now + 1000,
+      telemetryFinalized: true,
+    });
+    const first = getMessageTelemetryFinalizationState(db, 'assistant-1');
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'late retry write',
+      runId: 'run-1',
+      runStatus: 'failed',
+      startedAt: now,
+      endedAt: now + 2000,
+      telemetryFinalized: true,
+    });
+    const second = getMessageTelemetryFinalizationState(db, 'assistant-1');
+
+    expect(first.exists).toBe(true);
+    expect(typeof first.finalizedAt).toBe('number');
+    expect(second).toEqual(first);
   });
 });

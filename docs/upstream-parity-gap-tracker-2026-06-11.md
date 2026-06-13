@@ -137,7 +137,10 @@ protect against unsafe parity claims.
   from PostHog key/host availability for stability reporting.
   The integrations Composio API-key gate now links to the Composio dashboard
   and emits the `gate_card` click element so the key-discovery funnel is
-  measurable from the blocked connector surface.
+  measurable from the blocked connector surface. Langfuse completion telemetry
+  now records durable message-finalization state, emits report-result analytics
+  when the reporter returns delivery status, and schedules failed/canceled run
+  terminal fallbacks without blocking a later real final-message report.
 - Tools-serve #52 matches the upstream fixture package except for the fork's
   Tauri metadata assertion. Its Vitest suite, typecheck, and a live
   `pnpm tools-serve start updater --channel beta --platform win --include-payload`
