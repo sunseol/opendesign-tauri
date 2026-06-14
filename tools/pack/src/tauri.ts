@@ -6,7 +6,6 @@ import { createPackageManagerInvocation } from "@open-design/platform";
 
 import { ToolPackCache } from "./cache.js";
 import type { ToolPackConfig } from "./config.js";
-import { copyBundledResourceTrees } from "./resources.js";
 import { ensureWorkspaceBuildArtifacts } from "./workspace-build.js";
 import { collectWorkspaceTarballs, writeAssembledApp } from "./mac/app.js";
 import { finalizeMacArtifacts } from "./mac/artifacts.js";
@@ -18,19 +17,18 @@ import { PRODUCT_NAME } from "./mac/constants.js";
 import { resolveWinPaths } from "./win/paths.js";
 import type { WinPackResult, WinPackTiming } from "./win/types.js";
 import type { LinuxPackResult } from "./linux.js";
+import {
+  copyTauriResourceTree,
+  resolveTauriBundleTargets,
+  resolveTauriResourcePaths,
+  tauriTargetRoot,
+  writeTauriMergeConfig,
+  type TauriBundleTarget,
+} from "./tauri-resources.js";
+
+export { resolveTauriMainBinaryName } from "./tauri-resources.js";
 
 type LoggedCommandOptions = Pick<SpawnOptionsWithoutStdio, "cwd" | "env" | "windowsVerbatimArguments">;
-
-type TauriBundleTarget = "app" | "appimage" | "dmg" | "nsis";
-
-type TauriResourcePaths = {
-  assembledAppRoot: string;
-  mergeConfigPath: string;
-  packagedConfigPath: string;
-  resourceRoot: string;
-};
-
-const TAURI_LINUX_MAIN_BINARY_NAME = "open-design-desktop-tauri";
 
 function quoteCommandPart(value: string): string {
   if (!/[\s"'$`\\]/.test(value)) return value;
@@ -123,113 +121,8 @@ async function ensureTauriWorkspaceBuild(config: ToolPackConfig, cache: ToolPack
   });
 }
 
-function resolveTauriResourcePaths(config: ToolPackConfig): TauriResourcePaths {
-  const namespaceRoot = config.roots.output.namespaceRoot;
-  return {
-    assembledAppRoot: join(namespaceRoot, "assembled", "app"),
-    mergeConfigPath: join(namespaceRoot, "tauri-pack.conf.json"),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
-  };
-}
-
 function tauriRuntimeConfig(config: ToolPackConfig): ToolPackConfig {
   return { ...config, webOutputMode: "server" };
-}
-
-function nodeResourceName(config: ToolPackConfig): string {
-  return config.platform === "win" ? "node.exe" : "node";
-}
-
-async function copyResourceTree(config: ToolPackConfig, paths: TauriResourcePaths): Promise<void> {
-  await rm(paths.resourceRoot, { force: true, recursive: true });
-  await mkdir(paths.resourceRoot, { recursive: true });
-  await copyBundledResourceTrees({
-    workspaceRoot: config.workspaceRoot,
-    resourceRoot: paths.resourceRoot,
-  });
-  await mkdir(join(paths.resourceRoot, "bin"), { recursive: true });
-  const nodePath = join(paths.resourceRoot, "bin", nodeResourceName(config));
-  await cp(process.execPath, nodePath);
-  if (config.platform !== "win") {
-    await chmod(nodePath, 0o755);
-  }
-}
-
-function resolveTauriBundleTargets(config: ToolPackConfig): TauriBundleTarget[] {
-  switch (config.platform) {
-    case "mac":
-      switch (config.to) {
-        case "all":
-          return ["app", "dmg"];
-        case "app":
-        case "zip":
-          return ["app"];
-        case "dmg":
-          return ["dmg"];
-        default:
-          throw new Error(`unsupported mac Tauri --to target: ${config.to}`);
-      }
-    case "win":
-      switch (config.to) {
-        case "all":
-        case "nsis":
-          return ["nsis"];
-        case "dir":
-          throw new Error(
-            "tools-pack win build --desktop-runtime tauri --to dir is not supported by Tauri; use --to nsis",
-          );
-        default:
-          throw new Error(`unsupported win Tauri --to target: ${config.to}`);
-      }
-    case "linux":
-      switch (config.to) {
-        case "all":
-        case "appimage":
-          return ["appimage"];
-        case "dir":
-          throw new Error(
-            "tools-pack linux build --desktop-runtime tauri --to dir is not supported by Tauri; use --to appimage",
-          );
-        default:
-          throw new Error(`unsupported linux Tauri --to target: ${config.to}`);
-      }
-  }
-}
-
-function tauriTargetRoot(config: ToolPackConfig): string {
-  return join(config.workspaceRoot, "apps", "desktop", "src-tauri", "target", "release", "bundle");
-}
-
-export function resolveTauriMainBinaryName(config: Pick<ToolPackConfig, "platform">): string {
-  return config.platform === "linux" ? TAURI_LINUX_MAIN_BINARY_NAME : PRODUCT_NAME;
-}
-
-async function writeTauriMergeConfig(
-  config: ToolPackConfig,
-  paths: TauriResourcePaths,
-  targets: TauriBundleTarget[],
-): Promise<void> {
-  await mkdir(dirname(paths.mergeConfigPath), { recursive: true });
-  await writeFile(
-    paths.mergeConfigPath,
-    `${JSON.stringify(
-      {
-        mainBinaryName: resolveTauriMainBinaryName(config),
-        bundle: {
-          targets,
-          resources: {
-            [paths.assembledAppRoot]: "app",
-            [paths.resourceRoot]: "open-design",
-            [paths.packagedConfigPath]: "open-design-config.json",
-          },
-        },
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
 }
 
 async function runTauriBuild(
@@ -331,7 +224,7 @@ export async function packTauriMac(config: ToolPackConfig): Promise<MacPackResul
     await ensureTauriWorkspaceBuild(runtimeConfig, cache);
   });
   await runPhase("resource-tree", async () => {
-    await copyResourceTree(runtimeConfig, resourcePaths);
+    await copyTauriResourceTree(runtimeConfig, resourcePaths);
   });
   const tarballs = await runPhase("workspace-tarballs", async () =>
     collectWorkspaceTarballs(runtimeConfig, assemblyPaths)
@@ -400,7 +293,7 @@ export async function packTauriWin(config: ToolPackConfig): Promise<WinPackResul
     await ensureTauriWorkspaceBuild(runtimeConfig, cache);
   });
   await runPhase("resource-tree", async () => {
-    await copyResourceTree(runtimeConfig, resourcePaths);
+    await copyTauriResourceTree(runtimeConfig, resourcePaths);
   });
   const tarballs = await runPhase("workspace-tarballs", async () =>
     collectWorkspaceTarballs(runtimeConfig, assemblyPaths)
@@ -506,7 +399,7 @@ export async function packTauriLinux(config: ToolPackConfig): Promise<LinuxPackR
   const resourcePaths = resolveTauriResourcePaths(config);
   const cache = new ToolPackCache(config.roots.cacheRoot);
   await ensureTauriWorkspaceBuild(runtimeConfig, cache);
-  await copyResourceTree(runtimeConfig, resourcePaths);
+  await copyTauriResourceTree(runtimeConfig, resourcePaths);
   const tarballs = await collectWorkspaceTarballs(runtimeConfig, assemblyPaths);
   await writeAssembledApp(runtimeConfig, assemblyPaths, tarballs);
   await writeTauriMergeConfig(config, resourcePaths, targets);

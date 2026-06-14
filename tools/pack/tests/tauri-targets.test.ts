@@ -24,6 +24,7 @@ function makeConfig(platform: "win" | "linux", to: ToolPackConfig["to"]): ToolPa
     removeLogs: false,
     removeProductUserData: false,
     removeSidecars: false,
+    requireVelaCli: false,
     roots: {
       output: {
         appBuilderRoot: join(root, "out", platform, "namespaces", namespace, "builder"),

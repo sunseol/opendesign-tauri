@@ -11,6 +11,7 @@ import {
   type SandboxRuntimeConfig,
 } from '../sandbox-mode.js';
 import { expandConfiguredEnv } from './paths.js';
+import { resolveAmrOpenCodeExecutable } from './executables.js';
 
 type RuntimeEnvMap = NodeJS.ProcessEnv | Record<string, string>;
 
@@ -69,6 +70,10 @@ export function spawnEnvForAgent(
         'amr',
         'opencode-home',
       );
+    }
+    if (!env.VELA_OPENCODE_BIN?.trim()) {
+      const opencodeBin = resolveAmrOpenCodeExecutable(env);
+      if (opencodeBin) env.VELA_OPENCODE_BIN = opencodeBin;
     }
     return reapplySandboxRuntimeEnv(env, sandboxRuntime);
   }

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import {
   spawnEnvForAgent,
   withEnvSnapshot,
@@ -49,6 +51,28 @@ test('spawnEnvForAgent backfills HOME for AMR when daemon env is stripped', () =
 
     assert.equal(env.HOME, homedir());
   });
+});
+
+test('spawnEnvForAgent points AMR at the bundled OpenCode companion', () => {
+  const root = mkdtempSync(join(tmpdir(), 'od-amr-opencode-bin-'));
+  try {
+    return withEnvSnapshot(['VELA_OPENCODE_BIN'], () => {
+      const companion = join(root, 'bin', 'libexec', 'opencode', 'opencode');
+      mkdirSync(join(root, 'bin', 'libexec', 'opencode'), { recursive: true });
+      writeFileSync(companion, '#!/bin/sh\nexit 0\n');
+      chmodSync(companion, 0o755);
+      delete process.env.VELA_OPENCODE_BIN;
+
+      const env = spawnEnvForAgent('amr', {
+        OD_RESOURCE_ROOT: root,
+        PATH: '/usr/bin',
+      });
+
+      assert.equal(env.VELA_OPENCODE_BIN, companion);
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('openDesignAmrTraceEnv builds Open Design trace identity env for AMR only', () => {

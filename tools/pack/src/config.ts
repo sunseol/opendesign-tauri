@@ -39,6 +39,7 @@ export type ToolPackCliOptions = {
   removeLogs?: boolean;
   removeProductUserData?: boolean;
   removeSidecars?: boolean;
+  requireVelaCli?: boolean;
   signed?: boolean;
   silent?: boolean;
   to?: string;
@@ -79,6 +80,7 @@ export type ToolPackConfig = {
   removeLogs: boolean;
   removeProductUserData: boolean;
   removeSidecars: boolean;
+  requireVelaCli: boolean;
   roots: ToolPackRoots;
   silent: boolean;
   signed: boolean;
@@ -239,6 +241,7 @@ export function resolveToolPackConfig(
     removeLogs: options.removeLogs === true,
     removeProductUserData: options.removeProductUserData === true,
     removeSidecars: options.removeSidecars === true,
+    requireVelaCli: options.requireVelaCli === true,
     silent: options.silent !== false,
     signed: options.signed === true,
     tauriCliPath: resolveTauriCliPath(WORKSPACE_ROOT),

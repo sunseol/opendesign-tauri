@@ -19,6 +19,9 @@
     "@open-design/sidecar-proto": "workspace:*",
     "cac": "6.7.14"
   },
+  "optionalDependencies": {
+    "@powerformer/vela-cli": "0.0.16"
+  },
   "devDependencies": {
     "@types/node": "24.12.2",
     "esbuild": "0.28.0",

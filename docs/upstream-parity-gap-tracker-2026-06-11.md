@@ -202,6 +202,10 @@ protect against unsafe parity claims.
   catalog probe. Onboarding now keeps the Open Design AMR card visible as a
   non-interactive skeleton while agent detection or the one-shot AMR re-probe
   is still in flight, covering upstream #4112's cold-start affordance.
+  AMR/Tauri packaging now stages the optional `@powerformer/vela-cli` binary
+  and its bundled OpenCode companion into Tauri resources, exposes a strict
+  `--require-vela-cli` packaging gate, and teaches daemon AMR resolution to use
+  the packaged built-in Vela only when the companion executable is present.
 - Analytics #31 now has the shared upload cohort derivation used by file upload
   result events, with the existing FileWorkspace upload surface moved off its
   local duplicate calculation. Browser exception/safety telemetry now installs

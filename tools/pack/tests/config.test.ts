@@ -53,6 +53,15 @@ describe("resolveToolPackConfig telemetry relay", () => {
     expect(config.roots.runtime.namespaceRoot).toContain("runtime-tauri-test");
   });
 
+  it("preserves the strict Vela CLI packaging flag", () => {
+    const config = resolveToolPackConfig("mac", {
+      namespace: "require-vela-test",
+      requireVelaCli: true,
+    });
+
+    expect(config.requireVelaCli).toBe(true);
+  });
+
   it("rejects unsupported desktop runtimes", () => {
     expect(() => resolveToolPackConfig("mac", { desktopRuntime: "native" })).toThrow(
       /unsupported --desktop-runtime value: native/,
