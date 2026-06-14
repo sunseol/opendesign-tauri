@@ -9781,6 +9781,12 @@ button.connector-action.is-loading {
   flex: 1;
   overflow: hidden;
 }
+.workspace:has(.share-menu-popover, .present-menu),
+.viewer:has(.share-menu-popover, .present-menu) {
+  position: relative;
+  z-index: 220;
+  overflow: visible;
+}
 .ws-tabs-shell {
   display: flex;
   align-items: center;
@@ -9881,11 +9887,15 @@ button.connector-action.is-loading {
 .ws-tab.live-artifact-tab .ws-tab-label {
   max-width: none;
 }
+.ws-tab.live-artifact-tab .ws-tab-text {
+  flex-shrink: 100;
+}
 .ws-live-artifact-badges {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   flex-wrap: nowrap;
+  min-width: 0;
   max-width: none;
-  overflow: visible;
+  overflow: hidden;
 }
 .ws-live-artifact-badges .live-artifact-badge:not(.live):not(.refreshing):not(.refresh-failed):not(.archived) {
   display: none;
@@ -14086,6 +14096,10 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
 }
 
 /* Present / Share menus */
+.present-wrap,
+.share-menu {
+  --viewer-action-menu-z: 220;
+}
 .present-wrap { position: relative; display: inline-block; }
 .present-trigger .caret {
   margin-left: 4px;
@@ -14096,7 +14110,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 60;
+  z-index: var(--viewer-action-menu-z);
   min-width: 168px;
   padding: 4px;
   background: var(--bg-panel);
@@ -14183,7 +14197,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 50;
+  z-index: var(--viewer-action-menu-z);
   min-width: 240px;
   padding: 4px;
   background: var(--bg-panel);
