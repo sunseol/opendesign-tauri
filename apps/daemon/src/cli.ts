@@ -12,6 +12,7 @@ import { runDesignSystemsCli } from './design-systems-cli.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
+import { mcpInstallHelp, runMcpInstallCli } from './mcp-install-cli.js';
 
 const argv = process.argv.slice(2);
 
@@ -804,6 +805,12 @@ files folder so the FileViewer can preview them immediately.`);
 // ---------------------------------------------------------------------------
 
 async function runMcp(args) {
+  if (args[0] === 'install') {
+    const exitCode = await runMcpInstallCli(args.slice(1));
+    if (exitCode !== 0) process.exit(exitCode);
+    return;
+  }
+
   let flags;
   try {
     flags = parseFlags(args, {
@@ -865,7 +872,9 @@ callers can see which project/file got resolved.
 For the copy-paste, per-client snippet (with absolute paths resolved
 for your machine, plus a one-click deeplink for Cursor), open Settings
 → MCP server in the Open Design app. The daemon must be running locally
-for tool calls to succeed.`);
+for tool calls to succeed.
+
+${mcpInstallHelp()}`);
 }
 
 // ---------------------------------------------------------------------------
