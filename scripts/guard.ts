@@ -124,6 +124,9 @@ const residualAllowedExactPaths = new Set([
   "apps/packaged/esbuild.config.mjs",
   // Browser service workers must be served as JavaScript files.
   "apps/web/public/od-notifications-sw.js",
+  // Static community hub pages are upstream public HTML assets and load this
+  // browser runtime directly; keeping the .js URL preserves route parity.
+  "apps/landing-page/public/community/_site-nav.js",
   // PostCSS loads Tailwind through a web-local .mjs compatibility config entry.
   "apps/web/postcss.config.mjs",
   // Subprocess fixture executed directly through spawn() to cover Vela CLI login behavior.
@@ -1275,7 +1278,7 @@ for (const check of checks) {
     results.push(await check.run());
   } catch (error) {
     console.error(`Guard check failed unexpectedly: ${check.name}`);
-    console.error(error);
+    console.error(error instanceof Error ? error : String(error));
     results.push(false);
   }
 }

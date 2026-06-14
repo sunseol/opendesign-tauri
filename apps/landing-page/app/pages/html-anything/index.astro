@@ -70,27 +70,35 @@ const OPEN_SOURCE_OFFICIAL_TITLE: Record<LandingLocaleCode, string> = {
  * Imagery is hosted on the same Cloudflare R2 bucket as the rest of the
  * marketing site (`open-design-static`, served via `static.open-design.ai`).
  * Each `imageAsset()` call routes through `cdn-cgi/image/` so the browser
- * gets a `format=auto` AVIF / WebP variant at the requested width.
+ * gets a `format=auto` AVIF / WebP variant at the requested width — same
+ * pipeline used by the homepage hero. The source PNGs live under
+ * `landing/assets/html-anything/`; upload them with the
+ * `~/Downloads/r2-html-anything-orig/upload.sh` script that ships alongside
+ * this PR.
  *
- * Banner uses an explicit srcset because it is the LCP element on this page;
- * the screenshots below are `<LazyImg>`-loaded at a single width since they
- * only ever render at one viewport-fitted size.
+ * Banner uses an explicit srcset (mirroring `heroImageSrcset`) because
+ * it's the LCP element on this page; the screenshots below are
+ * `<LazyImg>`-loaded at a single width since they only ever render at
+ * one viewport-fitted size.
  */
 const banner = imageAsset('html-anything/banner.png', { width: 2400, quality: 82 });
-const bannerSrcset = imageAssetSrcset('html-anything/banner.png', [768, 1280, 1920, 2400]);
+const bannerSrcset = imageAssetSrcset(
+  'html-anything/banner.png',
+  [768, 1280, 1920, 2400],
+);
 const shots = {
-  entry: imageAsset('html-anything/01-entry-view.png', { width: 1600, quality: 82 }),
-  picker: imageAsset('html-anything/02-template-picker.png', { width: 1600, quality: 82 }),
-  stream: imageAsset('html-anything/03-streaming.png', { width: 1600, quality: 82 }),
-  exportUI: imageAsset('html-anything/04-export.png', { width: 1600, quality: 82 }),
-  deck: imageAsset('html-anything/05-deck-mode.png', { width: 1600, quality: 82 }),
-  hyper: imageAsset('html-anything/06-hyperframes.png', { width: 1600, quality: 82 }),
+  entry:    imageAsset('html-anything/01-entry-view.png',     { width: 1600, quality: 82 }),
+  picker:   imageAsset('html-anything/02-template-picker.png',{ width: 1600, quality: 82 }),
+  stream:   imageAsset('html-anything/03-streaming.png',      { width: 1600, quality: 82 }),
+  exportUI: imageAsset('html-anything/04-export.png',         { width: 1600, quality: 82 }),
+  deck:     imageAsset('html-anything/05-deck-mode.png',      { width: 1600, quality: 82 }),
+  hyper:    imageAsset('html-anything/06-hyperframes.png',    { width: 1600, quality: 82 }),
 };
 const skillShots = {
-  guizang: imageAsset('html-anything/skills/deck-guizang-editorial.png', { width: 1280, quality: 82 }),
-  swiss: imageAsset('html-anything/skills/deck-swiss-international.png', { width: 1280, quality: 82 }),
-  parchment: imageAsset('html-anything/skills/doc-kami-parchment.png', { width: 1280, quality: 82 }),
-  poster: imageAsset('html-anything/skills/magazine-poster.png', { width: 1280, quality: 82 }),
+  guizang:   imageAsset('html-anything/skills/deck-guizang-editorial.png',   { width: 1280, quality: 82 }),
+  swiss:     imageAsset('html-anything/skills/deck-swiss-international.png', { width: 1280, quality: 82 }),
+  parchment: imageAsset('html-anything/skills/doc-kami-parchment.png',       { width: 1280, quality: 82 }),
+  poster:    imageAsset('html-anything/skills/magazine-poster.png',          { width: 1280, quality: 82 }),
 };
 
 // Hardcoded snapshot — last manually verified date. Used as fallback
@@ -1050,7 +1058,7 @@ pnpm -F @html-anything/next dev
     </p>
     <p>
       <a class="ha-btn" href={href('/')}>{copy.visitOpenDesign}</a>
-      <a class="ha-btn" href={href('/skills/')} rel="noopener">{copy.browseSkills}</a>
+      <a class="ha-btn" href={href('/plugins/skills/')} rel="noopener">{copy.browseSkills}</a>
       <a class="ha-btn" href={HA_URL} rel="noopener">{copy.githubLink}</a>
     </p>
   </section>

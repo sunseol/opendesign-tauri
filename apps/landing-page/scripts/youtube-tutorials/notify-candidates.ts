@@ -213,7 +213,7 @@ export async function lastSuccessfulRunStart(): Promise<string | null> {
     .filter((r) => String(r.id) !== currentRunId)
     .map((r) => r.run_started_at ?? r.created_at)
     .sort();
-  return prior[prior.length - 1] ?? null;
+  return prior.length ? prior[prior.length - 1] : null;
 }
 
 type WindowResult = { since: string; reason: string } | { fail: string };

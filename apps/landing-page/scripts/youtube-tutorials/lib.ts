@@ -114,7 +114,7 @@ export async function readExistingVideoIds(dir = TUTORIALS_DIR): Promise<Set<str
     if (!f.endsWith('.md') || f.startsWith('_')) continue;
     const raw = await readFile(path.join(dir, f), 'utf8');
     const m = raw.match(/^youtubeId:\s*([\w-]{11})\s*$/m);
-    if (m?.[1]) ids.add(m[1]);
+    if (m) ids.add(m[1]);
   }
   return ids;
 }
@@ -169,7 +169,7 @@ async function callLLM(system: string, user: string, maxTokens = 1024): Promise<
 
 function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced?.[1] ?? text;
+  const candidate = fenced ? fenced[1] : text;
   const start = candidate.indexOf('{');
   const end = candidate.lastIndexOf('}');
   if (start === -1 || end === -1) throw new Error(`No JSON object in LLM output: ${text.slice(0, 200)}`);

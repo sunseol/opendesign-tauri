@@ -14,10 +14,15 @@ import '../../globals.css';
 import '../../sub-pages.css';
 
 // Localized routing only generates the `craft` and `blog` listing pages.
-// Detail pages (individual posts, craft items, and plugin entries) stay at
-// canonical English URLs to keep the static build bounded; the localized
-// chrome links straight to those canonical detail URLs.
+// Detail pages (individual posts, craft items, …) stay at canonical
+// English URLs to keep the static build bounded; the localized chrome
+// links straight to those canonical detail URLs.
 export async function getStaticPaths() {
+  // The skills / systems / templates catalogs moved under `/plugins/*`.
+  // Their old localized listings are now 301'd by `public/_redirects`,
+  // so this catch-all only renders the localized `craft` and `blog`
+  // listings. Plugins itself is generated via short-code wrappers under
+  // `app/pages/[locale]/plugins/`, so it does NOT participate here.
   const paths = ['craft', 'blog'];
 
   return PREFIXED_LOCALES.flatMap((locale) =>
@@ -37,7 +42,6 @@ const [craft, posts] = await Promise.all([
   getCraftRecords(),
   getCollection('blog'),
 ]);
-
 // All cross-locale subpage links resolve to canonical (English) URLs.
 const href = (path: string) => path;
 const titleSuffix = 'Open Design';
@@ -85,4 +89,5 @@ const pageDescription = `Open Design ${routeRoot || 'landing'} page.`;
         <section class='catalog-grid'><ol>{craft.map((item, index) => <li class='catalog-row'><a href={href(`/craft/${item.slug}/`)}><span class='row-index'>{String(index + 1).padStart(2, '0')}</span><span class='row-body'><span class='row-name'>{item.name}</span><span class='row-desc'>{item.summary}</span></span></a></li>)}</ol></section>
       </>
     )}
+
   </Layout>

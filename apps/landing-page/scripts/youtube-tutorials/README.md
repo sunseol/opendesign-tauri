@@ -24,10 +24,6 @@ generate-selected.ts  (run by the maintainer / agent)
 The cron **never** generates entries or opens PRs on its own — selection is the
 human review step, done in Feishu before any content is written.
 
-In this Tauri fork, the scheduled workflow is disabled by default until
-`TUTORIALS_YOUTUBE_SYNC_ENABLED=true` and the YouTube, LLM, and Feishu secrets
-are intentionally configured.
-
 The same daily digest also lists **user submissions** so they enter the same
 review flow:
 

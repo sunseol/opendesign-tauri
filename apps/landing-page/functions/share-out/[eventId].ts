@@ -3,29 +3,29 @@ type KVNamespace = {
 };
 
 type PagesFunctionContext<Env> = {
-  readonly request: Request & { readonly cf?: Record<string, unknown> };
-  readonly params: Record<string, string | string[]>;
-  readonly env: Env;
+  request: Request & { cf?: Record<string, unknown> };
+  params: Record<string, string | string[]>;
+  env: Env;
   waitUntil(promise: Promise<unknown>): void;
 };
 
 type PagesFunction<Env> = (context: PagesFunctionContext<Env>) => Response | Promise<Response>;
 
 interface Env {
-  readonly SHARE_OUT_CLICK_EVENTS?: KVNamespace;
-  readonly SHARE_CLICK_SALT?: string;
+  SHARE_OUT_CLICK_EVENTS?: KVNamespace;
+  SHARE_CLICK_SALT?: string;
 }
 
 type ShareOutClickRecord = {
-  readonly eventId: string;
-  readonly lang: string;
-  readonly clickedAt: string;
-  readonly destination: string;
-  readonly destinationHost: string;
-  readonly referer: string | null;
-  readonly userAgentHash: string;
-  readonly country?: string;
-  readonly region?: string;
+  eventId: string;
+  lang: string;
+  clickedAt: string;
+  destination: string;
+  destinationHost: string;
+  referer: string | null;
+  userAgentHash: string;
+  country?: string;
+  region?: string;
 };
 
 const ALLOWED_DESTINATION_HOSTS = new Set([
@@ -45,8 +45,8 @@ function normalizeEventId(value: string): string {
 
 function normalizeLang(value: string | null): string {
   if (!value) return "en";
-  const normalized = value.toLowerCase().slice(0, 8);
-  return /^[a-z0-9-]+$/.test(normalized) ? normalized : "en";
+  const v = value.toLowerCase().slice(0, 8);
+  return /^[a-z0-9-]+$/.test(v) ? v : "en";
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -55,22 +55,16 @@ async function sha256Hex(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function parseDestination(rawTo: string): URL | null {
-  try {
-    return new URL(rawTo);
-  } catch (error) {
-    if (error instanceof TypeError) return null;
-    throw error;
-  }
-}
-
 function safeDestination(rawTo: string | null): string {
   if (!rawTo) return DEFAULT_DESTINATION;
-  const parsed = parseDestination(rawTo);
-  if (!parsed) return DEFAULT_DESTINATION;
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return DEFAULT_DESTINATION;
-  if (!ALLOWED_DESTINATION_HOSTS.has(parsed.hostname.toLowerCase())) return DEFAULT_DESTINATION;
-  return parsed.toString();
+  try {
+    const parsed = new URL(rawTo);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return DEFAULT_DESTINATION;
+    if (!ALLOWED_DESTINATION_HOSTS.has(parsed.hostname.toLowerCase())) return DEFAULT_DESTINATION;
+    return parsed.toString();
+  } catch {
+    return DEFAULT_DESTINATION;
+  }
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -84,13 +78,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const url = new URL(request.url);
   const destination = safeDestination(url.searchParams.get("to"));
   const lang = normalizeLang(url.searchParams.get("lang"));
+
   const userAgent = request.headers.get("user-agent") || "";
   const ip = request.headers.get("cf-connecting-ip") || "";
   const salt = context.env.SHARE_CLICK_SALT || "open-design-share";
   const clickedAt = new Date().toISOString();
   const userAgentHash = await sha256Hex(`${salt}:${ip}:${userAgent}`);
-  const cf = request.cf ?? {};
-  const destinationHost = new URL(destination).hostname;
+  const cf = request.cf || {};
+  const destinationHost = (() => {
+    try {
+      return new URL(destination).hostname;
+    } catch {
+      return "unknown";
+    }
+  })();
+
   const record: ShareOutClickRecord = {
     eventId,
     lang,
@@ -105,7 +107,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   if (context.env.SHARE_OUT_CLICK_EVENTS) {
     const key = `share-out:${eventId}:${clickedAt}:${crypto.randomUUID()}`;
-    context.waitUntil(context.env.SHARE_OUT_CLICK_EVENTS.put(key, JSON.stringify(record)));
+    context.waitUntil(
+      context.env.SHARE_OUT_CLICK_EVENTS.put(key, JSON.stringify(record)),
+    );
   } else {
     console.log("share_out_click", JSON.stringify(record));
   }

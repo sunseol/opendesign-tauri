@@ -11,8 +11,10 @@ async function readLandingFile(relativePath: string): Promise<string> {
   return readFile(join(root, relativePath), 'utf8');
 }
 
-test('PostHog head html is gated by the landing build env', () => {
-  assert.equal(posthogHeadHtml(undefined, undefined), '');
+test('PostHog head html uses deploy defaults and accepts landing env overrides', () => {
+  const fallbackHtml = posthogHeadHtml(undefined, undefined);
+  assert.match(fallbackHtml, /posthog\.init\("phc_/);
+  assert.match(fallbackHtml, /api_host: "https:\/\/us\.i\.posthog\.com"/);
 
   const html = posthogHeadHtml(' phc_test ', ' https://posthog.example// ');
   assert.match(html, /posthog\.init\("phc_test"/);
@@ -41,14 +43,17 @@ test('landing shells mount analytics components', async () => {
     readLandingFile('app/pages/index.astro'),
     readLandingFile('app/_components/sub-page-layout.astro'),
     readLandingFile('app/pages/plugins/index.astro'),
-    readLandingFile('app/pages/plugins/[...slug].astro'),
+    readLandingFile('app/pages/plugins/[slug]/index.astro'),
     readLandingFile('app/pages/download/index.astro'),
     readLandingFile('app/_components/site-footer.astro'),
   ]);
 
-  for (const source of [home, subLayout, pluginIndex, pluginDetail]) {
+  for (const source of [home, subLayout]) {
     assert.match(source, /GoogleAnalytics/);
     assert.match(source, /PostHogAnalytics/);
+  }
+  for (const source of [pluginIndex, pluginDetail]) {
+    assert.match(source, /<Layout/);
   }
 
   assert.match(downloadPage, /download_click/);

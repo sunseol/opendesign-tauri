@@ -40,19 +40,15 @@ describe('github-submissions', () => {
     stub([ISSUE, PR]);
     const issues = await fetchSubmissionIssues('tok', 'nexu-io/open-design');
     assert.equal(issues.length, 1);
-    const issue = issues[0];
-    assert.ok(issue);
-    assert.equal(issue.number, 12);
-    assert.equal(issue.author, 'alice');
-    assert.equal(issue.videoUrl, 'https://youtu.be/dQw4w9WgXcQ');
+    assert.equal(issues[0].number, 12);
+    assert.equal(issues[0].author, 'alice');
+    assert.equal(issues[0].videoUrl, 'https://youtu.be/dQw4w9WgXcQ');
   });
 
   it('fetchSubmissionIssues leaves videoUrl undefined when none in body', async () => {
     stub([{ ...ISSUE, body: 'no link here' }]);
     const issues = await fetchSubmissionIssues('tok', 'nexu-io/open-design');
-    const issue = issues[0];
-    assert.ok(issue);
-    assert.equal(issue.videoUrl, undefined);
+    assert.equal(issues[0].videoUrl, undefined);
   });
 
   it('extracts shorts and mobile-watch URLs (canonicalized to youtu.be)', async () => {
@@ -73,9 +69,7 @@ describe('github-submissions', () => {
     ]) {
       stub([{ ...ISSUE, body }]);
       const issues = await fetchSubmissionIssues('tok', 'nexu-io/open-design');
-      const issue = issues[0];
-      assert.ok(issue);
-      assert.equal(issue.videoUrl, undefined, body);
+      assert.equal(issues[0].videoUrl, undefined, body);
     }
   });
 
@@ -104,9 +98,7 @@ describe('github-submissions', () => {
     stub([ISSUE, PR]);
     const prs = await fetchContributionPRs('tok', 'nexu-io/open-design');
     assert.equal(prs.length, 1);
-    const pr = prs[0];
-    assert.ok(pr);
-    assert.equal(pr.number, 34);
-    assert.equal(pr.author, 'bob');
+    assert.equal(prs[0].number, 34);
+    assert.equal(prs[0].author, 'bob');
   });
 });

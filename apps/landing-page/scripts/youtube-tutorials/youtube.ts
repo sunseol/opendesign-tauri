@@ -20,7 +20,7 @@ export async function loadYoutubeKey(): Promise<string> {
     const raw = await readFile(path.join(os.homedir(), '.youtube', '.env'), 'utf8');
     for (const line of raw.split(/\r?\n/)) {
       const m = line.match(/^\s*YOUTUBE_API_KEY\s*=\s*(.+?)\s*$/);
-      if (m?.[1]) return m[1].replace(/^["']|["']$/g, '');
+      if (m) return m[1].replace(/^["']|["']$/g, '');
     }
   } catch {
     /* fall through */
@@ -97,9 +97,7 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise
   async function worker(): Promise<void> {
     while (next < items.length) {
       const i = next++;
-      const item = items[i];
-      if (item === undefined) continue;
-      out[i] = await fn(item);
+      out[i] = await fn(items[i]);
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));

@@ -2,6 +2,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  pluginSlug,
+  pluginDetailPath,
+  pluginPreviewPath,
+} from './_lib/plugin-slug';
+import {
   DEFAULT_LOCALE,
   getLandingUiCopy,
   getLocalizedString,
@@ -67,8 +72,6 @@ export type PublicPluginPreview = {
   type: 'html' | 'image' | 'video';
   label: string;
   poster: string | undefined;
-  video: string | undefined;
-  holdMs: number | undefined;
   frameHref: string | undefined;
   localHtmlPath: string | undefined;
 };
@@ -107,7 +110,6 @@ export type PublicPluginEntry = {
 
 const REPO = 'https://github.com/nexu-io/open-design';
 const RAW_REPO = 'https://raw.githubusercontent.com/nexu-io/open-design/main';
-const PLUGIN_PREVIEWS_BASE_URL = 'https://repo-assets.open-design.ai/plugin-previews';
 const findRepoRoot = () => {
   const candidates = [
     process.cwd(),
@@ -128,13 +130,6 @@ const findRepoRoot = () => {
 const REPO_ROOT = findRepoRoot();
 const REGISTRY_ROOT = path.join(REPO_ROOT, 'plugins', 'registry');
 const OFFICIAL_PLUGINS_ROOT = path.join(REPO_ROOT, 'plugins', '_official');
-const BAKED_PREVIEW_MANIFEST_ROOTS = [
-  path.resolve(process.cwd(), 'data/plugin-previews/manifest.json'),
-  path.resolve(process.cwd(), '../../data/plugin-previews/manifest.json'),
-  path.resolve(
-    fileURLToPath(new URL('../../../data/plugin-previews/manifest.json', import.meta.url)),
-  ),
-] as const;
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -181,18 +176,6 @@ const titleize = (value: string) =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-
-const slugSegment = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'plugin';
-
-const detailHrefFor = (id: string) =>
-  `/plugins/${id.split('/').map(slugSegment).join('/')}/`;
-
-const previewHrefFor = (id: string) =>
-  `/plugins/previews/${id.split('/').map(slugSegment).join('/')}/`;
 
 const sourceUrlFromSource = (source: string): string | undefined => {
   const match = /^github:([^/]+)\/([^@]+)@([^/]+)\/(.+)$/.exec(source);
@@ -258,80 +241,23 @@ const canRenderHtmlPreview = (filePath: string) => {
   }
 };
 
-let cachedBakedPreviews:
-  | Map<string, { video: string; poster: string; holdMs: number | undefined }>
-  | undefined;
-
-const bakedPreviews = () => {
-  if (cachedBakedPreviews) {
-    return cachedBakedPreviews;
-  }
-  const map = new Map<string, { video: string; poster: string; holdMs: number | undefined }>();
-  const manifestPath = BAKED_PREVIEW_MANIFEST_ROOTS.find((filePath) => existsSync(filePath));
-  if (manifestPath) {
-    const raw = readJson<{
-      previews?: Record<
-        string,
-        { video?: unknown; poster?: unknown; holdMs?: unknown; durationMs?: unknown }
-      >;
-    }>(manifestPath);
-    for (const [id, preview] of Object.entries(raw?.previews ?? {})) {
-      const video = asString(preview.video);
-      const poster = asString(preview.poster);
-      const rawHoldMs = typeof preview.holdMs === 'number' ? preview.holdMs : undefined;
-      const durationMs = typeof preview.durationMs === 'number' ? preview.durationMs : undefined;
-      if (video && poster) {
-        map.set(id, {
-          video: `${PLUGIN_PREVIEWS_BASE_URL}/${video}`,
-          poster: `${PLUGIN_PREVIEWS_BASE_URL}/${poster}`,
-          holdMs:
-            rawHoldMs != null && rawHoldMs > 0 && durationMs != null && durationMs > rawHoldMs
-              ? rawHoldMs
-              : undefined,
-        });
-      }
-    }
-  }
-  cachedBakedPreviews = map;
-  return map;
-};
-
 const previewFrom = (
   pluginDir: string | undefined,
   id: string,
   rawPreview: unknown,
   locale: LandingLocaleCode = DEFAULT_LOCALE,
-  bakedPreviewId?: string,
 ): PublicPluginPreview | undefined => {
   const preview = asRecord(rawPreview);
   const rawType = asString(preview?.type);
   const poster = asString(preview?.poster);
-  const authoredVideo = asString(preview?.video);
   const entry = asString(preview?.entry);
   const url = asString(preview?.url);
-  const baked = authoredVideo ? undefined : bakedPreviews().get(bakedPreviewId ?? id);
-  const video = authoredVideo ?? baked?.video;
-  const resolvedPoster = poster ?? baked?.poster;
 
-  if (video) {
-    return {
-      type: 'video',
-      label: previewLabelFor('video', locale),
-      poster: resolvedPoster,
-      video,
-      holdMs: authoredVideo ? undefined : baked?.holdMs,
-      frameHref: undefined,
-      localHtmlPath: undefined,
-    };
-  }
-
-  if (rawType === 'image' || (!rawType && resolvedPoster)) {
+  if (rawType === 'image' || (!rawType && poster)) {
     return {
       type: 'image',
       label: previewLabelFor('image', locale),
-      poster: resolvedPoster,
-      video: undefined,
-      holdMs: undefined,
+      poster,
       frameHref: undefined,
       localHtmlPath: undefined,
     };
@@ -341,9 +267,7 @@ const previewFrom = (
     return {
       type: 'video',
       label: previewLabelFor('video', locale),
-      poster: resolvedPoster,
-      video: undefined,
-      holdMs: undefined,
+      poster,
       frameHref: undefined,
       localHtmlPath: undefined,
     };
@@ -354,14 +278,12 @@ const previewFrom = (
       pluginDir && entry ? localPluginPath(pluginDir, entry) : undefined;
     if (localHtmlPath) {
       const frameHref = canRenderHtmlPreview(localHtmlPath)
-        ? previewHrefFor(id)
+        ? pluginPreviewPath(id)
         : undefined;
       return {
         type: 'html',
         label: previewLabelFor('html', locale),
-        poster: resolvedPoster,
-        video: undefined,
-        holdMs: undefined,
+        poster,
         frameHref,
         localHtmlPath: frameHref ? localHtmlPath : undefined,
       };
@@ -372,9 +294,7 @@ const previewFrom = (
     return {
       type: 'html',
       label: previewLabelFor('html', locale),
-      poster: resolvedPoster,
-      video: undefined,
-      holdMs: undefined,
+      poster,
       frameHref: url,
       localHtmlPath: undefined,
     };
@@ -461,7 +381,7 @@ const entryFromMarketplace = (
   const capabilities = asStringArray(rawEntry.capabilitiesSummary);
   const version = asString(rawEntry.version) ?? '0.1.0';
   const publisher = publisherLabel(rawEntry.publisher, locale);
-  const detailHref = detailHrefFor(id);
+  const detailHref = pluginDetailPath(id);
   const mode = asString(rawEntry.mode);
   const taskKind = asString(rawEntry.taskKind);
   const surface = undefined;
@@ -493,7 +413,7 @@ const entryFromMarketplace = (
 
   return {
     id,
-    slug: id.split('/').map(slugSegment).join('/'),
+    slug: pluginSlug(id),
     title,
     description,
     version,
@@ -611,11 +531,11 @@ const officialEntryFromManifest = (
   const od = asRecord(manifest?.od) as RawOdMetadata | undefined;
   const capabilities = asStringArray(od?.capabilities);
   const tags = asStringArray(manifest?.tags);
-  const detailHref = detailHrefFor(id);
+  const detailHref = pluginDetailPath(id);
   const mode = asString(od?.mode);
   const taskKind = asString(od?.taskKind);
   const surface = asString(od?.surface);
-  const preview = previewFrom(pluginDir, id, od?.preview, locale, pluginName);
+  const preview = previewFrom(pluginDir, id, od?.preview, locale);
   const rawTitle =
     explicitLocalizedString(
       manifest?.title as Parameters<typeof explicitLocalizedString>[0],
@@ -646,7 +566,7 @@ const officialEntryFromManifest = (
 
   return {
     id,
-    slug: id.split('/').map(slugSegment).join('/'),
+    slug: pluginSlug(id),
     title,
     description,
     version: asString(manifest?.version) ?? '0.1.0',
@@ -699,9 +619,19 @@ const loadBundledOfficialEntries = (
     .map((manifestPath) => officialEntryFromManifest(manifestPath, locale))
     .filter((entry): entry is PublicPluginEntry => Boolean(entry));
 
+const SHOULD_CACHE_PUBLIC_PLUGINS = import.meta.env?.PROD === true;
+const publicPluginsCache = new Map<LandingLocaleCode, ReadonlyArray<PublicPluginEntry>>();
+
 export const getPublicPlugins = (
   locale: LandingLocaleCode = DEFAULT_LOCALE,
 ): PublicPluginEntry[] => {
+  if (SHOULD_CACHE_PUBLIC_PLUGINS) {
+    const cached = publicPluginsCache.get(locale);
+    if (cached) {
+      return [...cached];
+    }
+  }
+
   const byId = new Map<string, PublicPluginEntry>();
 
   for (const entry of loadRegistryEntries(locale)) {
@@ -742,7 +672,7 @@ export const getPublicPlugins = (
     }
   }
 
-  return [...byId.values()].sort((left, right) => {
+  const plugins = [...byId.values()].sort((left, right) => {
     const sourceOrder = (entry: PublicPluginEntry) =>
       entry.registryId === 'official' ? 0 : entry.registryId === 'community' ? 1 : 2;
     const order = sourceOrder(left) - sourceOrder(right);
@@ -751,6 +681,13 @@ export const getPublicPlugins = (
     }
     return left.title.localeCompare(right.title, locale);
   });
+
+  if (!SHOULD_CACHE_PUBLIC_PLUGINS) {
+    return plugins;
+  }
+
+  publicPluginsCache.set(locale, plugins);
+  return [...plugins];
 };
 
 export const getRegistryCounts = (plugins = getPublicPlugins()) => ({
