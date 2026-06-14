@@ -170,6 +170,7 @@ const AUTO_DESIGN_SYSTEM_OPTION_ID = '__auto-design-system__';
 const LEGACY_AUTO_DESIGN_SYSTEM_TITLES = new Set(['自动选择风格参考']);
 
 interface Props {
+  isActive?: boolean;
   projects: Project[];
   projectsLoading?: boolean;
   designSystems?: DesignSystemSummary[];
@@ -195,6 +196,7 @@ const EMPTY_CONNECTORS: ConnectorDetail[] = [];
 const EMPTY_PROMPT_TEMPLATES: PromptTemplateSummary[] = [];
 
 export function HomeView({
+  isActive = true,
   projects,
   projectsLoading,
   designSystems = EMPTY_DESIGN_SYSTEMS,
@@ -1303,6 +1305,7 @@ export function HomeView({
     <div className="home-view" data-testid="home-view" ref={homeViewRef}>
       <HomeHero
         ref={inputRef}
+        active={isActive}
         prompt={prompt}
         onPromptChange={handlePromptChange}
         onSubmit={submit}

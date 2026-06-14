@@ -56,6 +56,7 @@ export interface HomeHeroSubmitHandler {
 }
 
 interface Props {
+  active?: boolean;
   prompt: string;
   onPromptChange: (value: string) => void;
   onSubmit: HomeHeroSubmitHandler;
@@ -140,6 +141,7 @@ interface HomeMentionSection {
 
 export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero(
   {
+    active = true,
     prompt,
     onPromptChange,
     onSubmit,
@@ -244,7 +246,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         : [],
     [connectorOptions, mentionActive, mentionQuery],
   );
-  const pickerOpen = mentionActive;
+  const pickerOpen = active && mentionActive;
   const tabs: Array<{ id: HomeMentionTab; label: string; count: number }> = [
     {
       id: 'all',
@@ -458,6 +460,12 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
   useEffect(() => {
     if (!pickerOpen) setHoveredPlugin(null);
   }, [pickerOpen]);
+
+  useEffect(() => {
+    if (active) return;
+    setMentionTab('all');
+    setSelectedIndex(0);
+  }, [active]);
 
   useEffect(() => {
     setOpenInlineInputName(null);

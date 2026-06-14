@@ -608,6 +608,7 @@ export function EntryShell({
           >
             {view === 'home' ? (
               <HomeView
+                isActive={view === 'home'}
                 projects={projects}
                 projectsLoading={projectsLoading}
                 designSystems={designSystems}
