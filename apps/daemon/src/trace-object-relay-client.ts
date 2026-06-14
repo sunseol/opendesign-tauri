@@ -24,7 +24,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 function inferRelayUrl(env: NodeJS.ProcessEnv): string | null {
   const explicit = env.OPEN_DESIGN_OBJECT_RELAY_URL?.trim();
-  if (explicit) return explicit.replace(/\/+$/, '');
+  if (explicit) return normalizeObjectBatchUrl(explicit);
 
   const rawTelemetryRelayUrl = env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim();
   if (!rawTelemetryRelayUrl) return null;
@@ -40,22 +40,38 @@ function inferRelayUrl(env: NodeJS.ProcessEnv): string | null {
   }
 }
 
-function inferAuthorizeUrl(batchUrl: string): string {
+function normalizeObjectBatchUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (!/\/api\/objects\/batch\/?$/u.test(url.pathname)) return null;
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return /\/api\/objects\/batch\/?$/u.test(trimmed) ? trimmed : null;
+  }
+}
+
+function inferAuthorizeUrl(batchUrl: string): string | null {
   try {
     const url = new URL(batchUrl);
+    if (!/\/api\/objects\/batch\/?$/u.test(url.pathname)) return null;
     url.pathname = url.pathname.replace(/\/api\/objects\/batch\/?$/u, '/api/objects/authorize');
     return url.toString().replace(/\/+$/, '');
   } catch {
-    return batchUrl.replace(/\/api\/objects\/batch\/?$/u, '/api/objects/authorize');
+    const derived = batchUrl.replace(/\/api\/objects\/batch\/?$/u, '/api/objects/authorize');
+    return derived === batchUrl ? null : derived;
   }
 }
 
 export function readObjectRelayConfig(env: NodeJS.ProcessEnv): ObjectRelayConfig | null {
   const url = inferRelayUrl(env);
   if (!url) return null;
+  const authorizeUrl = inferAuthorizeUrl(url);
+  if (!authorizeUrl) return null;
   return {
     url,
-    authorizeUrl: inferAuthorizeUrl(url),
+    authorizeUrl,
     timeoutMs: parsePositiveInt(
       env.OPEN_DESIGN_OBJECT_RELAY_TIMEOUT_MS ?? env.OPEN_DESIGN_TELEMETRY_TIMEOUT_MS,
       10_000,

@@ -23,6 +23,20 @@ Local development can bypass the relay by setting direct `LANGFUSE_PUBLIC_KEY`
 and `LANGFUSE_SECRET_KEY` environment variables for the daemon. Packaged
 release config should use only `OPEN_DESIGN_TELEMETRY_RELAY_URL`.
 
+## Unconfigured Local Behavior
+
+Langfuse and PostHog are optional for fork users. When neither
+`OPEN_DESIGN_TELEMETRY_RELAY_URL` nor direct Langfuse credentials are present,
+the daemon drops remote trace delivery after one warning and continues the run.
+Trace object manifests are not uploaded unless metrics and content telemetry are
+enabled and a valid relay endpoint is configured.
+
+Product analytics behaves the same way: missing PostHog configuration disables
+remote event delivery, but does not disable local runs, artifact generation, or
+diagnostics export. Users can still export local daemon, web, and packaged-app
+logs from Settings or `od diagnostics export` without configuring any hosted
+observability service.
+
 ## Abuse controls
 
 The Worker requires the Open Design telemetry marker header, validates the

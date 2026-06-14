@@ -4,6 +4,30 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildTraceObjectManifests } from '../src/trace-object-manifest.js';
+import { readObjectRelayConfig } from '../src/trace-object-relay-client.js';
+
+describe('readObjectRelayConfig', () => {
+  it('derives authorize endpoint from an explicit object batch relay URL', () => {
+    expect(readObjectRelayConfig({
+      OPEN_DESIGN_OBJECT_RELAY_URL: 'https://telemetry.open-design.ai/api/objects/batch//',
+    })).toMatchObject({
+      url: 'https://telemetry.open-design.ai/api/objects/batch',
+      authorizeUrl: 'https://telemetry.open-design.ai/api/objects/authorize',
+    });
+  });
+
+  it('rejects explicit object relay URLs that are not batch endpoints', () => {
+    expect(readObjectRelayConfig({
+      OPEN_DESIGN_OBJECT_RELAY_URL: 'https://telemetry.open-design.ai/api/langfuse',
+    })).toBeNull();
+  });
+
+  it('rejects telemetry relay URLs that are not Langfuse ingestion endpoints', () => {
+    expect(readObjectRelayConfig({
+      OPEN_DESIGN_TELEMETRY_RELAY_URL: 'https://telemetry.open-design.ai/health',
+    })).toBeNull();
+  });
+});
 
 describe('buildTraceObjectManifests', () => {
   let dataDir: string;
