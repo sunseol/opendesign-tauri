@@ -77,6 +77,87 @@ const ZH_TW_TASKS_SURFACE_KEYS: ReadonlyArray<keyof Dict> = [
   'tasks.status.pausedManual',
   'tasks.viewProgress',
 ];
+const ZH_TW_TASKS_SAMPLE_KEYS: ReadonlyArray<keyof Dict> = [
+  'tasks.sample.candidate.artifactMeta',
+  'tasks.sample.candidate.body1',
+  'tasks.sample.candidate.body2',
+  'tasks.sample.candidate.body3',
+  'tasks.sample.candidate.meta',
+  'tasks.sample.candidate.output',
+  'tasks.sample.candidate.pattern',
+  'tasks.sample.candidate.preview',
+  'tasks.sample.candidate.runtime',
+  'tasks.sample.candidate.status',
+  'tasks.sample.candidate.title',
+  'tasks.sample.candidate.trigger',
+  'tasks.sample.mcp.artifactMeta',
+  'tasks.sample.mcp.body1',
+  'tasks.sample.mcp.body2',
+  'tasks.sample.mcp.body3',
+  'tasks.sample.mcp.body4',
+  'tasks.sample.mcp.body5',
+  'tasks.sample.mcp.meta',
+  'tasks.sample.mcp.output',
+  'tasks.sample.mcp.pattern',
+  'tasks.sample.mcp.preview',
+  'tasks.sample.mcp.runtime',
+  'tasks.sample.mcp.status',
+  'tasks.sample.mcp.title',
+  'tasks.sample.mcp.trigger',
+  'tasks.sample.meeting.artifactMeta',
+  'tasks.sample.meeting.body1',
+  'tasks.sample.meeting.body2',
+  'tasks.sample.meeting.body3',
+  'tasks.sample.meeting.meta',
+  'tasks.sample.meeting.output',
+  'tasks.sample.meeting.pattern',
+  'tasks.sample.meeting.preview',
+  'tasks.sample.meeting.runtime',
+  'tasks.sample.meeting.status',
+  'tasks.sample.meeting.title',
+  'tasks.sample.meeting.trigger',
+  'tasks.sample.orbit.artifactMetaDisabled',
+  'tasks.sample.orbit.artifactMetaEnabled',
+  'tasks.sample.orbit.body1',
+  'tasks.sample.orbit.body2',
+  'tasks.sample.orbit.body3',
+  'tasks.sample.orbit.metaDisabled',
+  'tasks.sample.orbit.metaEnabled',
+  'tasks.sample.orbit.output',
+  'tasks.sample.orbit.pattern',
+  'tasks.sample.orbit.previewDisabled',
+  'tasks.sample.orbit.previewEnabled',
+  'tasks.sample.orbit.runtime',
+  'tasks.sample.orbit.title',
+  'tasks.sample.orbit.triggerDisabled',
+  'tasks.sample.orbit.triggerEnabled',
+  'tasks.sample.pr.artifactMeta',
+  'tasks.sample.pr.body1',
+  'tasks.sample.pr.body2',
+  'tasks.sample.pr.body3',
+  'tasks.sample.pr.meta',
+  'tasks.sample.pr.output',
+  'tasks.sample.pr.pattern',
+  'tasks.sample.pr.preview',
+  'tasks.sample.pr.runtime',
+  'tasks.sample.pr.status',
+  'tasks.sample.pr.title',
+  'tasks.sample.pr.trigger',
+  'tasks.sample.weekly.artifactMeta',
+  'tasks.sample.weekly.body1',
+  'tasks.sample.weekly.body2',
+  'tasks.sample.weekly.body3',
+  'tasks.sample.weekly.body4',
+  'tasks.sample.weekly.body5',
+  'tasks.sample.weekly.meta',
+  'tasks.sample.weekly.output',
+  'tasks.sample.weekly.pattern',
+  'tasks.sample.weekly.preview',
+  'tasks.sample.weekly.runtime',
+  'tasks.sample.weekly.status',
+  'tasks.sample.weekly.title',
+  'tasks.sample.weekly.trigger',
+];
 
 describe('zh-TW fallback parity', () => {
   it('keeps recent project and project instruction copy translated instead of falling back to English', () => {
@@ -99,6 +180,12 @@ describe('zh-TW fallback parity', () => {
 
   it('keeps automation task surface copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_TASKS_SURFACE_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps automation sample card copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_TASKS_SAMPLE_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
