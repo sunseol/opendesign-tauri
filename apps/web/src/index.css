@@ -2008,6 +2008,7 @@ a.avatar-item:visited {
 .composer-textarea-layer {
   position: relative;
   min-height: 88px;
+  font-size: 13px;
 }
 .composer-input-overlay {
   position: absolute;
@@ -2017,11 +2018,11 @@ a.avatar-item:visited {
   padding: 0;
   color: var(--text);
   font: inherit;
-  line-height: normal;
+  line-height: inherit;
   pointer-events: none;
   white-space: pre-wrap;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .composer-input-overlay-inner {
   min-height: 100%;
@@ -2039,14 +2040,12 @@ a.avatar-item:visited {
 .composer-inline-mention {
   display: inline;
   max-width: none;
-  margin: 0;
-  padding: 0;
+  margin: 0 -1px;
+  padding: 0 1px;
   border: 0;
   border-radius: 5px;
   background: color-mix(in srgb, var(--m-hue, var(--accent)) 8%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--m-hue, var(--accent)) 12%, transparent);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
   color: color-mix(in srgb, var(--m-hue, var(--accent)) 62%, var(--text));
   font: inherit;
   font-size: inherit;
@@ -26610,7 +26609,6 @@ body.desktop-pet-shell .pet-task-item {
 .app .composer textarea {
   min-height: 88px;
   max-height: min(184px, 34vh);
-  font-size: 13px;
 }
 .app .composer-row {
   min-height: 32px;
