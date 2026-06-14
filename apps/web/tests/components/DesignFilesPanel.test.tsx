@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
+import { I18nProvider } from '../../src/i18n';
 import type { ProjectFile, ProjectFileKind, ProjectFolder } from '../../src/types';
 
 function extForKind(kind: ProjectFileKind): string {
@@ -368,6 +369,42 @@ describe('DesignFilesPanel folder navigation', () => {
     await waitFor(() => {
       expect(onCreateFolder).toHaveBeenCalledWith('assets/brand');
     });
+  });
+
+  it('localizes folder controls in the Design Files panel', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(
+      <I18nProvider initial="ko">
+        <DesignFilesPanel
+          projectId="test-project"
+          files={[]}
+          folders={[folder('assets')]}
+          liveArtifacts={[]}
+          onRefreshFiles={vi.fn()}
+          onOpenFile={vi.fn()}
+          onOpenLiveArtifact={vi.fn()}
+          onRenameFile={vi.fn()}
+          onDeleteFile={vi.fn()}
+          onDeleteFiles={vi.fn()}
+          onUpload={vi.fn()}
+          onUploadFiles={vi.fn()}
+          onPaste={vi.fn()}
+          onNewSketch={vi.fn()}
+          onCreateFolder={vi.fn()}
+          onDeleteFolder={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: '새 폴더' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'assets 폴더 삭제' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: '새 폴더' }));
+    expect(screen.getByRole('textbox', { name: '폴더 이름' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '폴더 만들기' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'assets 폴더 삭제' }));
+    expect(confirmSpy).toHaveBeenCalledWith('"assets" 폴더를 삭제할까요?');
   });
 
   it('requests persisted folder deletion by folder path', async () => {

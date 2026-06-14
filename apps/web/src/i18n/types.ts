@@ -1746,6 +1746,15 @@ export interface Dict {
   'designFiles.sectionSketches': string;
   'designFiles.sectionLiveArtifacts': string;
   'designFiles.sectionOther': string;
+  'designFiles.sectionFolders': string;
+  'designFiles.kindFolder': string;
+  'designFiles.newFolder': string;
+  'designFiles.folderName': string;
+  'designFiles.createFolder': string;
+  'designFiles.deleteFolder': string;
+  'designFiles.deleteFolderAria': string;
+  'designFiles.deleteFolderConfirm': string;
+  'designFiles.deleteFolderFailed': string;
   'designFiles.modifiedToday': string;
   'designFiles.modifiedYesterday': string;
   'designFiles.modifiedPrevious7Days': string;

@@ -558,12 +558,12 @@ export function DesignFilesPanel({
 
   async function handleDeleteFolder(path: string) {
     if (!onDeleteFolder || deletingFolder) return;
-    const confirmed = window.confirm(`Delete folder "${path}"?`);
+    const confirmed = window.confirm(t('designFiles.deleteFolderConfirm', { path }));
     if (!confirmed) return;
     setDeletingFolder(path);
     try {
       const deleted = await onDeleteFolder(path);
-      if (!deleted) alert(`Could not delete folder "${path}".`);
+      if (!deleted) alert(t('designFiles.deleteFolderFailed', { path }));
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       alert(error.message);
@@ -615,7 +615,7 @@ export function DesignFilesPanel({
           </button>
         </td>
         <td className="df-cell-kind df-cell-openable">
-          <span className="df-kind-label">Folder</span>
+          <span className="df-kind-label">{t('designFiles.kindFolder')}</span>
         </td>
         <td className="df-cell-time df-cell-openable">{relativeTime(dir.mtime, t)}</td>
         <td className="df-cell-menu">
@@ -624,8 +624,8 @@ export function DesignFilesPanel({
               type="button"
               className="df-row-menu df-folder-delete"
               data-testid={`design-folder-delete-${dir.path}`}
-              aria-label={`Delete folder ${dir.path}`}
-              title="Delete folder"
+              aria-label={t('designFiles.deleteFolderAria', { path: dir.path })}
+              title={t('designFiles.deleteFolder')}
               disabled={deletingFolder === dir.path}
               onClick={(event) => {
                 event.stopPropagation();
@@ -646,7 +646,7 @@ export function DesignFilesPanel({
       <tr className="df-section-row" key="folders-label">
         <td colSpan={6}>
           <div className="df-section-label">
-            <span>Folders</span>
+            <span>{t('designFiles.sectionFolders')}</span>
             <span className="df-section-count">{dirsAtCurrentDir.length}</span>
           </div>
         </td>
@@ -971,10 +971,10 @@ export function DesignFilesPanel({
           <button
             type="button"
             onClick={() => setCreatingFolder({ draft: '', saving: false })}
-            title="New folder"
+            title={t('designFiles.newFolder')}
           >
             <Icon name="folder" size={13} />
-            <span>New folder</span>
+            <span>{t('designFiles.newFolder')}</span>
           </button>
         ) : null}
         <button
@@ -1188,7 +1188,7 @@ export function DesignFilesPanel({
               onSubmit={(event) => void handleCreateFolderSubmit(event)}
             >
               <label className="df-folder-create-field">
-                <span>Folder name</span>
+                <span>{t('designFiles.folderName')}</span>
                 <input
                   autoFocus
                   value={creatingFolder.draft}
@@ -1204,7 +1204,7 @@ export function DesignFilesPanel({
                   !folderPathFromDraft(currentDir, creatingFolder.draft)
                 }
               >
-                Create folder
+                {t('designFiles.createFolder')}
               </button>
               <button
                 type="button"
