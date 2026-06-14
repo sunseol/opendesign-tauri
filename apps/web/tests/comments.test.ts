@@ -8,6 +8,7 @@ import {
   mergeAttachedComments,
   messageContentWithCommentAttachments,
   overlayBoundsFromSnapshot,
+  queuedSlideNavTarget,
   removeAttachedComment,
   targetFromSnapshot,
 } from '../src/comments';
@@ -160,6 +161,44 @@ describe('preview comment attachment helpers', () => {
     expect(attachments.map((attachment) => attachment.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(attachments.map((attachment) => attachment.comment)).toEqual(notes);
     expect(messageContentWithCommentAttachments('', attachments)).toContain('8. pod-2');
+  });
+
+  it('preserves deck slide markers through queued comment attachments', () => {
+    const attachments = buildBoardCommentAttachments({
+      target: targetFromSnapshot({
+        filePath: 'deck.html',
+        elementId: 'slide-cta',
+        selector: '[data-od-id="slide-cta"]',
+        label: 'Slide CTA',
+        text: 'Get started',
+        position: { x: 30, y: 40, width: 160, height: 48 },
+        htmlHint: '<button data-od-id="slide-cta">',
+        slideIndex: 2,
+      }),
+      notes: ['Make this CTA stronger'],
+    });
+
+    expect(attachments[0]).toMatchObject({
+      filePath: 'deck.html',
+      slideIndex: 2,
+    });
+    expect(queuedSlideNavTarget(attachments)).toEqual({
+      filePath: 'deck.html',
+      slideIndex: 2,
+    });
+    expect(messageContentWithCommentAttachments('', attachments)).toContain('slideIndex: 2');
+  });
+
+  it('carries saved comment slide markers back into attachments', () => {
+    const attachments = commentsToAttachments([
+      comment({ filePath: 'deck.html', slideIndex: 3 }),
+    ]);
+
+    expect(attachments[0]?.slideIndex).toBe(3);
+    expect(queuedSlideNavTarget(attachments)).toEqual({
+      filePath: 'deck.html',
+      slideIndex: 3,
+    });
   });
 
   it('updates and removes attached comments by saved comment id', () => {
