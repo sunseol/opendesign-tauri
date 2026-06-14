@@ -98,8 +98,7 @@ export function PreviewDrawOverlay({
       if (!first) continue;
       ctx.beginPath();
       ctx.moveTo(first.x * dpr, first.y * dpr);
-      for (let i = 1; i < s.points.length; i++) {
-        const p = s.points[i]!;
+      for (const p of s.points.slice(1)) {
         ctx.lineTo(p.x * dpr, p.y * dpr);
       }
       ctx.stroke();
@@ -138,7 +137,8 @@ export function PreviewDrawOverlay({
   }, [onActiveChange]);
 
   function pointFromEvent(e: PointerEvent): Point {
-    const cvs = canvasRef.current!;
+    const cvs = canvasRef.current;
+    if (!cvs) throw new Error('preview draw canvas missing');
     const rect = cvs.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
@@ -310,8 +310,7 @@ export function PreviewDrawOverlay({
       if (!first) continue;
       ctx.beginPath();
       ctx.moveTo(first.x * sx, first.y * sy);
-      for (let i = 1; i < s.points.length; i++) {
-        const p = s.points[i]!;
+      for (const p of s.points.slice(1)) {
         ctx.lineTo(p.x * sx, p.y * sy);
       }
       ctx.stroke();
@@ -504,27 +503,28 @@ export function PreviewDrawOverlay({
               'Queue'
             )}
           </button>
-          {!sendDisabled ? (
-            <button
-              type="button"
-              onClick={() => void send('send')}
-              disabled={sending || !canSend}
-              style={{
-                ...pillStyle(true),
-                opacity: canSend ? 1 : 0.4,
-                cursor: sending ? 'wait' : (canSend ? 'pointer' : 'not-allowed'),
-              }}
-            >
-              {pendingAction === 'send' ? (
-                <>
-                  <Icon name="spinner" size={12} />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                'Send'
-              )}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => void send('send')}
+            disabled={sending || !canSend}
+            title={sendDisabled ? sendDisabledReason : pendingAction === 'send' ? 'Sending...' : 'Send'}
+            data-tooltip={sendDisabled ? sendDisabledReason : pendingAction === 'send' ? 'Sending...' : 'Send'}
+            aria-label={pendingAction === 'send' ? 'Sending...' : 'Send'}
+            style={{
+              ...pillStyle(true),
+              opacity: canSend ? 1 : 0.4,
+              cursor: sending ? 'wait' : (canSend ? 'pointer' : 'not-allowed'),
+            }}
+          >
+            {pendingAction === 'send' ? (
+              <>
+                <Icon name="spinner" size={12} />
+                <span>Sending...</span>
+              </>
+            ) : (
+              'Send'
+            )}
+          </button>
           {captureStatus ? (
             <span role="status" style={statusStyle}>
               {captureStatus}
