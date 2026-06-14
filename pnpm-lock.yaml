@@ -18,6 +18,9 @@ importers:
 
   .:
     devDependencies:
+      '@open-design/components':
+        specifier: workspace:*
+        version: link:packages/components
       '@open-design/daemon':
         specifier: workspace:*
         version: link:apps/daemon
@@ -241,6 +244,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.32.1
         version: 0.32.1
+      '@open-design/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       '@open-design/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

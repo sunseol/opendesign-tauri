@@ -111,6 +111,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: configuredAllowedDevHosts(),
   outputFileTracingRoot: WORKSPACE_ROOT,
   reactStrictMode: true,
+  transpilePackages: ['@open-design/components'],
   turbopack: {
     root: WORKSPACE_ROOT,
   },

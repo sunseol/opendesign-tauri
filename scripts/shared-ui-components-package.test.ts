@@ -16,7 +16,9 @@ const componentSources = [
 ] as const;
 
 type PackageJson = {
+  readonly dependencies?: Record<string, string>;
   readonly description?: string;
+  readonly devDependencies?: Record<string, string>;
   readonly exports?: Record<string, unknown>;
   readonly name?: string;
   readonly peerDependencies?: Record<string, string>;
@@ -57,5 +59,29 @@ test("shared UI components package exposes reusable primitives", async () => {
   const indexSource = await readText(path.join(packageDir, "src/index.ts"));
   for (const exportName of ["Button", "Input", "Select", "Textarea", "VisuallyHidden"]) {
     assert.match(indexSource, new RegExp(`\\b${exportName}\\b`));
+  }
+});
+
+test("web app consumes shared UI primitives instead of leaving them orphaned", async () => {
+  const rootManifest = await readPackageJson("package.json");
+  const webManifest = await readPackageJson("apps/web/package.json");
+
+  assert.equal(rootManifest.devDependencies?.["@open-design/components"], "workspace:*");
+  assert.equal(webManifest.dependencies?.["@open-design/components"], "workspace:*");
+
+  const nextConfig = await readText("apps/web/next.config.ts");
+  assert.match(nextConfig, /transpilePackages:\s*\[\s*['"]@open-design\/components['"]\s*\]/);
+
+  const webSources = [
+    "apps/web/src/components/AgentPicker.tsx",
+    "apps/web/src/components/BoardComposerPopover.tsx",
+    "apps/web/src/components/MissingBrandFontsBanner.tsx",
+    "apps/web/src/components/PasteTextDialog.tsx",
+    "apps/web/src/components/PromptTemplatesTab.tsx",
+  ] as const;
+
+  for (const source of webSources) {
+    const sourceText = await readText(source);
+    assert.match(sourceText, /from ['"]@open-design\/components['"]/);
   }
 });
