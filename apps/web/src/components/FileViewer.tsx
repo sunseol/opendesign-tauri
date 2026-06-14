@@ -3864,6 +3864,7 @@ function HtmlViewer({
   const [sendingBoardBatch, setSendingBoardBatch] = useState(false);
   const [commentSavedToast, setCommentSavedToast] = useState<string | null>(null);
   const [templateSavedToast, setTemplateSavedToast] = useState<string | null>(null);
+  const [deploySavedToast, setDeploySavedToast] = useState<{ message: string; details: string } | null>(null);
   const [selectedSideCommentIds, setSelectedSideCommentIds] = useState<Set<string>>(() => new Set());
   const [commentSidePanelCollapsed, setCommentSidePanelCollapsed] = useState(false);
   const [strokePoints, setStrokePoints] = useState<StrokePoint[]>([]);
@@ -5468,6 +5469,15 @@ function HtmlViewer({
       }));
       setDeployment(next);
       setDeployResult(next);
+      if (deployResultState(next.status) !== 'failed') {
+        setDeploySavedToast({
+          message: t('fileViewer.deploySuccessToast'),
+          details: t('fileViewer.deploySuccessToastDetails', {
+            provider: deployProviderLabel,
+            url: next.url,
+          }),
+        });
+      }
     } catch (err) {
       const option = getDeployProviderOption(deployProviderId);
       setDeployError(
@@ -5712,7 +5722,7 @@ function HtmlViewer({
       ? t('fileViewer.deployingToProvider', { provider: deployProviderLabel })
       : deployPhase === 'preparing-link'
         ? t('fileViewer.preparingPublicLink')
-        : t('fileViewer.deployToProvider', { provider: deployProviderLabel });
+        : deployActionLabelFor(deployProviderId);
   const copyDeployLabel = (url: string) =>
     copiedDeployLink === url.trim()
       ? t('fileViewer.copied')
@@ -6496,6 +6506,18 @@ function HtmlViewer({
                   message={templateSavedToast}
                   ttlMs={2200}
                   onDismiss={() => setTemplateSavedToast(null)}
+                />
+              </div>
+            ) : null}
+            {deploySavedToast ? (
+              <div className="comment-toast-anchor">
+                <Toast
+                  message={deploySavedToast.message}
+                  details={deploySavedToast.details}
+                  ttlMs={3200}
+                  tone="success"
+                  placement="top"
+                  onDismiss={() => setDeploySavedToast(null)}
                 />
               </div>
             ) : null}

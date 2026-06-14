@@ -2041,6 +2041,8 @@ export interface Dict {
   'fileViewer.deployProviderFailed': string;
   'fileViewer.deployResultLabel': string;
   'fileViewer.deployLinkReady': string;
+  'fileViewer.deploySuccessToast': string;
+  'fileViewer.deploySuccessToastDetails': string;
   'fileViewer.deployLinkPreparingLabel': string;
   'fileViewer.deployLinkDelayed': string;
   'fileViewer.deployLinkFailed': string;
