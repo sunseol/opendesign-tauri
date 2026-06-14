@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatComposer } from '../../src/components/ChatComposer';
 import { ANNOTATION_EVENT } from '../../src/components/PreviewDrawOverlay';
 import { uploadProjectFiles } from '../../src/providers/registry';
-import type { ChatAttachment, ChatCommentAttachment } from '../../src/types';
+import type { ChatAttachment, ChatCommentAttachment, ProjectFile } from '../../src/types';
 
 vi.mock('../../src/providers/registry', async () => {
   const actual = await vi.importActual<typeof import('../../src/providers/registry')>(
@@ -523,6 +523,50 @@ describe('ChatComposer /search command', () => {
 
     expect(onSend).not.toHaveBeenCalled();
     expect((input as HTMLTextAreaElement).value).toBe('keep this draft');
+  });
+
+  it('shows the active imported-folder file and sends it as edit context', async () => {
+    const onSend = vi.fn();
+    const projectFile: ProjectFile = {
+      name: 'site/index.html',
+      path: 'site/index.html',
+      type: 'file',
+      kind: 'html',
+      mime: 'text/html',
+      size: 128,
+      mtime: 1,
+    };
+
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[projectFile]}
+        activeProjectFileName="site/index.html"
+        streaming={false}
+        projectMetadata={{ kind: 'prototype', importedFrom: 'folder' }}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />,
+    );
+
+    const activeFileStrip = screen.getByTestId('composer-active-file');
+    expect(activeFileStrip.textContent).toContain('Editing');
+    expect(activeFileStrip.textContent).toContain('site/index.html');
+    expect(screen.getByTestId('chat-composer').className).toContain('composer-active-file-mode');
+
+    fireEvent.change(screen.getByTestId('chat-composer-input'), {
+      target: { value: 'Make the hero clearer' },
+    });
+    fireEvent.click(screen.getByTestId('chat-send'));
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend).toHaveBeenCalledWith(
+      'Make the hero clearer',
+      [{ path: 'site/index.html', name: 'index.html', kind: 'file' }],
+      [],
+      undefined,
+    );
   });
 });
 

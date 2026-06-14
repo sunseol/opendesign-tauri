@@ -194,7 +194,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
       if (!updated) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (entryFile) setTabs(db, projectId, [entryFile], entryFile);
+      setTabs(db, projectId, [], null);
       /** @type {import('@open-design/contracts').ReplaceProjectWorkingDirResponse} */
       const body = { project: updated, baseDir: normalizedPath, entryFile };
       res.json(body);
@@ -335,7 +335,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
         createdAt: now,
         updatedAt: now,
       });
-      if (entryFile) setTabs(db, id, [entryFile], entryFile);
+      setTabs(db, id, [], null);
       /** @type {import('@open-design/contracts').ImportFolderResponse} */
       const body = { project, conversationId: cid, entryFile };
       res.json(body);

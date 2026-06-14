@@ -92,6 +92,7 @@ interface SlashCommand {
 interface Props {
   projectId: string | null;
   projectFiles: ProjectFile[];
+  activeProjectFileName?: string | null;
   streaming: boolean;
   sendDisabled?: boolean;
   initialDraft?: string;
@@ -188,6 +189,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     {
       projectId,
       projectFiles,
+      activeProjectFileName = null,
       streaming,
       sendDisabled = false,
       initialDraft,
@@ -220,6 +222,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
   ) {
     const t = useT();
     const analytics = useAnalytics();
+    const activeFileContext =
+      projectMetadata?.importedFrom === 'folder' && activeProjectFileName
+        ? activeProjectFileName
+        : null;
+    const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
 
     // chat_panel page_view fires from ProjectView (which outlives
@@ -734,7 +741,18 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     ): boolean {
       setStreamingAnnotationSendPending(false);
       if (!prompt && attachments.length === 0 && nextCommentAttachments.length === 0) return false;
-      onSend(prompt, attachments, nextCommentAttachments, meta);
+      const nextAttachments =
+        activeFileContext && !attachments.some((attachment) => attachment.path === activeFileContext)
+          ? [
+              {
+                path: activeFileContext,
+                name: activeFileDisplayName ?? activeFileContext,
+                kind: 'file' as const,
+              },
+              ...attachments,
+            ]
+          : attachments;
+      onSend(prompt, nextAttachments, nextCommentAttachments, meta);
       reset();
       return true;
     }
@@ -1242,7 +1260,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     return (
       <div
-        className={`composer${dragActive ? " drag-active" : ""}`}
+        className={[
+          'composer',
+          dragActive ? 'drag-active' : '',
+          activeFileContext ? 'composer-active-file-mode' : '',
+        ].filter(Boolean).join(' ')}
         data-testid="chat-composer"
         onDragOver={(e) => {
           e.preventDefault();
@@ -1369,6 +1391,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 if (record) setDetailsRecord(record);
               }}
             />
+          ) : null}
+          {activeFileContext ? (
+            <div
+              className="composer-active-file"
+              data-testid="composer-active-file"
+              title={activeFileContext}
+            >
+              <span className="composer-active-file__label">{t('assistant.verbEditing')}</span>
+              <span className="composer-active-file__name">{activeFileContext}</span>
+            </div>
           ) : null}
           <div
             className={`composer-input-wrap${
@@ -2751,6 +2783,10 @@ function MentionPopover({
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function lastPathSegment(value: string): string {
+  return value.split(/[\\/]/u).filter(Boolean).pop() ?? value;
 }
 
 function loadComposerDraft(key?: string): string | null {
