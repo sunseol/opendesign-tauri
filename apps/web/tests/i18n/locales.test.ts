@@ -315,6 +315,54 @@ const ZH_TW_PLUGINS_HOME_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'pluginsHome.title',
   'pluginsHome.totalInCatalog',
 ];
+const ZH_TW_PLUGINS_VIEW_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'pluginsView.addSource',
+  'pluginsView.adding',
+  'pluginsView.agentContext',
+  'pluginsView.areasAria',
+  'pluginsView.availableEmptyFiltered',
+  'pluginsView.availableEmptyInstalled',
+  'pluginsView.availableEmptyNoSources',
+  'pluginsView.availableFiltersAria',
+  'pluginsView.availableSubtitle',
+  'pluginsView.availableTitle',
+  'pluginsView.catalogVersion',
+  'pluginsView.clearAvailableSearch',
+  'pluginsView.defaultTrust',
+  'pluginsView.importPlugin',
+  'pluginsView.install',
+  'pluginsView.installing',
+  'pluginsView.installedEmpty',
+  'pluginsView.installedSubtitle',
+  'pluginsView.installedTitle',
+  'pluginsView.lede',
+  'pluginsView.loading',
+  'pluginsView.pluginsCount',
+  'pluginsView.refreshing',
+  'pluginsView.removing',
+  'pluginsView.searchAvailableAria',
+  'pluginsView.searchAvailablePlaceholder',
+  'pluginsView.source',
+  'pluginsView.sourceUrl',
+  'pluginsView.sourcesEmpty',
+  'pluginsView.sourcesSubtitle',
+  'pluginsView.sourcesTitle',
+  'pluginsView.summaryAria',
+  'pluginsView.tab.available',
+  'pluginsView.tab.installed',
+  'pluginsView.tab.sources',
+  'pluginsView.tab.team',
+  'pluginsView.tabHint.available',
+  'pluginsView.tabHint.installed',
+  'pluginsView.tabHint.sources',
+  'pluginsView.tabHint.team',
+  'pluginsView.teamBody',
+  'pluginsView.teamTitle',
+  'pluginsView.trust.official',
+  'pluginsView.trust.restricted',
+  'pluginsView.trust.trusted',
+  'pluginsView.trustFor',
+];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
   'designFiles.filterClear',
@@ -636,6 +684,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW plugins home copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_PLUGINS_HOME_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW plugins management copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_PLUGINS_VIEW_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
