@@ -154,11 +154,10 @@ describe('ChatComposer /search command', () => {
     );
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    const [prompt, attachments, commentAttachments] = onSend.mock.calls[0]! as [
-      string,
-      ChatAttachment[],
-      ChatCommentAttachment[],
-    ];
+    const firstQueuedCall = onSend.mock.calls[0];
+    expect(firstQueuedCall).toBeDefined();
+    if (!firstQueuedCall) throw new Error('expected queued annotation send');
+    const [prompt, attachments, commentAttachments] = firstQueuedCall;
     expect(prompt).toContain('first note');
     expect(prompt).toContain('second note');
     expect(attachments).toEqual([
@@ -248,7 +247,10 @@ describe('ChatComposer /search command', () => {
     }));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    const [prompt, attachments, commentAttachments] = onSend.mock.calls[0]!;
+    const firstDrawCall = onSend.mock.calls[0];
+    expect(firstDrawCall).toBeDefined();
+    if (!firstDrawCall) throw new Error('expected draw annotation send');
+    const [prompt, attachments, commentAttachments] = firstDrawCall;
     expect(prompt).toBe('make this card clearer');
     expect(attachments).toEqual([{ path: 'uploads/drawing.png', name: 'drawing.png', kind: 'image' }]);
     expect(commentAttachments).toHaveLength(1);
@@ -295,6 +297,49 @@ describe('ChatComposer /search command', () => {
     expect(screen.queryByText('Visual mark')).toBeNull();
     expect(screen.queryByTestId('staged-comment-attachments')).toBeNull();
     expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('shows image references on staged saved comment chips', () => {
+    const onRemoveCommentAttachment = vi.fn();
+    const commentAttachment: ChatCommentAttachment = {
+      id: 'comment-1',
+      order: 1,
+      filePath: 'index.html',
+      elementId: 'hero-title',
+      selector: '[data-od-id="hero-title"]',
+      label: 'Hero title',
+      comment: 'Use the 2 attached images as the comment reference.',
+      currentText: 'Current title',
+      pagePosition: { x: 1, y: 2, width: 3, height: 4 },
+      htmlHint: '<h1 data-od-id="hero-title">',
+      imageAttachments: [
+        { path: 'uploads/comment-hero.png', name: 'comment-hero.png' },
+        { path: 'uploads/comment-detail.png', name: 'comment-detail.png' },
+      ],
+      source: 'saved-comment',
+    };
+
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        streaming={false}
+        commentAttachments={[commentAttachment]}
+        onEnsureProject={async () => 'project-1'}
+        onRemoveCommentAttachment={onRemoveCommentAttachment}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('staged-comment-attachments')).toBeTruthy();
+    expect(screen.getByText('hero-title')).toBeTruthy();
+    expect(screen.getByText('2 images')).toBeTruthy();
+    expect(screen.getByText('Use the 2 attached images as the comment reference.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove comment attachment for hero-title' }));
+
+    expect(onRemoveCommentAttachment).toHaveBeenCalledWith('comment-1');
   });
 
   it('previews a staged image attachment from its chip', () => {
@@ -381,7 +426,10 @@ describe('ChatComposer /search command', () => {
     fireEvent.click(screen.getByTestId('chat-send'));
 
     expect(onSend).toHaveBeenCalledTimes(1);
-    const [prompt, attachments, commentAttachments, meta] = onSend.mock.calls[0]!;
+    const researchCall = onSend.mock.calls[0];
+    expect(researchCall).toBeDefined();
+    if (!researchCall) throw new Error('expected research send');
+    const [prompt, attachments, commentAttachments, meta] = researchCall;
     expect(prompt).toContain(
       'Before answering, your first tool action must be the OD research command for your shell.',
     );
@@ -434,7 +482,10 @@ describe('ChatComposer /search command', () => {
     });
     fireEvent.click(screen.getByTestId('chat-send'));
 
-    const [prompt, _attachments, _commentAttachments, meta] = onSend.mock.calls[0]!;
+    const metacharacterCall = onSend.mock.calls[0];
+    expect(metacharacterCall).toBeDefined();
+    if (!metacharacterCall) throw new Error('expected research send');
+    const [prompt, _attachments, _commentAttachments, meta] = metacharacterCall;
     expect(prompt).toContain(
       'POSIX: "$OD_NODE_BIN" "$OD_BIN" research search --query "<search query>" --max-sources 5',
     );
@@ -466,7 +517,10 @@ describe('ChatComposer /search command', () => {
     fireEvent.click(screen.getByTestId('chat-send'));
 
     expect(onSend).toHaveBeenCalledTimes(1);
-    const [prompt, attachments, commentAttachments, meta] = onSend.mock.calls[0]!;
+    const normalPromptCall = onSend.mock.calls[0];
+    expect(normalPromptCall).toBeDefined();
+    if (!normalPromptCall) throw new Error('expected normal prompt send');
+    const [prompt, attachments, commentAttachments, meta] = normalPromptCall;
     expect(prompt).toBe('EV market 2025 trends');
     expect(attachments).toEqual([]);
     expect(commentAttachments).toEqual([]);
@@ -494,7 +548,10 @@ describe('ChatComposer /search command', () => {
     fireEvent.click(screen.getByTestId('chat-send'));
 
     expect(onSend).toHaveBeenCalledTimes(1);
-    const [prompt, attachments, commentAttachments, meta] = onSend.mock.calls[0]!;
+    const unavailableResearchCall = onSend.mock.calls[0];
+    expect(unavailableResearchCall).toBeDefined();
+    if (!unavailableResearchCall) throw new Error('expected plain slash send');
+    const [prompt, attachments, commentAttachments, meta] = unavailableResearchCall;
     expect(prompt).toBe('/search EV market 2025 trends');
     expect(attachments).toEqual([]);
     expect(commentAttachments).toEqual([]);

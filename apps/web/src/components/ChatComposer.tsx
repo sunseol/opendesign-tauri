@@ -1989,24 +1989,44 @@ function StagedCommentAttachments({
   if (visibleAttachments.length === 0) return null;
   return (
     <div className="staged-row comment-staged-row" data-testid="staged-comment-attachments">
-      {visibleAttachments.map((a) => (
-        <div key={a.id} className="staged-chip staged-comment">
-          <span className="staged-name" title={`${a.screenshotPath ? `${a.screenshotPath}: ` : ''}${a.elementId}: ${a.comment}`}>
-            <strong>{a.selectionKind === 'visual' ? 'Visual mark' : a.elementId}</strong>
-            <span>{a.comment}</span>
-          </span>
-          <button
-            className="staged-remove"
-            onClick={() => onRemove(a.id)}
-            title={t('chat.comments.removeAttachment')}
-            aria-label={t('chat.comments.removeAttachmentAria', { name: a.elementId })}
-          >
-            <Icon name="close" size={11} />
-          </button>
-        </div>
-      ))}
+      {visibleAttachments.map((a) => {
+        const imageLabel = commentImageAttachmentLabel(a);
+        return (
+          <div key={a.id} className="staged-chip staged-comment">
+            <span className="staged-name" title={commentAttachmentTitle(a)}>
+              <strong>{a.selectionKind === 'visual' ? 'Visual mark' : a.elementId}</strong>
+              {imageLabel ? <span className="staged-comment-images">{imageLabel}</span> : null}
+              <span>{a.comment}</span>
+            </span>
+            <button
+              className="staged-remove"
+              onClick={() => onRemove(a.id)}
+              title={t('chat.comments.removeAttachment')}
+              aria-label={t('chat.comments.removeAttachmentAria', { name: a.elementId })}
+            >
+              <Icon name="close" size={11} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+function commentImageAttachmentLabel(attachment: ChatCommentAttachment): string | null {
+  const count = attachment.imageAttachments?.length ?? 0;
+  if (count <= 0) return null;
+  return count === 1 ? '1 image' : `${count} images`;
+}
+
+function commentAttachmentTitle(attachment: ChatCommentAttachment): string {
+  const segments = [
+    attachment.screenshotPath ? `${attachment.screenshotPath}: ${attachment.elementId}` : attachment.elementId,
+    commentImageAttachmentLabel(attachment),
+    attachment.comment,
+    ...(attachment.imageAttachments ?? []).map((image) => image.name),
+  ].filter((segment) => segment && segment.length > 0);
+  return segments.join(' · ');
 }
 
 function ToolsPluginsPanel({
