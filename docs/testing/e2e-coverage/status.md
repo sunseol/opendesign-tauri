@@ -38,6 +38,10 @@ The default `createFakeAgentRuntimes()` path covers `codex`, `claude`,
 `gemini`, `opencode`, `cursor-agent`, `qwen`, `qoder`, and `copilot`, matching
 the supported local-agent protocols that the current fake harness can replay
 without real provider credentials.
+`deepseek` has a fake CLI renderer for targeted-only tests, but it is kept out
+of the default replay matrix because its production adapter is a plain-text TUI
+path rather than the structured streaming protocols exercised by the shared
+real-daemon replay loop.
 
 CI alert routing is split by failure kind:
 

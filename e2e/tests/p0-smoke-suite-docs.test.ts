@@ -41,6 +41,8 @@ describe('P0 smoke suite documentation', () => {
     for (const token of [
       '.github/workflows/notify-main-ci-feishu.yml',
       '.github/workflows/fork-pr-workflow-approval.yml',
+      '`deepseek`',
+      'targeted-only',
       'code failure',
       'maintainer workflow approval waiting',
     ]) {
