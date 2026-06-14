@@ -100,6 +100,53 @@ const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'entry.navPlugins',
   'entry.navTasks',
 ];
+const FR_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'homeHero.applying',
+  'homeHero.chip.createPlugin',
+  'homeHero.chip.createPluginHint',
+  'homeHero.chip.deck',
+  'homeHero.chip.figma',
+  'homeHero.chip.figmaHint',
+  'homeHero.chip.folder',
+  'homeHero.chip.folderHint',
+  'homeHero.chip.hyperframesHint',
+  'homeHero.chip.liveArtifact',
+  'homeHero.chip.liveArtifactHint',
+  'homeHero.chip.template',
+  'homeHero.chip.templateHint',
+  'homeHero.chip.video',
+  'homeHero.clearActivePlugin',
+  'homeHero.clearActiveSkill',
+  'homeHero.confirmReplace',
+  'homeHero.confirmReplaceBody',
+  'homeHero.confirmReplaceTitle',
+  'homeHero.contextItemsResolved',
+  'homeHero.contextSearchResults',
+  'homeHero.contextSurfaces',
+  'homeHero.details',
+  'homeHero.footer.availableCount',
+  'homeHero.footer.noMatches',
+  'homeHero.forNewLine',
+  'homeHero.loadingContext',
+  'homeHero.noResults',
+  'homeHero.parameters',
+  'homeHero.placeholder',
+  'homeHero.placeholderActive',
+  'homeHero.pluginPrefix',
+  'homeHero.pluginTitle',
+  'homeHero.railAria',
+  'homeHero.removeFile',
+  'homeHero.removePlugin',
+  'homeHero.removePluginAria',
+  'homeHero.run',
+  'homeHero.searchPrompt',
+  'homeHero.skillPrefix',
+  'homeHero.skills',
+  'homeHero.subtitlePrefix',
+  'homeHero.title',
+  'homeHero.toRun',
+  'homeHero.typeSomethingToRun',
+];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -317,6 +364,14 @@ describe('i18n locales', () => {
     const { fr } = await import('../../src/i18n/locales/fr');
 
     for (const key of FR_NAV_AND_FILE_FALLBACK_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French home hero prompts and shortcuts translated instead of falling back to English', async () => {
+    const { fr } = await import('../../src/i18n/locales/fr');
+
+    for (const key of FR_HOME_HERO_FALLBACK_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
