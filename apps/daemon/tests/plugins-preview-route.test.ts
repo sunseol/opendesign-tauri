@@ -42,7 +42,14 @@ beforeEach(async () => {
   await mkdir(path.join(folder, 'examples', 'wrapped'), { recursive: true });
   await writeFile(
     path.join(folder, 'preview', 'index.html'),
-    '<!DOCTYPE html><title>preview</title><p>preview body</p>',
+    [
+      '<!DOCTYPE html><title>preview</title><p>preview body</p>',
+      '<img src="https://res.cloudinary.com/demo/hero.png">',
+      '<video poster="https://images.higgs.ai/demo/poster.webp"></video>',
+      '<a href="https://cdn.example.com/leave-link.png">link</a>',
+      '<style>.hero{background:url(https://cdn.example.com/bg.webp)}</style>',
+      '<script>const hero = "https://cdn.example.com/script-bg.jpg";</script>',
+    ].join(''),
   );
   await writeFile(
     path.join(folder, 'examples', 'desk-warm', 'index.html'),
@@ -126,7 +133,8 @@ afterEach(async () => {
     const db = new Database(dbPath);
     db.prepare('DELETE FROM installed_plugins WHERE id = ?').run(PLUGIN_ID);
     db.close();
-  } catch {
+  } catch (err: unknown) {
+    if (!(err instanceof Error)) throw err;
     // ignore — the DB might not exist in failure modes
   }
 
@@ -150,9 +158,28 @@ describe('GET /api/plugins/:id/preview', () => {
     expect(body).toContain('preview body');
   });
 
+  it('rewrites external preview media through the same-origin asset cache', async () => {
+    const resp = await fetch(`${baseUrl}/api/plugins/${PLUGIN_ID}/preview`);
+    expect(resp.status).toBe(200);
+    const body = await resp.text();
+    expect(body).toContain('/api/asset-cache?url=https%3A%2F%2Fres.cloudinary.com%2Fdemo%2Fhero.png');
+    expect(body).toContain('/api/asset-cache?url=https%3A%2F%2Fimages.higgs.ai%2Fdemo%2Fposter.webp');
+    expect(body).toContain('/api/asset-cache?url=https%3A%2F%2Fcdn.example.com%2Fbg.webp');
+    expect(body).toContain('/api/asset-cache?url=https%3A%2F%2Fcdn.example.com%2Fscript-bg.jpg');
+    expect(body).toContain('/api/asset-cache?url=https%3A%2F%2Fcdn.example.com%2Fleave-link.png');
+  });
+
   it('returns 404 when the plugin id is unknown', async () => {
     const resp = await fetch(`${baseUrl}/api/plugins/does-not-exist/preview`);
     expect(resp.status).toBe(404);
+  });
+});
+
+describe('GET /api/asset-cache', () => {
+  it('requires a url query parameter', async () => {
+    const resp = await fetch(`${baseUrl}/api/asset-cache`);
+    expect(resp.status).toBe(400);
+    expect(await resp.json()).toEqual({ error: 'missing url query parameter' });
   });
 });
 

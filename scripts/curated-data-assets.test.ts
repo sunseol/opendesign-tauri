@@ -5,29 +5,7 @@ import test from "node:test";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const remotePreviewIds = new Set([
-  "example-3d-creator-portfolio",
-  "example-acreage-farming",
-  "example-aerocore",
-  "example-ai-designer-portfolio",
-  "example-cinematic-landing-page",
-  "example-codex-interactive-capability-map",
-  "example-dashboard-ui-glass",
-  "example-dreamcore-landing",
-  "example-evergreen-finance",
-  "example-innovation",
-  "example-layered-depth",
-  "example-liquid-glass-agency",
-  "example-luxury-botanical",
-  "example-mindloop-landing",
-  "example-mythic-naturecore",
-  "example-nimbus-grid",
-  "example-orbis-nft",
-  "example-portfolio-cosmic",
-  "example-skyelite-private-jets",
-  "example-stellar-launch",
-  "example-velar-luxury-real-estate",
-]);
+const remotePreviewIds = new Set<string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -91,10 +69,10 @@ test("curated contributor events and cards stay internally linked", async () => 
     );
   }
 
-  const events = (await readFile(path.join(repoRoot, "data", "events.jsonl"), "utf8"))
+  const events: unknown[] = (await readFile(path.join(repoRoot, "data", "events.jsonl"), "utf8"))
     .split("\n")
     .filter((line) => line.length > 0)
-    .map((line) => JSON.parse(line) as unknown);
+    .map((line) => JSON.parse(line));
   assert.ok(events.length > 0, "events.jsonl must contain at least one event");
   for (const event of events) {
     assert.ok(isRecord(event), "event line must be an object");
