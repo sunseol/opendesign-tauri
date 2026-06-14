@@ -105,7 +105,9 @@ describe('HomeView context picker', () => {
     );
 
     const input = await screen.findByTestId('home-hero-input');
-    expect(screen.getByTestId('home-hero-attach')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    expect(screen.getByTestId('composer-plus-attach')).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.paste(input, {
       clipboardData: {
         items: [
