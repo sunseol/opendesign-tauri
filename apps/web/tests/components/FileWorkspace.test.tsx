@@ -45,6 +45,7 @@ let host: HTMLDivElement | null = null;
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   if (root) {
     act(() => root?.unmount());
     root = null;
@@ -155,6 +156,12 @@ function stubTabRect(tab: HTMLElement, left = 0, width = 100) {
   }));
 }
 
+function requireDropTarget(container: HTMLElement): HTMLElement {
+  const dropTarget = container.querySelector('.df-drop');
+  if (!(dropTarget instanceof HTMLElement)) throw new TypeError('Expected drop target');
+  return dropTarget;
+}
+
 function changeInputValue(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
   setter?.call(input, value);
@@ -198,6 +205,123 @@ function unreadableDropDataTransfer(fallbackFiles: File[] = []) {
     ],
   };
 }
+
+describe('FileWorkspace browser tabs', () => {
+  it('opens a browser workspace tab with the Reference Board mounted', async () => {
+    const onTabsStateChange = vi.fn();
+
+    renderWorkspace(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={onTabsStateChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Browser' }));
+
+    expect(await screen.findByTestId('design-browser-reference-board')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Browser/u }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(onTabsStateChange).toHaveBeenCalledWith({
+      tabs: [],
+      active: '__browser__:1',
+      browserTabs: [
+        {
+          id: '__browser__:1',
+          insertAfter: '__design_files__',
+          label: 'Browser',
+        },
+      ],
+    });
+  });
+
+  it('restores a persisted active browser tab with its saved page state', async () => {
+    renderWorkspace(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[workspaceFile('cover.html')]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{
+          tabs: ['cover.html'],
+          active: '__browser__:2',
+          browserTabs: [
+            {
+              id: '__browser__:2',
+              insertAfter: 'cover.html',
+              label: 'Reference',
+              title: 'SVG Repo',
+              url: 'https://www.svgrepo.com/',
+              iconUrl: 'https://www.svgrepo.com/favicon.ico',
+            },
+          ],
+        }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    const address = await screen.findByRole('textbox', { name: 'Browser address' });
+
+    expect(screen.getByRole('tab', { name: /SVG Repo/u }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    if (!(address instanceof HTMLInputElement)) throw new TypeError('Expected browser address input');
+    expect(address.value).toBe('https://www.svgrepo.com/');
+  });
+
+  it('persists browser tab page info after a reference is opened', async () => {
+    const onTabsStateChange = vi.fn();
+
+    renderWorkspace(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{
+          tabs: [],
+          active: '__browser__:1',
+          browserTabs: [
+            {
+              id: '__browser__:1',
+              insertAfter: '__design_files__',
+              label: 'Browser',
+            },
+          ],
+        }}
+        onTabsStateChange={onTabsStateChange}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Dribbble' }));
+
+    await waitFor(() => {
+      expect(onTabsStateChange).toHaveBeenCalledWith({
+        tabs: [],
+        active: '__browser__:1',
+        browserTabs: [
+          expect.objectContaining({
+            id: '__browser__:1',
+            label: 'Browser',
+            title: 'Dribbble',
+            url: 'https://dribbble.com/',
+          }),
+        ],
+      });
+    });
+  });
+});
 
 describe('FileWorkspace upload input', () => {
   it('does not promote raw design-system assets into component review cards', () => {
@@ -707,7 +831,7 @@ describe('FileWorkspace upload input', () => {
     const onUploadFiles = vi.fn();
     const { container } = renderDesignFilesPanel({ onUploadFiles });
 
-    fireEvent.drop(container.querySelector('.df-drop')!, {
+    fireEvent.drop(requireDropTarget(container), {
       dataTransfer: unreadableDropDataTransfer([fallbackFile]),
     });
 
@@ -719,7 +843,7 @@ describe('FileWorkspace upload input', () => {
     const onUploadFiles = vi.fn();
     const { container } = renderDesignFilesPanel({ onUploadFiles });
 
-    fireEvent.drop(container.querySelector('.df-drop')!, {
+    fireEvent.drop(requireDropTarget(container), {
       dataTransfer: unreadableDropDataTransfer(),
     });
 
@@ -974,7 +1098,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 40,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -991,7 +1115,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: -40,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1008,7 +1132,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 3,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1025,7 +1149,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 1,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1042,7 +1166,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 50,
       deltaY: 10,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1059,7 +1183,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 40,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1076,7 +1200,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 40,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 
@@ -1093,7 +1217,7 @@ describe('scrollWorkspaceTabsWithWheel', () => {
       deltaX: 0,
       deltaY: 40,
       preventDefault,
-    } as unknown as WheelEvent;
+    } satisfies Parameters<typeof scrollWorkspaceTabsWithWheel>[1];
 
     scrollWorkspaceTabsWithWheel(currentTarget, event);
 

@@ -10076,6 +10076,27 @@ button.connector-action.is-loading {
 }
 
 .ws-tabs-actions { display: inline-flex; gap: 4px; align-items: center; }
+.ws-tab-add {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ws-tab-add:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.ws-tab-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .ws-focus-toggle {
   display: inline-flex;
   align-items: center;
@@ -10124,6 +10145,312 @@ button.connector-action.is-loading {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.ws-browser-panel {
+  flex: 1;
+  min-height: 0;
+  display: none;
+}
+.ws-browser-panel.active { display: flex; }
+
+.db-panel {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.db-address-bar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.db-address-bar button {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.db-address-bar button:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.db-address-bar input {
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 11px;
+  font-size: 13px;
+}
+.db-address-bar input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.db-current-page {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+.db-current-page span,
+.db-current-page small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-current-page span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.db-current-page small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.db-history,
+.db-reference-shell {
+  flex: 0 0 auto;
+  padding: 14px 16px 0;
+}
+.db-history h3,
+.db-reference-heading h2,
+.db-reference-group h3,
+.db-reference-card h4 {
+  margin: 0;
+}
+.db-history-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 0 2px;
+}
+.db-history-list button {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  max-width: 180px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.db-reference-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.db-reference-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.db-reference-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.db-reference-heading h2 {
+  font-size: 15px;
+}
+.db-reference-heading span,
+.db-reference-tabs span,
+.db-reference-group h3 span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.db-reference-search {
+  width: min(340px, 100%);
+  min-width: 180px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+}
+.db-reference-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+.db-reference-search button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+.db-reference-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.db-reference-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.db-reference-tabs button.is-active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+.db-reference-board {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 18px;
+}
+.db-reference-group {
+  display: grid;
+  gap: 10px;
+}
+.db-reference-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.db-reference-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.db-reference-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 150px;
+  padding: 12px;
+}
+.db-reference-card-main {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.db-reference-card h4,
+.db-reference-card p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-reference-card h4 {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.db-reference-card p {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.db-reference-card-main p {
+  margin: 2px 0 0;
+  white-space: nowrap;
+}
+.db-reference-card > p {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.db-reference-card button {
+  margin-top: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.db-reference-icon {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.db-reference-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.db-reference-empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+}
+.db-reference-empty p {
+  margin: 0;
+}
+.db-reference-empty button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 30px;
+  padding: 0 12px;
 }
 
 /* -------- Design Files panel (full right pane) ---------------------- */

@@ -50,6 +50,8 @@ import {
 } from '../types';
 import { DesignFilesPanel } from './DesignFilesPanel';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
+import { DesignBrowserPanel, type BrowserPageInfo } from './DesignBrowserPanel';
+import { labelFromUrl } from './design-browser-model';
 import { FileViewer, LiveArtifactViewer } from './FileViewer';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
@@ -63,6 +65,18 @@ import {
   parseSketchWorkspaceDocument,
   type SketchItem,
 } from './sketch-model';
+import {
+  BROWSER_KEEPALIVE_CAP,
+  BROWSER_TAB_PREFIX,
+  DESIGN_FILES_TAB,
+  DESIGN_SYSTEM_TAB,
+  browserTabsFromState,
+  isBrowserTabId,
+  lastWorkspaceTabId,
+  maxBrowserTabSequence,
+  orderWorkspaceTabs,
+  type BrowserWorkspaceTab,
+} from './workspace-browser-tabs';
 
 interface Props {
   projectId: string;
@@ -120,8 +134,6 @@ interface SketchState {
   saving: boolean;
 }
 
-const DESIGN_FILES_TAB = '__design_files__';
-const DESIGN_SYSTEM_TAB = '__design_system__';
 type TabDropEdge = 'before' | 'after';
 type DesignSystemReviewDecision =
   NonNullable<ProjectMetadata['designSystemReview']>[string]['decision'];
@@ -249,6 +261,10 @@ export function FileWorkspace({
   const [activeTab, setActiveTab] = useState<string>(
     tabsState.active ?? defaultRootTab,
   );
+  const [browserTabs, setBrowserTabs] = useState<BrowserWorkspaceTab[]>(
+    () => browserTabsFromState(tabsState.browserTabs),
+  );
+  const [liveBrowserTabIds, setLiveBrowserTabIds] = useState<string[]>([]);
 
   const [showPasteDialog, setShowPasteDialog] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -263,6 +279,7 @@ export function FileWorkspace({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const tabsBarRef = useRef<HTMLDivElement | null>(null);
   const draggedTabNameRef = useRef<string | null>(null);
+  const browserTabSequenceRef = useRef(0);
 
   const visibleFiles = useMemo(
     () => files.filter((file) => !isLiveArtifactImplementationPath(file.name)),
@@ -298,9 +315,91 @@ export function FileWorkspace({
     setActiveTab(tabsState.active ?? defaultRootTab);
   }, [tabsState.active, defaultRootTab]);
 
+  useEffect(() => {
+    setBrowserTabs([]);
+    setLiveBrowserTabIds([]);
+    browserTabSequenceRef.current = 0;
+  }, [projectId]);
+
+  useEffect(() => {
+    const nextBrowserTabs = browserTabsFromState(tabsState.browserTabs);
+    setBrowserTabs(nextBrowserTabs);
+    browserTabSequenceRef.current = maxBrowserTabSequence(nextBrowserTabs);
+  }, [tabsState.browserTabs]);
+
+  function workspaceTabsState(
+    tabs: string[],
+    active: string | null,
+    nextBrowserTabs = browserTabs,
+  ): OpenTabsState {
+    const state: OpenTabsState = { tabs, active };
+    if (nextBrowserTabs.length > 0) state.browserTabs = nextBrowserTabs;
+    return state;
+  }
+
   function setPersistedActive(name: string | null) {
     setActiveTab(name ?? defaultRootTab);
-    onTabsStateChange({ tabs: persistedTabs, active: name });
+    onTabsStateChange(workspaceTabsState(persistedTabs, name));
+  }
+
+  function openBrowserTab() {
+    setUploadError(null);
+    const nextIndex = browserTabSequenceRef.current + 1;
+    browserTabSequenceRef.current = nextIndex;
+    const anchor = lastWorkspaceTabId(orderedWorkspaceTabs) ?? activeTab;
+    const nextTab: BrowserWorkspaceTab = {
+      id: `${BROWSER_TAB_PREFIX}${nextIndex}`,
+      insertAfter: anchor,
+      label: nextIndex === 1 ? 'Browser' : `Browser ${nextIndex}`,
+    };
+    const nextTabs = [...browserTabs, nextTab];
+    setBrowserTabs(nextTabs);
+    setActiveTab(nextTab.id);
+    onTabsStateChange(workspaceTabsState(persistedTabs, nextTab.id, nextTabs));
+  }
+
+  function closeBrowserTab(tabId: string) {
+    const closingIndex = browserTabs.findIndex((tab) => tab.id === tabId);
+    const nextTabs = browserTabs.filter((tab) => tab.id !== tabId);
+    setBrowserTabs(nextTabs);
+    const nextActive =
+      activeTab === tabId
+        ? nextTabs[Math.min(Math.max(closingIndex, 0), nextTabs.length - 1)]?.id ?? DESIGN_FILES_TAB
+        : tabsState.active === tabId
+          ? DESIGN_FILES_TAB
+          : tabsState.active;
+    if (activeTab === tabId) setActiveTab(nextActive ?? DESIGN_FILES_TAB);
+    onTabsStateChange(workspaceTabsState(persistedTabs, nextActive, nextTabs));
+  }
+
+  function updateBrowserTabInfo(tabId: string, info: BrowserPageInfo) {
+    const nextUrl = info.url.trim();
+    const nextIconUrl = info.iconUrl?.trim() ?? '';
+    let changed = false;
+    const nextTabs = browserTabs.map((tab) => {
+      if (tab.id !== tabId) return tab;
+      const nextTitle = nextUrl ? info.title.trim() || labelFromUrl(nextUrl) : tab.label;
+      const normalizedUrl = nextUrl === 'about:blank' ? '' : nextUrl;
+      if (
+        tab.title === nextTitle
+        && (tab.url ?? '') === normalizedUrl
+        && (tab.iconUrl ?? '') === nextIconUrl
+      ) {
+        return tab;
+      }
+      changed = true;
+      const nextTab: BrowserWorkspaceTab = {
+        ...tab,
+        title: nextTitle,
+        url: normalizedUrl,
+      };
+      if (nextIconUrl) nextTab.iconUrl = nextIconUrl;
+      else delete nextTab.iconUrl;
+      return nextTab;
+    });
+    if (!changed) return;
+    setBrowserTabs(nextTabs);
+    onTabsStateChange(workspaceTabsState(persistedTabs, activeTab, nextTabs));
   }
 
   function activatePending(name: string) {
@@ -309,17 +408,40 @@ export function FileWorkspace({
     setActiveTab(name);
   }
 
+  useEffect(() => {
+    if (!isBrowserTabId(activeTab)) return;
+    setLiveBrowserTabIds((current) => {
+      if (current[0] === activeTab) return current;
+      return [activeTab, ...current.filter((id) => id !== activeTab)].slice(0, BROWSER_KEEPALIVE_CAP);
+    });
+  }, [activeTab]);
+
+  useEffect(() => {
+    setLiveBrowserTabIds((current) => {
+      const existing = new Set(browserTabs.map((tab) => tab.id));
+      const next = current.filter((id) => existing.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [browserTabs]);
+
   // When the persisted tab list changes and the active tab is gone, fall
   // back to the last remaining tab. Skip transient activeTab values
   // (DESIGN_FILES_TAB, pending sketches) since those aren't in persistedTabs.
   useEffect(() => {
     if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return;
-    if (sketches[activeTab] && !sketches[activeTab]!.persisted) return;
+    if (isBrowserTabId(activeTab)) {
+      if (!browserTabs.some((tab) => tab.id === activeTab)) {
+        setActiveTab(DESIGN_FILES_TAB);
+      }
+      return;
+    }
+    const activeSketchEntry = sketches[activeTab];
+    if (activeSketchEntry && !activeSketchEntry.persisted) return;
     if (!persistedTabs.includes(activeTab)) {
       setPersistedActive(persistedTabs[persistedTabs.length - 1] ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistedTabs, activeTab]);
+  }, [persistedTabs, activeTab, browserTabs]);
 
   // External open requests from chat (tool cards, produced-file chips,
   // deep-linked URL, or the parent's auto-open after an agent Write) —
@@ -328,20 +450,25 @@ export function FileWorkspace({
     if (!openRequest) return;
     const name = openRequest.name;
     if (!name) return;
-    onTabsStateChange({
-      tabs: persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
-      active: name,
-    });
+    if (isBrowserTabId(name) && browserTabs.some((tab) => tab.id === name)) {
+      onTabsStateChange(workspaceTabsState(persistedTabs, name));
+      setActiveTab(name);
+      return;
+    }
+    onTabsStateChange(workspaceTabsState(
+      persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
+      name,
+    ));
     setActiveTab(name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest]);
 
   function openFile(name: string) {
     setUploadError(null);
-    onTabsStateChange({
-      tabs: persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
-      active: name,
-    });
+    onTabsStateChange(workspaceTabsState(
+      persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
+      name,
+    ));
     setActiveTab(name);
   }
 
@@ -351,7 +478,7 @@ export function FileWorkspace({
     const nextTabs = withoutClosed.includes(openName)
       ? withoutClosed
       : [...withoutClosed, openName];
-    onTabsStateChange({ tabs: nextTabs, active: openName });
+    onTabsStateChange(workspaceTabsState(nextTabs, openName));
     setActiveTab(openName);
   }
 
@@ -376,7 +503,7 @@ export function FileWorkspace({
       tabsState.active === name
         ? nextTabs[nextTabs.length - 1] ?? null
         : tabsState.active;
-    onTabsStateChange({ tabs: nextTabs, active: nextActive });
+    onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
     setActiveTab(nextActive ?? DESIGN_FILES_TAB);
     setSketches((curr) => {
       const next = { ...curr };
@@ -400,7 +527,7 @@ export function FileWorkspace({
     if (targetIndex === -1) return;
     nextTabs.splice(edge === 'after' ? targetIndex + 1 : targetIndex, 0, draggedName);
     if (arraysEqual(nextTabs, persistedTabs)) return;
-    onTabsStateChange({ tabs: nextTabs, active: tabsState.active });
+    onTabsStateChange(workspaceTabsState(nextTabs, tabsState.active));
   }
 
   function clearTabDragState() {
@@ -581,7 +708,7 @@ export function FileWorkspace({
         // User is viewing the file being deleted: fall back to another
         // open tab (or the Design Files panel if none remain).
         const nextActive = nextTabs[nextTabs.length - 1] ?? null;
-        onTabsStateChange({ tabs: nextTabs, active: nextActive });
+        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
         setActiveTab(nextActive ?? DESIGN_FILES_TAB);
       } else {
         // Deletion was triggered from the Design Files panel (or another
@@ -591,7 +718,7 @@ export function FileWorkspace({
         // when it points at the deleted file so we don't leave a dangling
         // pointer behind.
         const nextActive = tabsState.active === name ? null : tabsState.active;
-        onTabsStateChange({ tabs: nextTabs, active: nextActive });
+        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
       }
       setSketches((curr) => {
         const next = { ...curr };
@@ -617,12 +744,12 @@ export function FileWorkspace({
       const nextTabs = persistedTabs.filter((n) => !deletedSet.has(n));
       if (activeTab && deletedSet.has(activeTab)) {
         const nextActive = nextTabs[nextTabs.length - 1] ?? null;
-        onTabsStateChange({ tabs: nextTabs, active: nextActive });
+        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
         setActiveTab(nextActive ?? DESIGN_FILES_TAB);
       } else {
         const nextActive =
           tabsState.active && deletedSet.has(tabsState.active) ? null : tabsState.active;
-        onTabsStateChange({ tabs: nextTabs, active: nextActive });
+        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
       }
       setSketches((curr) => {
         const next = { ...curr };
@@ -651,7 +778,7 @@ export function FileWorkspace({
 
     const nextTabs = persistedTabs.map((name) => (name === oldName ? renamed.name : name));
     const nextActive = tabsState.active === oldName ? renamed.name : tabsState.active;
-    onTabsStateChange({ tabs: nextTabs, active: nextActive });
+    onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
     if (activeTab === oldName) setActiveTab(renamed.name);
 
     setSketches((curr) => {
@@ -754,7 +881,11 @@ export function FileWorkspace({
   async function saveSketch(name: string) {
     const entry = sketches[name];
     if (!entry) return;
-    setSketches((curr) => ({ ...curr, [name]: { ...curr[name]!, saving: true } }));
+    setSketches((curr) => {
+      const current = curr[name];
+      if (!current) return curr;
+      return { ...curr, [name]: { ...current, saving: true } };
+    });
     const doc = buildSketchDocument(
       entry.version,
       entry.discardRawItemsOnSave ? [] : entry.rawItems,
@@ -765,7 +896,7 @@ export function FileWorkspace({
       setSketches((curr) => ({
         ...curr,
         [name]: {
-          ...curr[name]!,
+          ...(curr[name] ?? entry),
           version: doc.version,
           rawItems: doc.items.slice(),
           discardRawItemsOnSave: false,
@@ -775,19 +906,24 @@ export function FileWorkspace({
         },
       }));
       // Promote the previously-pending sketch into the persisted tab list.
-      onTabsStateChange({
-        tabs: persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
-        active: name,
-      });
+      onTabsStateChange(workspaceTabsState(
+        persistedTabs.includes(name) ? persistedTabs : [...persistedTabs, name],
+        name,
+      ));
       setActiveTab(name);
       await refreshFilesAndFolders();
     } else {
-      setSketches((curr) => ({ ...curr, [name]: { ...curr[name]!, saving: false } }));
+      setSketches((curr) => {
+        const current = curr[name];
+        if (!current) return curr;
+        return { ...curr, [name]: { ...current, saving: false } };
+      });
     }
   }
 
   const activeFile = useMemo<ProjectFile | null>(() => {
     if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return null;
+    if (isBrowserTabId(activeTab)) return null;
     const onDisk = visibleFiles.find((f) => f.name === activeTab);
     if (onDisk) return onDisk;
     if (isSketchName(activeTab) && sketches[activeTab]) {
@@ -804,6 +940,7 @@ export function FileWorkspace({
 
   const activeLiveArtifact = useMemo<LiveArtifactWorkspaceEntry | null>(() => {
     if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return null;
+    if (isBrowserTabId(activeTab)) return null;
     return liveArtifactEntries.find((entry) => entry.tabId === activeTab) ?? null;
   }, [activeTab, liveArtifactEntries]);
 
@@ -819,6 +956,11 @@ export function FileWorkspace({
     }
     return [...persistedTabs, ...extras];
   }, [persistedTabs, sketches]);
+
+  const orderedWorkspaceTabs = useMemo(
+    () => orderWorkspaceTabs(tabNames, browserTabs),
+    [browserTabs, tabNames],
+  );
 
   const isActiveSketch = activeFile?.kind === 'sketch' && isSketchName(activeFile.name);
   const activeSketch = activeFile && isActiveSketch ? sketches[activeFile.name] : null;
@@ -891,7 +1033,25 @@ export function FileWorkspace({
             </span>
             <span className="ws-tab-label">{t('workspace.designFiles')}</span>
           </button>
-          {tabNames.map((name) => {
+          {orderedWorkspaceTabs.map((entry) => {
+            if (entry.kind === 'browser') {
+              const browserTab = entry.browserTab;
+              const browserUrl = browserTab.url?.trim() ?? '';
+              const browserTitle = browserUrl
+                ? browserTab.title?.trim() || labelFromUrl(browserUrl)
+                : browserTab.label;
+              return (
+                <Tab
+                  key={browserTab.id}
+                  label={browserTitle}
+                  active={activeTab === browserTab.id}
+                  onActivate={() => setPersistedActive(browserTab.id)}
+                  onClose={() => closeBrowserTab(browserTab.id)}
+                  kind="browser"
+                />
+              );
+            }
+            const name = entry.name;
             const sketchEntry = sketches[name];
             const dirtyMark =
               sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted) ? ' •' : '';
@@ -952,6 +1112,16 @@ export function FileWorkspace({
             );
           })}
         </div>
+        <button
+          type="button"
+          className="icon-only ws-tab-add"
+          data-testid="workspace-add-browser-tab"
+          title="New Browser"
+          aria-label="New Browser"
+          onClick={openBrowserTab}
+        >
+          <Icon name="external-link" size={15} />
+        </button>
       </div>
       <div className="ws-body">
         {/* Banner moved into DesignFilesPanel for the Design Files tab so
@@ -973,7 +1143,24 @@ export function FileWorkspace({
             </button>
           </div>
         ) : null}
-        {activeTab === DESIGN_SYSTEM_TAB && designSystemProject ? (
+        {browserTabs.filter((browserTab) => liveBrowserTabIds.includes(browserTab.id)).map((browserTab) => (
+          <div
+            key={`${projectId}:${browserTab.id}`}
+            className={`ws-browser-panel ${activeTab === browserTab.id ? 'active' : ''}`}
+            aria-hidden={activeTab === browserTab.id ? undefined : true}
+          >
+            <DesignBrowserPanel
+              projectId={projectId}
+              initialIconUrl={browserTab.iconUrl}
+              initialTitle={browserTab.title}
+              initialUrl={browserTab.url}
+              onRefreshFiles={onRefreshFiles}
+              onOpenFile={openFile}
+              onPageInfoChange={(info) => updateBrowserTabInfo(browserTab.id, info)}
+            />
+          </div>
+        ))}
+        {isBrowserTabId(activeTab) ? null : activeTab === DESIGN_SYSTEM_TAB && designSystemProject ? (
           <DesignSystemProjectPanel
             projectId={projectId}
             system={designSystemProject}
@@ -2714,7 +2901,7 @@ function Tab({
   onActivate: () => void;
   onClose?: () => void;
   closable?: boolean;
-  kind?: ProjectFile['kind'] | 'live-artifact';
+  kind?: ProjectFile['kind'] | 'browser' | 'live-artifact';
   liveArtifact?: LiveArtifactWorkspaceEntry;
   draggable?: boolean;
   dragging?: boolean;
@@ -2823,10 +3010,12 @@ function kindIconName(
   kind?: string,
 ):
   | 'file-code'
+  | 'external-link'
   | 'image'
   | 'pencil'
   | 'file'
   | null {
+  if (kind === 'browser') return 'external-link';
   if (kind === 'live-artifact') return 'file-code';
   if (kind === 'html') return 'file-code';
   if (kind === 'image') return 'image';
