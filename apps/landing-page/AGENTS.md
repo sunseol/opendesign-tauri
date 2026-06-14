@@ -92,19 +92,23 @@ Tightly coupled with:
 
 ## Auto-deploy contract
 
-`.github/workflows/landing-page-deploy.yml` runs on push to `main`
-when **any** of these change:
+`.github/workflows/landing-page-staging.yml` runs on push to `main`
+when **any** of these change, provided the fork deploy vars are enabled
+and configured. `.github/workflows/landing-page-production.yml` is the
+manual-only production promotion gate.
 
 - `apps/landing-page/**`
-- `design-templates/open-design-landing/**`
+- `design-templates/**`
 - `skills/**`
 - `design-systems/**`
 - `craft/**`
 - `templates/**`
+- `prompt-templates/**`
+- `plugins/**`
 - `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`
-- the workflow file itself
+- the staging/production/CI workflow files themselves
 
-A push that only edits a SKILL.md MUST trigger this workflow — if it
+A push that only edits a SKILL.md MUST trigger the staging workflow — if it
 doesn't, the `paths:` filter has drifted from the content-collection
 glob and the published site will fall behind silently. Treat that as
 a regression, not a feature.

@@ -1,22 +1,8 @@
 name: blog-indexing-on-deploy
 
-# Runs after every successful `landing-page-deploy` on main. The job is
-# idempotent and follows the blog-indexing-automation skill:
-#
-#   1. Detect blog URLs added/modified in the deploy
-#   2. Verify each URL is operationally ready (200, no noindex, canonical, in sitemap)
-#   3. Submit the sitemap-index to Google Search Console (one call per deploy)
-#   4. Capture a baseline URL Inspection per new URL (monitoring, not submission)
-#   5. Open a PR that updates docs/blog-indexing-status.{md,json}
-#
-# Indexing is NOT requested via API — Google's Indexing API does not
-# support normal blog content. The skill explicitly forbids UI
-# automation against Search Console. Operationally, sitemap submission
-# + healthy internal linking is what makes URLs discoverable.
-
 on:
   workflow_run:
-    workflows: ['landing-page-deploy']
+    workflows: ['landing-page-production']
     types: [completed]
     branches: [main]
   workflow_dispatch:

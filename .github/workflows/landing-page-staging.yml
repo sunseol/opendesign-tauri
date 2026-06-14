@@ -1,26 +1,21 @@
-name: landing-page-deploy
+name: landing-page-staging
 
 on:
   push:
     branches:
       - main
     paths:
-      # Workflow files
-      - .github/workflows/landing-page-deploy.yml
+      - .github/workflows/landing-page-staging.yml
+      - .github/workflows/landing-page-production.yml
       - .github/workflows/landing-page-ci.yml
-      # Landing page sources
       - apps/landing-page/**
-      # Design template source of truth for the homepage.
-      - design-templates/open-design-landing/**
-      # Content sources — Astro content collections glob these at build
-      # time. Adding/removing a SKILL.md, DESIGN.md, craft principle, or
-      # live-artifact template MUST trigger a redeploy or the published
-      # site falls behind silently.
+      - design-templates/**
       - skills/**
       - design-systems/**
       - craft/**
       - templates/**
-      # Workspace plumbing
+      - prompt-templates/**
+      - plugins/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -31,15 +26,22 @@ permissions:
   deployments: write
 
 concurrency:
-  group: landing-page-deploy-${{ github.ref }}
+  group: landing-page-staging-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   deploy:
-    name: Deploy landing page
-    if: github.repository == 'nexu-io/open-design'
+    name: Deploy landing page to staging
+    if: >-
+      github.repository == 'sunseol/opendesign-tauri'
+      && vars.LANDING_PAGE_DEPLOY_ENABLED == 'true'
+      && vars.LANDING_PAGE_STAGING_PROJECT != ''
+      && vars.LANDING_PAGE_STAGING_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment:
+      name: landing-staging
+      url: ${{ vars.LANDING_PAGE_STAGING_URL }}
 
     steps:
       - name: Checkout
@@ -65,8 +67,17 @@ jobs:
           version=$(node -p "require('./apps/landing-page/package.json').devDependencies.playwright.replace(/[^0-9.]/g,'')")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Cache generated previews
+        id: previews-cache
+        uses: actions/cache@v5.0.5
+        with:
+          path: apps/landing-page/public/previews
+          key: landing-page-previews-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'apps/landing-page/package.json', 'apps/landing-page/scripts/generate-previews.ts', 'skills/**', 'design-templates/**', 'templates/**', 'prompt-templates/**', 'plugins/_official/**') }}
+          restore-keys: |
+            landing-page-previews-${{ runner.os }}-
+
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
@@ -77,16 +88,14 @@ jobs:
       - name: Typecheck landing page
         run: pnpm --filter @open-design/landing-page typecheck
 
-      # Generate previews before build so they end up in `out/previews/`.
-      # Soft vs. hard failure is enforced inside the script itself:
-      # individual broken `example.html` entries are logged and skipped,
-      # but a systemic failure (chromium launch error, every job failing)
-      # exits non-zero so we don't silently ship a deploy with zero
-      # thumbnails to production.
       - name: Generate skill + template previews
+        if: steps.previews-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @open-design/landing-page previews
 
       - name: Build landing page
+        env:
+          OD_LANDING_NOINDEX: '1'
+          OD_LANDING_SITE: ${{ vars.LANDING_PAGE_STAGING_URL }}
         run: pnpm --filter @open-design/landing-page build
 
       - name: Verify zero external JavaScript
@@ -107,23 +116,16 @@ jobs:
           }
           NODE
 
-      - name: Verify Cloudflare image resizing URLs
+      - name: Verify deploy file count under Cloudflare Pages cap
         run: |
-          node <<'NODE'
-          const { readFileSync } = require('node:fs');
-          const html = readFileSync('apps/landing-page/out/index.html', 'utf8');
-          const resizedUrls = html.match(/https:\/\/static\.open-design\.ai\/cdn-cgi\/image\//g) ?? [];
-          if (resizedUrls.length < 16) {
-            console.error(`Expected at least 16 Cloudflare resized image URLs, found ${resizedUrls.length}`);
-            process.exit(1);
-          }
-          if (/(?:src|content)=["']\/assets\/[A-Za-z0-9_.-]+\.png/.test(html)) {
-            console.error('Found local /assets/*.png image reference in generated landing HTML.');
-            process.exit(1);
-          }
-          NODE
+          count=$(find apps/landing-page/out -type f | wc -l | tr -d '[:space:]')
+          echo "landing-page deploy file count: $count"
+          if [ "$count" -ge 19000 ]; then
+            echo "::error::landing-page build emitted $count files; Cloudflare Pages caps deployments at 20,000."
+            exit 1
+          fi
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (staging)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -132,5 +134,5 @@ jobs:
           packageManager: npm
           command: >
             pages deploy out
-            --project-name=open-design-landing
-            --branch=${{ github.ref_name }}
+            --project-name=${{ vars.LANDING_PAGE_STAGING_PROJECT }}
+            --branch=main

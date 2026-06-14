@@ -5,7 +5,8 @@ on:
     paths:
       # Workflow files
       - .github/workflows/landing-page-ci.yml
-      - .github/workflows/landing-page-deploy.yml
+      - .github/workflows/landing-page-staging.yml
+      - .github/workflows/landing-page-production.yml
       - .github/workflows/blog-indexing-on-deploy.yml
       - .github/workflows/blog-indexing-monitor.yml
       - .github/actions/setup-playwright/**
@@ -13,7 +14,7 @@ on:
       # Landing page sources
       - apps/landing-page/**
       # Design template source of truth for the homepage.
-      - design-templates/open-design-landing/**
+      - design-templates/**
       # Content sources globbed by Astro content collections — without
       # these the deploy can be silently skipped when only Markdown
       # content is touched.
@@ -21,6 +22,8 @@ on:
       - design-systems/**
       - craft/**
       - templates/**
+      - prompt-templates/**
+      - plugins/**
       # Workspace plumbing
       - package.json
       - pnpm-lock.yaml
@@ -30,17 +33,20 @@ on:
       - main
     paths:
       - .github/workflows/landing-page-ci.yml
-      - .github/workflows/landing-page-deploy.yml
+      - .github/workflows/landing-page-staging.yml
+      - .github/workflows/landing-page-production.yml
       - .github/workflows/blog-indexing-on-deploy.yml
       - .github/workflows/blog-indexing-monitor.yml
       - .github/actions/setup-playwright/**
       - .github/actions/setup-workspace/**
       - apps/landing-page/**
-      - design-templates/open-design-landing/**
+      - design-templates/**
       - skills/**
       - design-systems/**
       - craft/**
       - templates/**
+      - prompt-templates/**
+      - plugins/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
