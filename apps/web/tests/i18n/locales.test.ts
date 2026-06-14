@@ -256,6 +256,26 @@ const ZH_TW_MANUAL_EDIT_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'manualEdit.focusSlides',
   'manualEdit.showPanels',
 ];
+const ZH_TW_PLUGIN_DETAILS_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'plugins.availableDetails.provenance',
+  'plugins.availableDetails.provenanceLine',
+  'plugins.availableDetails.provenanceLineWithIntegrity',
+  'plugins.availableDetails.install',
+  'plugins.availableDetails.version',
+  'plugins.availableDetails.pluginVersion',
+  'plugins.availableDetails.copyInstallCommand',
+  'plugins.availableDetails.copied',
+  'plugins.availableDetails.deprecatedPrefix',
+  'plugins.availableDetails.deprecatedFallback',
+  'plugins.availableDetails.yanked',
+  'plugins.availableDetails.yankedWithReason',
+  'plugins.availableDetails.versionDeprecatedSuffix',
+  'plugins.availableDetails.versionYankedSuffix',
+  'plugins.availableDetails.ref',
+  'plugins.availableDetails.integrity',
+  'plugins.availableDetails.permissions',
+  'plugins.availableDetails.capabilitySummary',
+];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
   'designFiles.filterClear',
@@ -565,6 +585,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW manual edit copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_MANUAL_EDIT_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW plugin detail copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_PLUGIN_DETAILS_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
