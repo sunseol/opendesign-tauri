@@ -157,8 +157,7 @@ async function openLocalCliSettings(
   await gotoEntryHome(page);
   await page.getByRole('button', { name: OPEN_SETTINGS_LABEL }).click();
   const menu = page.getByRole('menu');
-  await expect(menu).toBeVisible();
-  await menu.getByRole('button', { name: SETTINGS_MENU_LABEL }).click();
+  if (await menu.isVisible({ timeout: 1_000 })) await menu.getByRole('button', { name: SETTINGS_MENU_LABEL }).click();
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

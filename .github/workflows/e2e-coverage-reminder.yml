@@ -95,9 +95,9 @@ jobs:
                 patterns: [
                   /^apps\/daemon\//,
                   /^packages\/.*runtime/i,
-                  /^e2e\/ui\/(real-daemon-run|settings-local-cli-codex-fallback)\.test\.ts$/,
+                  /^e2e\/ui\/(real-daemon-run|settings-local-cli-codex-fallback|amr-run-failure-recovery)\.test\.ts$/,
                 ],
-                command: "pnpm -C e2e exec playwright test -c playwright.config.ts ui/real-daemon-run.test.ts ui/settings-local-cli-codex-fallback.test.ts --grep '\\[P0\\]|\\[P1\\]'",
+                command: "pnpm -C e2e exec playwright test -c playwright.config.ts ui/real-daemon-run.test.ts ui/settings-local-cli-codex-fallback.test.ts ui/amr-run-failure-recovery.test.ts --grep '\\[P0\\]|\\[P1\\]'",
               },
               {
                 area: 'design files/artifact preview',

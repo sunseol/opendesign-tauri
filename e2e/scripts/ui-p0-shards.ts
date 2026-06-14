@@ -24,7 +24,11 @@ const shards: Record<string, Shard> = {
   },
   'runtime-recovery': {
     grep: String.raw`\[P0\]`,
-    files: ['ui/real-daemon-run.test.ts', 'ui/settings-local-cli-codex-fallback.test.ts'],
+    files: [
+      'ui/real-daemon-run.test.ts',
+      'ui/settings-local-cli-codex-fallback.test.ts',
+      'ui/amr-run-failure-recovery.test.ts',
+    ],
   },
   'settings-connectors': {
     grep: String.raw`\[P0\]`,
