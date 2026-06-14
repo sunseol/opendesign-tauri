@@ -86,6 +86,14 @@ test("guard runs repository integrity classification checks", () => {
   assert.match(manifest.scripts?.guard ?? "", /scripts\/repository-integrity-classification\.test\.ts/);
 });
 
+test("guard runs design-system integrity unit tests", () => {
+  const manifest = JSON.parse(readText("package.json")) as { scripts?: Record<string, string> };
+  const guard = manifest.scripts?.guard ?? "";
+
+  assert.match(guard, /scripts\/check-design-system-manifests\.test\.ts/);
+  assert.match(guard, /scripts\/check-design-system-package-quality\.test\.ts/);
+});
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
