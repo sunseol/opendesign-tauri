@@ -201,6 +201,30 @@ describe('preview comment attachment helpers', () => {
     });
   });
 
+  it('carries saved comment image attachments into chat context', () => {
+    const attachments = commentsToAttachments([
+      comment({
+        note: '',
+        attachments: [
+          { path: 'uploads/comment-hero.png', name: 'comment-hero.png' },
+          { path: 'uploads/comment-detail.png', name: 'comment-detail.png' },
+        ],
+      }),
+    ]);
+
+    expect(attachments[0]).toMatchObject({
+      imageAttachments: [
+        { path: 'uploads/comment-hero.png', name: 'comment-hero.png' },
+        { path: 'uploads/comment-detail.png', name: 'comment-detail.png' },
+      ],
+      comment: 'Use the 2 attached images as the comment reference.',
+    });
+    const content = messageContentWithCommentAttachments('', attachments);
+    expect(content).toContain('imageAttachments: 2');
+    expect(content).toContain('image.1: uploads/comment-hero.png | comment-hero.png');
+    expect(content).toContain('image.2: uploads/comment-detail.png | comment-detail.png');
+  });
+
   it('updates and removes attached comments by saved comment id', () => {
     const first = comment({ id: 'c1', elementId: 'hero-title', note: 'Original' });
     const updated = comment({ id: 'c1', elementId: 'hero-title', note: 'Updated' });

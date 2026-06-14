@@ -2,6 +2,7 @@ import type {
   ChatCommentAttachment,
   ChatCommentSelectionKind,
   ChatMessage,
+  PreviewCommentAttachment,
   PreviewCommentMember,
   PreviewComment,
   PreviewCommentSelectionKind,
@@ -125,6 +126,7 @@ export function commentToAttachment(
   order: number,
 ): ChatCommentAttachment {
   const podMembers = normalizeMembers(comment.podMembers);
+  const imageAttachments = mergePreviewCommentAttachments(undefined, comment.attachments);
   return {
     id: comment.id,
     order,
@@ -132,7 +134,7 @@ export function commentToAttachment(
     elementId: comment.elementId,
     selector: comment.selector,
     label: comment.label,
-    comment: comment.note,
+    comment: comment.note.trim() || imageOnlyCommentFallback(imageAttachments.length),
     currentText: trimContextText(comment.text),
     pagePosition: normalizePosition(comment.position),
     htmlHint: trimHtmlHint(comment.htmlHint),
@@ -145,6 +147,7 @@ export function commentToAttachment(
         : undefined,
     podMembers: podMembers.length > 0 ? podMembers : undefined,
     ...slideIndexField(comment.slideIndex),
+    imageAttachments: imageAttachments.length > 0 ? imageAttachments : undefined,
     source: 'saved-comment',
   };
 }
@@ -325,9 +328,39 @@ function renderCommentAttachmentContext(commentAttachments: ChatCommentAttachmen
         );
       });
     }
+    const imageAttachments = mergePreviewCommentAttachments(undefined, item.imageAttachments);
+    if (imageAttachments.length > 0) {
+      lines.push(`imageAttachments: ${imageAttachments.length}`);
+      imageAttachments.forEach((attachment, attachmentIndex) => {
+        lines.push(`image.${attachmentIndex + 1}: ${attachment.path} | ${attachment.name}`);
+      });
+    }
   });
   lines.push('</attached-preview-comments>');
   return lines.join('\n');
+}
+
+export function mergePreviewCommentAttachments(
+  existing: readonly PreviewCommentAttachment[] | undefined,
+  incoming: readonly PreviewCommentAttachment[] | undefined,
+): PreviewCommentAttachment[] {
+  const merged: PreviewCommentAttachment[] = [];
+  const seen = new Set<string>();
+  for (const item of [...(existing ?? []), ...(incoming ?? [])]) {
+    const path = String(item.path || '').trim();
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    const name = String(item.name || '').trim() || path.split('/').pop() || path;
+    merged.push({ path, name });
+  }
+  return merged;
+}
+
+function imageOnlyCommentFallback(count: number): string {
+  if (count <= 0) return '';
+  return count > 1
+    ? `Use the ${count} attached images as the comment reference.`
+    : 'Use the attached image as the comment reference.';
 }
 
 function visualAnnotationIntent(markKind: PreviewVisualMarkKind): string {
