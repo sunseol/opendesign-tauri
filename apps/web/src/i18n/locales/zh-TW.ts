@@ -601,6 +601,9 @@ export const zhTW: Dict = {
   'designSystemPicker.closeEsc': '關閉 (Esc)',
   'designSystemPicker.previewFrameTitle': '{title} 預覽',
   'designSystemPicker.fullscreenFrameTitle': '{title} 全螢幕預覽',
+  'recentProjects.title': '最近的專案',
+  'recentProjects.viewAll': '查看全部',
+  'recentProjects.empty': '尚無專案 — 輸入提示詞開始建立。',
   'entry.helpAria': '說明',
   'entry.helpMenuAria': '說明選單',
   'entry.helpGetHelp': '在 GitHub 取得協助',
@@ -1036,6 +1039,8 @@ export const zhTW: Dict = {
 
   'project.backToProjects': '返回專案列表',
   'project.metaFreeform': '自由設計',
+  'project.customInstructions': '專案指示',
+  'project.customInstructionsPlaceholder': '此專案的指示（會注入每則訊息）…',
   'project.resizeChatPanel': '調整聊天面板大小',
   'project.instructionsActive': '已生效 — 每則訊息都會附帶',
   'chat.tabChat': '對話',
