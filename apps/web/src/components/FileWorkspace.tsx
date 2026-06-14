@@ -16,6 +16,8 @@ import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { useT } from '../i18n';
 import { isMacPlatform } from '../utils/platform';
 import {
+  createProjectFolder,
+  deleteProjectFolder,
   deleteProjectFile,
   fetchProjectFolders,
   fetchProjectFileText,
@@ -468,6 +470,18 @@ export function FileWorkspace({
         result: 'success',
       });
     }
+  }
+
+  async function handleCreateFolder(path: string): Promise<ProjectFolder | null> {
+    const folder = await createProjectFolder(projectId, path);
+    if (folder) await refreshFilesAndFolders();
+    return folder;
+  }
+
+  async function handleDeleteFolder(path: string): Promise<boolean> {
+    const deleted = await deleteProjectFolder(projectId, path);
+    if (deleted) await refreshFilesAndFolders();
+    return deleted;
   }
 
   useEffect(() => {
@@ -1029,6 +1043,22 @@ export function FileWorkspace({
                 element: 'new_sketch',
               });
               startNewSketch(currentDir ?? '');
+            }}
+            onCreateFolder={(path) => {
+              trackFileManagerClick(analytics.track, {
+                page_name: 'file_manager',
+                area: 'file_manager',
+                element: 'upload',
+              });
+              return handleCreateFolder(path);
+            }}
+            onDeleteFolder={(path) => {
+              trackFileManagerClick(analytics.track, {
+                page_name: 'file_manager',
+                area: 'file_manager',
+                element: 'delete',
+              });
+              return handleDeleteFolder(path);
             }}
             uploadError={uploadError}
             onClearUploadError={() => setUploadError(null)}

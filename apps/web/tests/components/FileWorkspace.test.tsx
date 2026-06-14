@@ -10,11 +10,13 @@ import { FileWorkspace, scrollWorkspaceTabsWithWheel } from '../../src/component
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import { projectSplitClassName } from '../../src/components/ProjectView';
 import {
+  createProjectFolder,
+  deleteProjectFolder,
   fetchProjectFolders,
   uploadProjectFiles,
   writeProjectTextFile,
 } from '../../src/providers/registry';
-import type { ProjectFile } from '../../src/types';
+import type { ProjectFile, ProjectFolder } from '../../src/types';
 
 vi.mock('../../src/providers/registry', async () => {
   const actual = await vi.importActual<typeof import('../../src/providers/registry')>(
@@ -22,12 +24,16 @@ vi.mock('../../src/providers/registry', async () => {
   );
   return {
     ...actual,
+    createProjectFolder: vi.fn(),
+    deleteProjectFolder: vi.fn(),
     fetchProjectFolders: vi.fn(async () => []),
     uploadProjectFiles: vi.fn(),
     writeProjectTextFile: vi.fn(),
   };
 });
 
+const mockedCreateProjectFolder = vi.mocked(createProjectFolder);
+const mockedDeleteProjectFolder = vi.mocked(deleteProjectFolder);
 const mockedFetchProjectFolders = vi.mocked(fetchProjectFolders);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
 const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
@@ -60,6 +66,19 @@ function baseFile(overrides: Partial<ProjectFile> = {}): ProjectFile {
     mtime: 1710000000,
     kind: 'image',
     mime: 'image/png',
+    ...overrides,
+  };
+}
+
+function projectFolder(path: string, overrides: Partial<ProjectFolder> = {}): ProjectFolder {
+  const parts = path.split('/').filter(Boolean);
+  const name = parts.at(-1) ?? path;
+  return {
+    name,
+    path,
+    type: 'dir',
+    size: 0,
+    mtime: 1700000000,
     ...overrides,
   };
 }
@@ -465,6 +484,66 @@ describe('FileWorkspace upload input', () => {
         'assets/note.txt',
         'hello from assets',
       );
+    });
+  });
+
+  it('creates folders under the open Design Files folder', async () => {
+    mockedFetchProjectFolders.mockResolvedValueOnce([projectFolder('assets')]);
+    mockedCreateProjectFolder.mockResolvedValueOnce(projectFolder('assets/brand'));
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    fireEvent.click(screen.getByRole('button', { name: 'New folder' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Folder name' }), {
+      target: { value: 'brand' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create folder' }));
+
+    await waitFor(() => {
+      expect(mockedCreateProjectFolder).toHaveBeenCalledWith('project-1', 'assets/brand');
+    });
+  });
+
+  it('deletes Design Files folders through the registry', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockedFetchProjectFolders.mockResolvedValueOnce([projectFolder('assets')]);
+    mockedDeleteProjectFolder.mockResolvedValueOnce(true);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('design-folder-delete-assets'));
+
+    await waitFor(() => {
+      expect(mockedDeleteProjectFolder).toHaveBeenCalledWith('project-1', 'assets');
     });
   });
 

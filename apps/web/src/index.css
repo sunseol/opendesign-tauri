@@ -10152,6 +10152,44 @@ button.connector-action.is-loading {
   background: var(--red-bg);
   color: var(--red);
 }
+.df-folder-create-form {
+  margin: 0 20px 10px;
+  padding: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+.df-folder-create-field {
+  display: grid;
+  gap: 4px;
+  min-width: min(240px, 100%);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.df-folder-create-field input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+.df-folder-create-form button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+.df-folder-create-form button.secondary {
+  color: var(--text-muted);
+}
 .df-refresh-control {
   width: 28px;
   height: 28px;
@@ -10436,7 +10474,7 @@ button.connector-action.is-loading {
   cursor: pointer;
 }
 .df-folder-row .df-cell-menu {
-  pointer-events: none;
+  pointer-events: auto;
 }
 .df-file-row:hover { background: var(--bg-subtle); }
 .df-file-row.active:not(.selected) { background: var(--bg-subtle); }
@@ -10766,8 +10804,16 @@ button.connector-action.is-loading {
   transition: opacity 120ms ease;
 }
 .df-row:hover .df-row-menu { opacity: 1; }
+.df-file-row:hover .df-row-menu { opacity: 1; }
 .df-row-menu:focus { opacity: 1; }
 .df-row-menu:hover { background: var(--border); color: var(--text); }
+.df-folder-delete {
+  color: var(--text-faint);
+}
+.df-folder-delete:hover:not(:disabled) {
+  color: var(--red);
+  background: var(--red-bg);
+}
 .df-section-more {
   margin: 6px 20px 10px;
   width: auto;

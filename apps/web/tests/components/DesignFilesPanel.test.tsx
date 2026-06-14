@@ -350,6 +350,40 @@ describe('DesignFilesPanel folder navigation', () => {
 
     expect(screen.getByTestId('design-folder-row-assets/empty')).toBeTruthy();
   });
+
+  it('requests new folders inside the current Design Files folder', async () => {
+    const onCreateFolder = vi.fn(async () => folder('assets/brand'));
+    renderPanel([], {
+      folders: [folder('assets')],
+      onCreateFolder,
+    });
+
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    fireEvent.click(screen.getByRole('button', { name: 'New folder' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Folder name' }), {
+      target: { value: 'brand' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create folder' }));
+
+    await waitFor(() => {
+      expect(onCreateFolder).toHaveBeenCalledWith('assets/brand');
+    });
+  });
+
+  it('requests persisted folder deletion by folder path', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const onDeleteFolder = vi.fn(async () => true);
+    renderPanel([], {
+      folders: [folder('assets')],
+      onDeleteFolder,
+    });
+
+    fireEvent.click(screen.getByTestId('design-folder-delete-assets'));
+
+    await waitFor(() => {
+      expect(onDeleteFolder).toHaveBeenCalledWith('assets');
+    });
+  });
 });
 
 describe('DesignFilesPanel large-list regression', () => {

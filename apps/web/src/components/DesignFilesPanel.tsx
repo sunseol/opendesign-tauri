@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -33,6 +33,8 @@ interface Props {
   onUploadFiles: (files: File[], currentDir?: string) => void;
   onPaste: (currentDir?: string) => void;
   onNewSketch: (currentDir?: string) => void;
+  onCreateFolder?: (path: string) => Promise<ProjectFolder | null> | ProjectFolder | null;
+  onDeleteFolder?: (path: string) => Promise<boolean> | boolean;
   uploadError?: string | null;
   onClearUploadError?: () => void;
   onPluginFolderAgentAction?: (
@@ -99,6 +101,8 @@ export function DesignFilesPanel({
   onUploadFiles,
   onPaste,
   onNewSketch,
+  onCreateFolder,
+  onDeleteFolder,
   uploadError = null,
   onClearUploadError,
   onPluginFolderAgentAction,
@@ -124,6 +128,11 @@ export function DesignFilesPanel({
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [groupMode, setGroupMode] = useState<DesignFilesGroupMode>('kind');
   const [currentDir, setCurrentDir] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState<{
+    draft: string;
+    saving: boolean;
+  } | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState<string | null>(null);
   const [collapsedModifiedSections, setCollapsedModifiedSections] = useState<
     Set<ModifiedSection>
   >(new Set());
@@ -290,6 +299,7 @@ export function DesignFilesPanel({
     setMenuPos(null);
     setRenaming(null);
     setSelected(new Set());
+    setCreatingFolder(null);
   }, [currentDir]);
 
   // Reset to the first page when the filter changes — the previous page
@@ -529,6 +539,39 @@ export function DesignFilesPanel({
     }
   }
 
+  async function handleCreateFolderSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!creatingFolder || creatingFolder.saving || !onCreateFolder) return;
+    const path = folderPathFromDraft(currentDir, creatingFolder.draft);
+    if (!path) return;
+    setCreatingFolder({ draft: creatingFolder.draft, saving: true });
+    try {
+      const created = await onCreateFolder(path);
+      setCreatingFolder(null);
+      if (created) setCurrentDir(created.path);
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      alert(error.message);
+      setCreatingFolder({ draft: creatingFolder.draft, saving: false });
+    }
+  }
+
+  async function handleDeleteFolder(path: string) {
+    if (!onDeleteFolder || deletingFolder) return;
+    const confirmed = window.confirm(`Delete folder "${path}"?`);
+    if (!confirmed) return;
+    setDeletingFolder(path);
+    try {
+      const deleted = await onDeleteFolder(path);
+      if (!deleted) alert(`Could not delete folder "${path}".`);
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      alert(error.message);
+    } finally {
+      setDeletingFolder(null);
+    }
+  }
+
   function toggleModifiedSection(section: ModifiedSection) {
     setCollapsedModifiedSections((prev) => {
       const next = new Set(prev);
@@ -575,7 +618,24 @@ export function DesignFilesPanel({
           <span className="df-kind-label">Folder</span>
         </td>
         <td className="df-cell-time df-cell-openable">{relativeTime(dir.mtime, t)}</td>
-        <td className="df-cell-menu" />
+        <td className="df-cell-menu">
+          {onDeleteFolder ? (
+            <button
+              type="button"
+              className="df-row-menu df-folder-delete"
+              data-testid={`design-folder-delete-${dir.path}`}
+              aria-label={`Delete folder ${dir.path}`}
+              title="Delete folder"
+              disabled={deletingFolder === dir.path}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleDeleteFolder(dir.path);
+              }}
+            >
+              <Icon name="trash" size={13} />
+            </button>
+          ) : null}
+        </td>
       </tr>
     );
   }
@@ -907,6 +967,16 @@ export function DesignFilesPanel({
       </div>
     ) : (
       <div className="df-actions">
+        {onCreateFolder ? (
+          <button
+            type="button"
+            onClick={() => setCreatingFolder({ draft: '', saving: false })}
+            title="New folder"
+          >
+            <Icon name="folder" size={13} />
+            <span>New folder</span>
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -1112,6 +1182,40 @@ export function DesignFilesPanel({
             {kindFilterControl}
             {fileActions}
           </div>
+          {creatingFolder ? (
+            <form
+              className="df-folder-create-form"
+              onSubmit={(event) => void handleCreateFolderSubmit(event)}
+            >
+              <label className="df-folder-create-field">
+                <span>Folder name</span>
+                <input
+                  autoFocus
+                  value={creatingFolder.draft}
+                  onChange={(event) =>
+                    setCreatingFolder({ draft: event.currentTarget.value, saving: false })
+                  }
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={
+                  creatingFolder.saving ||
+                  !folderPathFromDraft(currentDir, creatingFolder.draft)
+                }
+              >
+                Create folder
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={creatingFolder.saving}
+                onClick={() => setCreatingFolder(null)}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : null}
           {files.length === 0 && folders.length === 0 && liveArtifacts.length === 0 ? (
             <div className="df-empty" data-testid="design-files-empty">
               <div className="df-empty-pill">
@@ -1600,6 +1704,23 @@ function kindSortPriority(kind: ProjectFileKind): number {
 
 function joinProjectPath(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name;
+}
+
+function folderPathFromDraft(currentDir: string, draft: string): string | null {
+  const normalized = draft.replace(/\\/g, '/').trim();
+  if (
+    !normalized ||
+    normalized.includes('\0') ||
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(normalized)
+  ) {
+    return null;
+  }
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..')) {
+    return null;
+  }
+  return joinProjectPath(currentDir, parts.join('/'));
 }
 
 function projectFileDisplayName(name: string, currentDir: string): string {
