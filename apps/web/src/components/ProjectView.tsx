@@ -314,7 +314,8 @@ function saveChatPanelWidth(width: number): void {
       CHAT_PANEL_WIDTH_STORAGE_KEY,
       String(clampPreferredChatPanelWidth(width)),
     );
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
     // localStorage can be unavailable in hardened browser contexts.
   }
 }
@@ -336,10 +337,11 @@ function readAutoSendAttachments(projectId: string): ChatAttachment[] {
   try {
     const raw = window.sessionStorage.getItem(autoSendAttachmentsKey(projectId));
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isStoredChatAttachment);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
     return [];
   }
 }
@@ -349,8 +351,8 @@ function clearAutoSendSession(projectId: string): void {
   try {
     window.sessionStorage.removeItem(autoSendFirstMessageKey(projectId));
     window.sessionStorage.removeItem(autoSendAttachmentsKey(projectId));
-  } catch {
-    /* ignore */
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
   }
 }
 
@@ -361,8 +363,8 @@ function markDesignSystemAuditAutoRepairEligible(projectId: string): void {
       designSystemAuditAutoRepairKey(projectId),
       String(DESIGN_SYSTEM_AUDIT_AUTO_REPAIR_ATTEMPTS),
     );
-  } catch {
-    /* ignore */
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
   }
 }
 
@@ -383,8 +385,9 @@ function consumeDesignSystemAuditAutoRepair(projectId: string): boolean {
       window.sessionStorage.removeItem(key);
     }
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof Error) return false;
+    throw error;
   }
 }
 
@@ -392,8 +395,8 @@ function clearDesignSystemAuditAutoRepair(projectId: string): void {
   if (typeof window === 'undefined') return;
   try {
     window.sessionStorage.removeItem(designSystemAuditAutoRepairKey(projectId));
-  } catch {
-    /* ignore */
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
   }
 }
 
@@ -753,7 +756,11 @@ export function ProjectView({
           const routedMatch = routeConversationId
             ? list.find((c) => c.id === routeConversationId) ?? null
             : null;
-          setActiveConversationId(routedMatch ? routedMatch.id : list[0]!.id);
+          const fallbackConversation = list[0];
+          if (!fallbackConversation) {
+            throw new Error('Conversation list unexpectedly became empty.');
+          }
+          setActiveConversationId(routedMatch ? routedMatch.id : fallbackConversation.id);
         }
       } catch (err) {
         if (cancelled) return;
@@ -1241,7 +1248,8 @@ export function ProjectView({
           // conversation. Only the latest dispatch is allowed to apply.
           if (conversationsRefreshTokenRef.current !== myToken) return;
           setConversations(list);
-        } catch {
+        } catch (error) {
+          if (!(error instanceof Error)) throw error;
           // Defensive: refresh failed (network blip, daemon gone). The
           // next project mount or another conversation-created event
           // will retry; no need to surface an error here.
@@ -1387,7 +1395,8 @@ export function ProjectView({
           memoryBody = json.body;
         }
       }
-    } catch {
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
       // Ignore; memory injection is best-effort.
     }
     let audioVoiceOptions: AudioVoiceOption[] | undefined;
@@ -1719,13 +1728,11 @@ export function ProjectView({
       if (cancelled) return;
       const activeByMessage = new Map(
         activeRuns
-          .filter((run) => run.assistantMessageId)
-          .map((run) => [run.assistantMessageId!, run]),
+          .flatMap((run) => (run.assistantMessageId ? [[run.assistantMessageId, run] as const] : [])),
       );
       const historicalByMessage = new Map(
         historicalRuns
-          .filter((run) => run.assistantMessageId)
-          .map((run) => [run.assistantMessageId!, run]),
+          .flatMap((run) => (run.assistantMessageId ? [[run.assistantMessageId, run] as const] : [])),
       );
 
       for (const message of messages) {
@@ -2718,7 +2725,8 @@ export function ProjectView({
                 chatProvider: byokChatProvider,
               }),
             });
-          } catch {
+          } catch (error) {
+            if (!(error instanceof Error)) throw error;
             // Best-effort: memory extraction must never block the
             // chat. The daemon's SSE bus will catch up the Memory tab
             // on the next event.
@@ -3290,7 +3298,8 @@ export function ProjectView({
             }
           });
         } else if (id === activeConversationId) {
-          setActiveConversationId(next[0]!.id);
+          const firstConversation = next[0];
+          if (firstConversation) setActiveConversationId(firstConversation.id);
         }
         return next;
       });
@@ -3568,8 +3577,8 @@ export function ProjectView({
       isAutoSend = Boolean(
         window.sessionStorage.getItem(autoSendFirstMessageKey(project.id)),
       );
-    } catch {
-      /* sessionStorage may be unavailable; treat as manual flow. */
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
     }
     autoSendFirstMessageRef.current = isAutoSend;
     autoSendSeedRef.current = isAutoSend ? (project.pendingPrompt ?? '') : '';
@@ -3970,6 +3979,8 @@ export function ProjectView({
               onProjectMetadataChange={(metadata) => {
                 onProjectChange({ ...project, metadata });
               }}
+              currentDesignSystemId={project.designSystemId ?? null}
+              onActiveDesignSystemChange={onProjectChange}
               currentSkillId={project.skillId}
               onProjectSkillChange={(skillId) => {
                 onProjectChange({ ...project, skillId });

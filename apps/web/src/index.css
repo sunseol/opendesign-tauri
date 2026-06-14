@@ -16256,6 +16256,31 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   justify-content: center;
   color: var(--text-muted);
 }
+.composer-ds-picker {
+  min-width: 280px;
+}
+.composer-ds-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 6px;
+}
+.composer-ds-picker-back {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.composer-ds-picker-back:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text);
+}
 
 /* ============================================================
    Chat header: conversation history dropdown

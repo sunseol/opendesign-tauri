@@ -23,7 +23,7 @@ import { patchProject } from "../state/projects";
 import { fetchMcpServers } from "../state/mcp";
 import type { McpServerConfig, McpTemplate } from "../state/mcp";
 import { listPlugins } from "../state/projects";
-import type { AppConfig, ChatAttachment, ChatCommentAttachment, ProjectFile, ProjectMetadata, SkillSummary } from "../types";
+import type { AppConfig, ChatAttachment, ChatCommentAttachment, Project, ProjectFile, ProjectMetadata, SkillSummary } from "../types";
 import type {
   ContextItem,
   ConnectorDetail,
@@ -33,6 +33,7 @@ import type {
   RunContextSelection,
 } from '@open-design/contracts';
 import { buildVisualAnnotationAttachment } from '../comments';
+import { DesignSystemSwitchPicker } from './DesignSystemSwitchPicker';
 import { Icon } from "./Icon";
 import { PluginDetailsModal } from "./PluginDetailsModal";
 import { PluginsSection, type PluginsSectionHandle } from "./PluginsSection";
@@ -132,6 +133,8 @@ interface Props {
   researchAvailable?: boolean;
   projectMetadata?: ProjectMetadata;
   onProjectMetadataChange?: (metadata: ProjectMetadata) => void;
+  currentDesignSystemId?: string | null;
+  onActiveDesignSystemChange?: (project: Project) => void;
   // SenseAudio BYOK image-model picker shown above the textarea. Hidden
   // when the active chat protocol is anything other than 'senseaudio',
   // so the composer stays clean for every other BYOK tab. The state
@@ -203,6 +206,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       researchAvailable = false,
       projectMetadata,
       onProjectMetadataChange,
+      currentDesignSystemId = null,
+      onActiveDesignSystemChange,
       byokApiProtocol,
       byokImageModel,
       onChangeByokImageModel,
@@ -856,10 +861,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                         },
                   };
                   if (detail.action !== 'send') {
+                    const attachmentInput = visualAttachmentInput;
                     setStagedVisualComments((current) => [
                       ...current,
                       buildVisualAnnotationAttachment({
-                        ...visualAttachmentInput!,
+                        ...attachmentInput,
                         order: commentAttachments.length + current.length + 1,
                       }),
                     ]);
@@ -879,10 +885,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             if (streaming) {
               if (uploaded.length > 0) setStaged((s) => [...s, ...uploaded]);
               if (visualAttachmentInput) {
+                const attachmentInput = visualAttachmentInput;
                 setStagedVisualComments((current) => [
                   ...current,
                   buildVisualAnnotationAttachment({
-                    ...visualAttachmentInput!,
+                    ...attachmentInput,
                     order: commentAttachments.length + current.length + 1,
                   }),
                 ]);
@@ -1100,6 +1107,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       const result = await patchProject(projectId, { skillId: skill.id });
       if (!result) return false;
       onProjectSkillChange?.(result.skillId ?? skill.id);
+      return true;
+    }
+
+    async function handleSwitchDesignSystem(designSystemId: string | null): Promise<boolean> {
+      if (!projectId) return false;
+      const result = await patchProject(projectId, { designSystemId });
+      if (!result) return false;
+      onActiveDesignSystemChange?.(result);
       return true;
     }
 
@@ -1424,7 +1439,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                     if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey)) {
                       e.preventDefault();
                       const safe = Math.min(slashIndex, filteredSlash.length - 1);
-                      pickSlash(filteredSlash[safe]!);
+                      const command = filteredSlash[safe];
+                      if (command) pickSlash(command);
                       return;
                     }
                     if (e.key === 'Escape') {
@@ -1488,6 +1504,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 ref={toolsTriggerRef}
                 type="button"
                 className={`icon-btn composer-tools-trigger${toolsOpen ? ' active' : ''}`}
+                data-testid="composer-tools-trigger"
                 onClick={() => {
                   setToolsOpen((v) => {
                     const next = !v;
@@ -1526,6 +1543,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                         key={tab}
                         type="button"
                         role="tab"
+                        data-testid={`composer-tools-tab-${tab}`}
                         aria-selected={toolsTab === tab}
                         className={`composer-tools-tab${toolsTab === tab ? ' active' : ''}`}
                         onClick={() => setToolsTab(tab)}
@@ -1633,10 +1651,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                     {toolsTab === 'import' ? (
                       <ToolsImportPanel
                         t={t}
+                        currentDesignSystemId={currentDesignSystemId}
                         onLinkFolder={async () => {
                           setToolsOpen(false);
                           await handleLinkFolder();
                         }}
+                        onComplete={() => setToolsOpen(false)}
+                        onSwitchDesignSystem={handleSwitchDesignSystem}
                       />
                     ) : null}
                   </div>
@@ -1861,7 +1882,7 @@ function StagedAttachments({
       <div className="staged-row" data-testid="staged-attachments">
         {attachments.map((a) => {
           const canPreview = a.kind === "image" && Boolean(projectId);
-          const imageUrl = canPreview ? projectRawUrl(projectId!, a.path) : null;
+          const imageUrl = a.kind === "image" && projectId ? projectRawUrl(projectId, a.path) : null;
           return (
             <div key={a.path} className={`staged-chip staged-${a.kind}`}>
               {canPreview && imageUrl ? (
@@ -2379,10 +2400,30 @@ function pluginSourceLabel(plugin: InstalledPluginRecord): string {
 function ToolsImportPanel({
   t,
   onLinkFolder,
+  onComplete,
+  currentDesignSystemId,
+  onSwitchDesignSystem,
 }: {
   t: TranslateFn;
   onLinkFolder: () => Promise<void> | void;
+  onComplete?: () => void;
+  currentDesignSystemId?: string | null;
+  onSwitchDesignSystem?: (designSystemId: string | null, title: string) => Promise<boolean>;
 }) {
+  const [view, setView] = useState<'root' | 'designSystems'>('root');
+
+  if (view === 'designSystems' && onSwitchDesignSystem) {
+    return (
+      <DesignSystemSwitchPicker
+        currentDesignSystemId={currentDesignSystemId}
+        onBack={() => setView('root')}
+        onSwitched={onComplete}
+        onSwitchDesignSystem={onSwitchDesignSystem}
+        t={t}
+      />
+    );
+  }
+
   return (
     <div className="composer-tools-list">
       <ImportItem icon="upload" label={t('chat.importFig')} t={t} />
@@ -2394,7 +2435,14 @@ function ToolsImportPanel({
         enabled
         onClick={() => void onLinkFolder()}
       />
-      <ImportItem icon="sparkles" label={t('chat.importSkills')} t={t} />
+      <ImportItem
+        icon="sparkles"
+        label={t('chat.importSkills')}
+        t={t}
+        enabled={!!onSwitchDesignSystem}
+        onClick={() => setView('designSystems')}
+        testId="composer-import-design-systems"
+      />
       <ImportItem icon="file" label={t('chat.importProject')} t={t} />
     </div>
   );
@@ -2406,17 +2454,20 @@ function ImportItem({
   t,
   enabled,
   onClick,
+  testId,
 }: {
   icon: "upload" | "link" | "grid" | "folder" | "sparkles" | "file";
   label: string;
   t: TranslateFn;
   enabled?: boolean;
   onClick?: () => void;
+  testId?: string;
 }) {
   return (
     <button
       type="button"
       className={`composer-import-item${enabled ? ' composer-import-item-enabled' : ''}`}
+      data-testid={testId}
       role="menuitem"
       tabIndex={-1}
       disabled={!enabled}
@@ -2719,7 +2770,8 @@ function saveComposerDraft(key: string | undefined, draft: string) {
     } else {
       window.localStorage.removeItem(key);
     }
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
     // Storage can be unavailable in privacy modes; the composer should still work.
   }
 }

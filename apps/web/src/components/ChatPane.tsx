@@ -17,7 +17,7 @@ import {
   DESIGN_SYSTEM_WORKSPACE_DISPLAY_TITLE,
   isDesignSystemWorkspacePrompt,
 } from '../design-system-auto-prompt';
-import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
+import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, Project, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
 import { dayKey, dayLabel, exactDateTime, messageTime, relativeTimeLong } from '../utils/chatTime';
 import { commentsToAttachments, simplePositionLabel } from '../comments';
 import { AssistantMessage } from './AssistantMessage';
@@ -292,6 +292,8 @@ interface Props {
   onOpenPetSettings?: () => void;
   projectMetadata?: ProjectMetadata;
   onProjectMetadataChange?: (metadata: ProjectMetadata) => void;
+  currentDesignSystemId?: string | null;
+  onActiveDesignSystemChange?: (project: Project) => void;
   currentSkillId?: string | null;
   onProjectSkillChange?: (skillId: string | null) => void;
   researchAvailable?: boolean;
@@ -362,6 +364,8 @@ export function ChatPane({
   onOpenPetSettings,
   projectMetadata,
   onProjectMetadataChange,
+  currentDesignSystemId = null,
+  onActiveDesignSystemChange,
   currentSkillId = null,
   onProjectSkillChange,
   researchAvailable,
@@ -1165,6 +1169,8 @@ export function ChatPane({
             researchAvailable={researchAvailable}
             projectMetadata={projectMetadata}
             onProjectMetadataChange={onProjectMetadataChange}
+            currentDesignSystemId={currentDesignSystemId}
+            onActiveDesignSystemChange={onActiveDesignSystemChange}
             byokApiProtocol={byokApiProtocol}
             byokImageModel={byokImageModel}
             onChangeByokImageModel={onChangeByokImageModel}
