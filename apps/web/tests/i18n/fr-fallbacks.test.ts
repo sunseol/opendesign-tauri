@@ -18,6 +18,15 @@ const FR_USE_EVERYWHERE_KEYS: ReadonlyArray<keyof Dict> = Object.keys(en).filter
   (key): key is keyof Dict => key.startsWith('useEverywhere.'),
 );
 
+const FR_TASKS_KEYS: ReadonlyArray<keyof Dict> = Object.keys(en).filter(
+  (key): key is keyof Dict => key.startsWith('tasks.'),
+);
+
+const FR_TASKS_STABLE_KEYS: ReadonlySet<keyof Dict> = new Set([
+  'tasks.primitive.orbit.title',
+  'tasks.primitive.routines.title',
+]);
+
 const FR_MANUAL_EDIT_ACTION_KEYS: ReadonlyArray<keyof Dict> = [
   'manualEdit.deleteElement',
   'manualEdit.deleteElementConfirm',
@@ -277,6 +286,19 @@ describe('fr fallback parity', () => {
     for (const key of FR_USE_EVERYWHERE_KEYS) {
       expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French automation task workspace copy translated instead of falling back to English', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_TASKS_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
+      if (FR_TASKS_STABLE_KEYS.has(key)) {
+        expect(fr[key], `fr.${key}`).toBe(en[key]);
+      } else {
+        expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+      }
     }
   });
 
