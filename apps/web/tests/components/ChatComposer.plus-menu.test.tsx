@@ -5,6 +5,11 @@ import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatComposer } from '../../src/components/ChatComposer';
+import {
+  composerText,
+  flushComposerMount,
+  typeAndSettle,
+} from '../helpers/lexical-composer';
 
 const COMMUNITY_PLUGIN = {
   id: 'community-deck',
@@ -140,22 +145,15 @@ describe('ChatComposer plus menu', () => {
   it('inserts a skill mention at the caret when picking from Skills', async () => {
     const onProjectSkillChange = vi.fn();
     renderComposer({ onProjectSkillChange });
-    const input = screen.getByTestId('chat-composer-input');
-    if (!(input instanceof HTMLTextAreaElement)) {
-      throw new Error('Expected chat composer input to be a textarea.');
-    }
 
-    fireEvent.change(input, {
-      target: { value: 'Build ', selectionStart: 6 },
-    });
-    input.setSelectionRange(6, 6);
+    await flushComposerMount();
+    await typeAndSettle('Build ', 6);
     fireEvent.click(screen.getByTestId('chat-plus-trigger'));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Skills' }));
     fireEvent.click(screen.getByText('Deck Builder'));
 
     await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
-    await waitFor(() => expect(input.value).toBe('Build @Deck Builder '));
-    expect(input.selectionStart).toBe('Build @Deck Builder '.length);
+    await waitFor(() => expect(composerText()).toBe('Build @Deck Builder '));
   });
 
   it('keeps the existing Official and My plugins switcher inside Plugins', async () => {
@@ -178,18 +176,14 @@ describe('ChatComposer plus menu', () => {
 
   it('seeds the design toolbox follow-up while preserving the draft', async () => {
     renderComposer();
-    const input = screen.getByTestId('chat-composer-input');
-    if (!(input instanceof HTMLTextAreaElement)) {
-      throw new Error('Expected chat composer input to be a textarea.');
-    }
 
-    fireEvent.change(input, { target: { value: 'keep this draft' } });
-    input.setSelectionRange('keep this draft'.length, 'keep this draft'.length);
+    await flushComposerMount();
+    await typeAndSettle('keep this draft');
     fireEvent.click(screen.getByTestId('chat-plus-trigger'));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Design toolbox' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Match next step/i }));
 
-    await waitFor(() => expect(input.value).toContain('Match the best next design step'));
-    expect(input.value).toContain('keep this draft');
+    await waitFor(() => expect(composerText()).toContain('Match the best next design step'));
+    expect(composerText()).toContain('keep this draft');
   });
 });

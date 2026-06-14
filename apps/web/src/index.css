@@ -2000,6 +2000,34 @@ a.avatar-item:visited {
   overflow-y: hidden;
 }
 .composer textarea:focus { outline: none; box-shadow: none; }
+.composer-input-editor {
+  position: relative;
+  min-height: 88px;
+  font-size: 13px;
+}
+.composer-editable {
+  min-height: 88px;
+  max-height: min(184px, 34vh);
+  border: none;
+  background: transparent;
+  padding: 4px;
+  outline: none;
+  overflow-y: auto;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+.composer-editable:focus {
+  outline: none;
+  box-shadow: none;
+}
+.composer-input-placeholder {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: var(--text-faint);
+  pointer-events: none;
+  user-select: none;
+}
 .composer-input-wrap {
   position: relative;
   display: flex;

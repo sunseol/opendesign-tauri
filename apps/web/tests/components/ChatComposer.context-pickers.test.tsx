@@ -5,6 +5,11 @@ import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatComposer } from '../../src/components/ChatComposer';
+import {
+  composerText,
+  flushComposerMount,
+  typeAndSettle,
+} from '../helpers/lexical-composer';
 
 const COMMUNITY_PLUGIN = {
   id: 'community-deck',
@@ -172,9 +177,8 @@ describe('ChatComposer context pickers', () => {
     servers = [];
     renderComposer();
 
-    fireEvent.change(screen.getByTestId('chat-composer-input'), {
-      target: { value: '@', selectionStart: 1 },
-    });
+    await flushComposerMount();
+    await typeAndSettle('@');
 
     expect(screen.getByTestId('mention-popover')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Plugins' })).toBeTruthy();
@@ -187,34 +191,28 @@ describe('ChatComposer context pickers', () => {
 
   it('selects an MCP server from @ search and keeps the inline token visible', async () => {
     renderComposer();
-    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
 
-    fireEvent.change(input, {
-      target: { value: '@sl', selectionStart: 3 },
-    });
+    await flushComposerMount();
+    await typeAndSettle('@sl');
 
     await waitFor(() => expect(screen.getByText('Slack MCP')).toBeTruthy());
     fireEvent.click(screen.getByText('Slack MCP'));
 
-    expect(input.value).toBe('@Slack MCP ');
-    expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@Slack MCP');
+    await waitFor(() => expect(composerText()).toBe('@Slack MCP '));
   });
 
   it('applies a skill from @ search and reports the active project skill', async () => {
     const onProjectSkillChange = vi.fn();
     renderComposer({ onProjectSkillChange });
-    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
 
-    fireEvent.change(input, {
-      target: { value: '@deck', selectionStart: 5 },
-    });
+    await flushComposerMount();
+    await typeAndSettle('@deck');
 
     await waitFor(() => expect(screen.getByText('Deck Builder')).toBeTruthy());
     fireEvent.click(screen.getByText('Deck Builder'));
 
     await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
-    expect(input.value).toBe('@Deck Builder ');
-    expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@Deck Builder');
+    expect(composerText()).toBe('@Deck Builder ');
   });
 
   it('shows all matching skills and ranks exact prefix matches first', async () => {
@@ -241,11 +239,9 @@ describe('ChatComposer context pickers', () => {
       }),
     ];
     renderComposer();
-    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
 
-    fireEvent.change(input, {
-      target: { value: '@audit', selectionStart: 6 },
-    });
+    await flushComposerMount();
+    await typeAndSettle('@audit');
 
     await waitFor(() => expect(screen.getByText('Audit Helper 9')).toBeTruthy());
     const skillNames = Array.from(
@@ -260,17 +256,14 @@ describe('ChatComposer context pickers', () => {
 
   it('applies a plugin from @ search and keeps the plugin token inline', async () => {
     renderComposer();
-    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
 
-    fireEvent.change(input, {
-      target: { value: '@export', selectionStart: 7 },
-    });
+    await flushComposerMount();
+    await typeAndSettle('@export');
 
     await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
     fireEvent.click(screen.getByText('My Export'));
 
-    await waitFor(() => expect(input.value).toBe('@My Export '));
-    expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@My Export');
+    await waitFor(() => expect(composerText()).toBe('@My Export '));
   });
 
 });
