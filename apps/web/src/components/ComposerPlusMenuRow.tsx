@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
-type SubmenuId = 'connectors' | 'plugins' | 'skills' | 'mcp' | 'import';
+type SubmenuId = 'connectors' | 'plugins' | 'skills' | 'mcp' | 'import' | 'toolbox';
 
 export function PlusSubmenuRow({
   id,

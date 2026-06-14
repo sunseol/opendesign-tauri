@@ -175,4 +175,21 @@ describe('ChatComposer plus menu', () => {
     });
     expect(screen.getByText('Private export workflow')).toBeTruthy();
   });
+
+  it('seeds the design toolbox follow-up while preserving the draft', async () => {
+    renderComposer();
+    const input = screen.getByTestId('chat-composer-input');
+    if (!(input instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected chat composer input to be a textarea.');
+    }
+
+    fireEvent.change(input, { target: { value: 'keep this draft' } });
+    input.setSelectionRange('keep this draft'.length, 'keep this draft'.length);
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Design toolbox' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Match next step/i }));
+
+    await waitFor(() => expect(input.value).toContain('Match the best next design step'));
+    expect(input.value).toContain('keep this draft');
+  });
 });

@@ -35,7 +35,7 @@ import type {
 import { buildVisualAnnotationAttachment } from '../comments';
 import { DesignSystemSwitchPicker } from './DesignSystemSwitchPicker';
 import { ComposerPlusMenu } from './ComposerPlusMenu';
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { PluginDetailsModal } from "./PluginDetailsModal";
 import { PluginsSection, type PluginsSectionHandle } from "./PluginsSection";
 import { BUILT_IN_PETS, CUSTOM_PET_ID } from "./pet/pets";
@@ -87,6 +87,41 @@ interface SlashCommand {
   // Icon glyph from the project Icon set.
   icon: 'sparkles' | 'eye' | 'sliders';
 }
+
+interface DesignToolboxAction {
+  id: string;
+  label: string;
+  description: string;
+  prompt: string;
+  icon: IconName;
+}
+
+const DESIGN_TOOLBOX_ACTIONS: readonly DesignToolboxAction[] = [
+  {
+    id: 'match-next-step',
+    label: 'Match next step',
+    description: 'Choose the most useful next design workflow for this project.',
+    prompt:
+      'Match the best next design step for the current project. First identify the target, constraints, and available context, then choose the most useful resource or workflow and complete one concrete pass.',
+    icon: 'sparkles',
+  },
+  {
+    id: 'design-polish',
+    label: 'Design polish',
+    description: 'Improve hierarchy, spacing, responsive states, and accessibility.',
+    prompt:
+      'Polish this design until it is ready to ship: check hierarchy, typography, spacing, responsive behavior, button states, empty/loading/error states, and accessibility; directly fix the most important issues.',
+    icon: 'palette',
+  },
+  {
+    id: 'add-motion',
+    label: 'Add motion',
+    description: 'Add restrained interaction or transition motion where it helps.',
+    prompt:
+      'Add high-quality motion to the current HTML or page element: choose useful entrance, state-transition, or micro-interaction moments, keep them restrained, prefer transform and opacity, and include reduced-motion fallbacks.',
+    icon: 'play',
+  },
+];
 
 interface Props {
   projectId: string | null;
@@ -706,6 +741,65 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       const applied = await applyProjectSkill(skill);
       if (!applied) return;
       replaceMentionWithText(`${inlineMentionToken(skill.name)} `);
+    }
+
+    function insertTextAtCursor(text: string) {
+      const ta = textareaRef.current;
+      const currentDraft = ta?.value ?? draft;
+      const cursor = ta?.selectionStart ?? currentDraft.length;
+      const before = currentDraft.slice(0, cursor);
+      const after = currentDraft.slice(cursor);
+      const next = before + text + after;
+      setDraft(next);
+      setMention(null);
+      setSlash(null);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        const pos = before.length + text.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+
+    function seedDesignToolboxAction(action: DesignToolboxAction, close: () => void) {
+      const currentDraft = textareaRef.current?.value ?? draft;
+      const next = currentDraft.trim().length > 0
+        ? `${action.prompt}\n\n${currentDraft}`
+        : action.prompt;
+      setDraft(next);
+      setMention(null);
+      setSlash(null);
+      close();
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(action.prompt.length, action.prompt.length);
+      });
+    }
+
+    async function pickSkillFromTools(skill: SkillSummary, close: () => void) {
+      const applied = await applyProjectSkill(skill);
+      if (!applied) return;
+      insertTextAtCursor(`${inlineMentionToken(skill.name)} `);
+      close();
+    }
+
+    function pickProjectFileFromTools(file: ProjectFile, close: () => void) {
+      const filePath = file.path ?? file.name;
+      insertTextAtCursor(`@${filePath} `);
+      if (!staged.some((s) => s.path === filePath)) {
+        setStaged((s) => [
+          ...s,
+          {
+            path: filePath,
+            name: file.name || lastPathSegment(filePath),
+            kind: looksLikeImage(filePath) ? 'image' : 'file',
+          },
+        ]);
+      }
+      close();
     }
 
     function removeStagedSkill(id: string) {
@@ -1524,26 +1618,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 <ToolsSkillsPanel
                   skills={skills}
                   currentSkillId={currentSkillId}
-                  onPick={async (skill) => {
-                    const applied = await applyProjectSkill(skill);
-                    if (!applied) return;
-                    const ta = textareaRef.current;
-                    const insert = `${inlineMentionToken(skill.name)} `;
-                    const currentDraft = ta?.value ?? draft;
-                    const cursor = ta?.selectionStart ?? currentDraft.length;
-                    const before = currentDraft.slice(0, cursor);
-                    const after = currentDraft.slice(cursor);
-                    const next = before + insert + after;
-                    setDraft(next);
-                    close();
-                    requestAnimationFrame(() => {
-                      const el = textareaRef.current;
-                      if (!el) return;
-                      el.focus();
-                      const pos = before.length + insert.length;
-                      el.setSelectionRange(pos, pos);
-                    });
-                  }}
+                  onPick={(skill) => pickSkillFromTools(skill, close)}
                 />
               )}
               renderMcp={({ close }) => (
@@ -1551,22 +1626,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                   servers={enabledMcpServers}
                   templates={mcpTemplates}
                   onInsert={(serverId) => {
-                    const ta = textareaRef.current;
                     const server = enabledMcpServers.find((item) => item.id === serverId);
                     const insert = `${inlineMentionToken(server?.label || serverId)} `;
-                    const cursor = ta?.selectionStart ?? draft.length;
-                    const before = draft.slice(0, cursor);
-                    const after = draft.slice(cursor);
-                    const next = before + insert + after;
-                    setDraft(next);
+                    insertTextAtCursor(insert);
                     close();
-                    requestAnimationFrame(() => {
-                      const el = textareaRef.current;
-                      if (!el) return;
-                      el.focus();
-                      const pos = before.length + insert.length;
-                      el.setSelectionRange(pos, pos);
-                    });
                   }}
                   onManage={() => {
                     close();
@@ -1584,6 +1647,27 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                   }}
                   onComplete={close}
                   onSwitchDesignSystem={handleSwitchDesignSystem}
+                />
+              )}
+              renderToolbox={({ close }) => (
+                <ToolsDesignToolboxPanel
+                  actions={DESIGN_TOOLBOX_ACTIONS}
+                  skills={skills}
+                  plugins={pluginsForComposer}
+                  projectFiles={projectFiles}
+                  currentSkillId={currentSkillId}
+                  activePluginId={pinnedPluginId}
+                  onPickAction={(action) => seedDesignToolboxAction(action, close)}
+                  onPickSkill={(skill) => pickSkillFromTools(skill, close)}
+                  onApplyPlugin={async (record) => {
+                    const result = await pluginsSectionRef.current?.applyById(record.id, record);
+                    if (result) close();
+                  }}
+                  onShowPluginDetails={(record) => {
+                    setDetailsRecord(record);
+                    close();
+                  }}
+                  onPickFile={(file) => pickProjectFileFromTools(file, close)}
                 />
               )}
             />
@@ -2222,6 +2306,219 @@ function ToolsSkillsPanel({
   );
 }
 
+function ToolsDesignToolboxPanel({
+  actions,
+  skills,
+  plugins,
+  projectFiles,
+  currentSkillId,
+  activePluginId,
+  onPickAction,
+  onPickSkill,
+  onApplyPlugin,
+  onShowPluginDetails,
+  onPickFile,
+}: {
+  actions: readonly DesignToolboxAction[];
+  skills: SkillSummary[];
+  plugins: InstalledPluginRecord[];
+  projectFiles: ProjectFile[];
+  currentSkillId: string | null;
+  activePluginId: string | null;
+  onPickAction: (action: DesignToolboxAction) => void;
+  onPickSkill: (skill: SkillSummary) => void | Promise<void>;
+  onApplyPlugin: (record: InstalledPluginRecord) => void | Promise<void>;
+  onShowPluginDetails: (record: InstalledPluginRecord) => void;
+  onPickFile: (file: ProjectFile) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [pendingSkillId, setPendingSkillId] = useState<string | null>(null);
+  const [pendingPluginId, setPendingPluginId] = useState<string | null>(null);
+  const visibleActions = useMemo(
+    () => actions.filter((action) => designToolboxActionMatchesQuery(action, query)),
+    [actions, query],
+  );
+  const visibleSkills = useMemo(
+    () => skills.filter((skill) => skillMatchesQuery(skill, query)).slice(0, 8),
+    [skills, query],
+  );
+  const visiblePlugins = useMemo(
+    () => plugins.filter((plugin) => pluginMatchesQuery(plugin, query)).slice(0, 8),
+    [plugins, query],
+  );
+  const visibleFiles = useMemo(
+    () =>
+      projectFiles
+        .filter((file) => file.type === undefined || file.type === 'file')
+        .filter((file) => projectFileMatchesQuery(file, query))
+        .slice(0, 8),
+    [projectFiles, query],
+  );
+  const hasResults =
+    visibleActions.length > 0 ||
+    visibleSkills.length > 0 ||
+    visiblePlugins.length > 0 ||
+    visibleFiles.length > 0;
+
+  return (
+    <>
+      <div className="composer-tools-filter">
+        <input
+          className="composer-tools-search"
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+          placeholder="Search design toolbox..."
+          aria-label="Search design toolbox"
+        />
+      </div>
+      {!hasResults ? (
+        <div className="composer-tools-empty">
+          {query ? `No design toolbox results for "${query}".` : 'No design toolbox resources available.'}
+        </div>
+      ) : (
+        <>
+          {visibleActions.length > 0 ? (
+            <div className="composer-tools-list">
+              <div className="composer-tools-section-label">Follow-up</div>
+              {visibleActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  role="menuitem"
+                  className="composer-tools-row"
+                  onClick={() => onPickAction(action)}
+                  title={action.description}
+                >
+                  <Icon name={action.icon} size={12} />
+                  <span className="composer-tools-row-body">
+                    <strong>{action.label}</strong>
+                    <span className="composer-tools-row-meta">{action.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {visibleSkills.length > 0 ? (
+            <div className="composer-tools-list">
+              <div className="composer-tools-section-label">Skills</div>
+              {visibleSkills.map((skill) => {
+                const active = skill.id === currentSkillId;
+                return (
+                  <button
+                    key={skill.id}
+                    type="button"
+                    role="menuitem"
+                    className={`composer-tools-row${active ? ' active' : ''}`}
+                    onClick={async () => {
+                      setPendingSkillId(skill.id);
+                      try {
+                        await onPickSkill(skill);
+                      } finally {
+                        setPendingSkillId(null);
+                      }
+                    }}
+                    disabled={pendingSkillId !== null}
+                    title={skill.description}
+                  >
+                    <Icon name={active ? 'check' : 'file'} size={12} />
+                    <span className="composer-tools-row-body">
+                      <strong>{skill.name}</strong>
+                      <span className="composer-tools-row-meta">
+                        {skill.mode}
+                        {skill.surface ? ` · ${skill.surface}` : ''}
+                      </span>
+                    </span>
+                    {pendingSkillId === skill.id ? (
+                      <span className="composer-tools-row-pending">Applying...</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {visiblePlugins.length > 0 ? (
+            <div className="composer-tools-list">
+              <div className="composer-tools-section-label">Plugins</div>
+              {visiblePlugins.map((plugin) => (
+                <div
+                  key={plugin.id}
+                  className={`composer-tools-row composer-tools-row--plugin${
+                    plugin.id === activePluginId ? ' active' : ''
+                  }`}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="composer-tools-row-main"
+                    onClick={async () => {
+                      setPendingPluginId(plugin.id);
+                      try {
+                        await onApplyPlugin(plugin);
+                      } finally {
+                        setPendingPluginId(null);
+                      }
+                    }}
+                    disabled={pendingPluginId !== null}
+                    aria-busy={pendingPluginId === plugin.id ? 'true' : undefined}
+                    title={plugin.manifest?.description ?? plugin.title}
+                  >
+                    <Icon name="sparkles" size={12} />
+                    <span className="composer-tools-row-body">
+                      <strong>{plugin.title}</strong>
+                      <span className="composer-tools-row-meta">
+                        {plugin.manifest?.description ?? plugin.id}
+                      </span>
+                    </span>
+                    {pendingPluginId === plugin.id ? (
+                      <span className="composer-tools-row-pending">Applying...</span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    className="composer-tools-row-side"
+                    onClick={() => onShowPluginDetails(plugin)}
+                    title={`View details for ${plugin.title}`}
+                    aria-label={`View details for ${plugin.title}`}
+                  >
+                    <Icon name="eye" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {visibleFiles.length > 0 ? (
+            <div className="composer-tools-list">
+              <div className="composer-tools-section-label">Design files</div>
+              {visibleFiles.map((file) => {
+                const filePath = projectFilePath(file);
+                return (
+                  <button
+                    key={filePath}
+                    type="button"
+                    role="menuitem"
+                    className="composer-tools-row"
+                    onClick={() => onPickFile(file)}
+                    title={filePath}
+                  >
+                    <Icon name={looksLikeImage(filePath) ? 'image' : 'file'} size={12} />
+                    <span className="composer-tools-row-body">
+                      <strong>{file.name || lastPathSegment(filePath)}</strong>
+                      <span className="composer-tools-row-meta">
+                        {filePath}
+                        {file.size != null ? ` · ${prettySize(file.size)}` : ''}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
+      )}
+    </>
+  );
+}
+
 function pluginMatchesQuery(plugin: InstalledPluginRecord, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -2248,6 +2545,34 @@ function skillMatchesQuery(skill: SkillSummary, query: string): boolean {
     skill.mode,
     skill.surface ?? '',
     ...skill.triggers,
+  ]
+    .join(' ')
+    .toLowerCase()
+    .includes(q);
+}
+
+function designToolboxActionMatchesQuery(action: DesignToolboxAction, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [action.id, action.label, action.description, action.prompt]
+    .join(' ')
+    .toLowerCase()
+    .includes(q);
+}
+
+function projectFilePath(file: ProjectFile): string {
+  return file.path ?? file.name;
+}
+
+function projectFileMatchesQuery(file: ProjectFile, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    file.name,
+    file.path ?? '',
+    file.kind,
+    file.mime,
+    file.artifactKind ?? '',
   ]
     .join(' ')
     .toLowerCase()

@@ -29,7 +29,7 @@ import {
   type FlyoutGeometry,
 } from './composer-plus-menu-geometry';
 
-type SubmenuId = 'connectors' | 'plugins' | 'skills' | 'mcp' | 'import';
+type SubmenuId = 'connectors' | 'plugins' | 'skills' | 'mcp' | 'import' | 'toolbox';
 type PlusMenuPopupStyle = CSSProperties & Record<'--plus-menu-flyout-max-height', string>;
 
 interface RenderSlotArgs {
@@ -52,6 +52,8 @@ export interface ComposerPlusMenuProps {
   readonly renderSkills?: (args: RenderSlotArgs) => ReactNode;
   readonly renderMcp?: (args: RenderSlotArgs) => ReactNode;
   readonly renderImport?: (args: RenderSlotArgs) => ReactNode;
+  readonly renderToolbox?: (args: RenderSlotArgs) => ReactNode;
+  readonly toolboxLabel?: string;
   readonly triggerTestId?: string;
   readonly onOpen?: () => void;
 }
@@ -72,6 +74,8 @@ export function ComposerPlusMenu({
   renderSkills,
   renderMcp,
   renderImport,
+  renderToolbox,
+  toolboxLabel = 'Design toolbox',
   triggerTestId,
   onOpen,
 }: ComposerPlusMenuProps) {
@@ -210,6 +214,11 @@ export function ComposerPlusMenu({
               {renderImport ? (
                 <PlusSubmenuRow id="import" label={t('chat.importLabel')} icon="import" active={submenu} onOpen={openSubmenu}>
                   {renderImport({ close })}
+                </PlusSubmenuRow>
+              ) : null}
+              {renderToolbox ? (
+                <PlusSubmenuRow id="toolbox" label={toolboxLabel} icon="hammer" active={submenu} onOpen={openSubmenu}>
+                  {renderToolbox({ close })}
                 </PlusSubmenuRow>
               ) : null}
             </div>,
