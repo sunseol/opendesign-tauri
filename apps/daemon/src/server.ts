@@ -339,6 +339,7 @@ import {
   resolveProjectDir,
   SandboxImportedProjectError,
   sanitizeName,
+  sanitizePath,
   searchProjectFiles,
   resolveProjectDir,
   resolveProjectFilePath,
@@ -4860,6 +4861,7 @@ export async function startServer({
     deleteProjectFile,
     writeProjectFile,
     sanitizeName,
+    sanitizePath,
     listTabs,
     setTabs,
   };
@@ -8812,7 +8814,7 @@ export async function startServer({
         await ensureProject(PROJECTS_DIR, req.params.id, uploadProject?.metadata);
         if (req.file) {
           const buf = await fs.promises.readFile(req.file.path);
-          const desiredName = sanitizeName(
+          const desiredName = sanitizePath(
             req.body?.name || req.file.originalname,
           );
           const meta = await writeProjectFile(

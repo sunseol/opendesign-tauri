@@ -329,6 +329,35 @@ describe('POST /api/import/folder', () => {
     await expect(readFile(path.join(project.metadata.baseDir, uploaded.path), 'utf8')).resolves.toBe('icon');
   });
 
+  it('writes single multipart uploads to requested nested paths inside metadata.baseDir', async () => {
+    const real = makeFolder();
+    await writeFile(path.join(real, 'index.html'), '<!doctype html>');
+    const importResp = await importFolder({ baseDir: real });
+    expect(importResp.status).toBe(200);
+    const { project } = (await importResp.json()) as {
+      project: { id: string; metadata: { baseDir: string } };
+    };
+
+    const form = new FormData();
+    form.append('file', new File(['icon'], 'icon.png', { type: 'image/png' }));
+    form.append('name', 'assets/icons/icon.png');
+    const saveResp = await fetch(`${baseUrl}/api/projects/${project.id}/files`, {
+      method: 'POST',
+      body: form,
+    });
+
+    expect(saveResp.status).toBe(200);
+    const body = (await saveResp.json()) as {
+      file: { path: string; name: string };
+    };
+    expect(body.file.path).toBe('assets/icons/icon.png');
+    expect(body.file.name).toBe('assets/icons/icon.png');
+    await expect(readFile(path.join(project.metadata.baseDir, 'assets/icons/icon.png'), 'utf8')).resolves.toBe('icon');
+    await expect(stat(path.join(project.metadata.baseDir, 'assets_icons_icon.png'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+  });
+
   it('refuses raw reads through a descendant symlink that escapes the folder', async () => {
     const real = makeFolder();
     await mkdir(path.join(real, 'assets'));
