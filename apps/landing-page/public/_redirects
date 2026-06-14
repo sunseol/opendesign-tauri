@@ -67,3 +67,116 @@
 /zh-TW/*  /zh-tw/:splat  301
 /pt-BR/*  /pt-br/:splat  301
 /es-ES/*  /es/:splat     301
+
+# Catalog migration: legacy /skills /systems /templates -> /plugins/*
+# Cloudflare matches first rule wins, so order is: faceted/specific ->
+# detail prefixes -> bare index -> locale variants.
+
+# Faceted pages have no new exact equivalent.
+/skills/mode/*       /plugins/skills/    301
+/skills/scenario/*   /plugins/skills/    301
+/systems/category/*  /plugins/systems/   301
+
+# Systems detail: design-system-<folder> is the uniform plugin slug.
+/systems/cisco/  /plugins/systems/  301
+/systems/hud/  /plugins/systems/  301
+/systems/loom/  /plugins/systems/  301
+/systems/perplexity/  /plugins/systems/  301
+/systems/slack/  /plugins/systems/  301
+/systems/trading-terminal/  /plugins/systems/  301
+/systems/webex/  /plugins/systems/  301
+/systems/wechat/  /plugins/systems/  301
+/systems/*  /plugins/design-system-:splat  301
+
+# Templates detail: example-<folder> is the uniform plugin slug.
+/templates/live-otd-operations-brief/  /plugins/templates/  301
+/templates/*  /plugins/example-:splat  301
+
+# Skills detail: artifact-producing skills map to example-* plugin pages.
+/skills/replicate/  /plugins/skills/  301
+/skills/article-magazine/  /plugins/example-article-magazine/  301
+/skills/card-twitter/  /plugins/example-card-twitter/  301
+/skills/card-xiaohongshu/  /plugins/example-card-xiaohongshu/  301
+/skills/data-report/  /plugins/example-data-report/  301
+/skills/deck-guizang-editorial/  /plugins/example-deck-guizang-editorial/  301
+/skills/deck-open-slide-canvas/  /plugins/example-deck-open-slide-canvas/  301
+/skills/deck-swiss-international/  /plugins/example-deck-swiss-international/  301
+/skills/design-brief/  /plugins/example-design-brief/  301
+/skills/doc-kami-parchment/  /plugins/example-doc-kami-parchment/  301
+/skills/frame-data-chart-nyt/  /plugins/example-frame-data-chart-nyt/  301
+/skills/frame-flowchart-sticky/  /plugins/example-frame-flowchart-sticky/  301
+/skills/frame-glitch-title/  /plugins/example-frame-glitch-title/  301
+/skills/frame-light-leak-cinema/  /plugins/example-frame-light-leak-cinema/  301
+/skills/frame-liquid-bg-hero/  /plugins/example-frame-liquid-bg-hero/  301
+/skills/frame-logo-outro/  /plugins/example-frame-logo-outro/  301
+/skills/frame-macos-notification/  /plugins/example-frame-macos-notification/  301
+/skills/hatch-pet/  /plugins/example-hatch-pet/  301
+/skills/mockup-device-3d/  /plugins/example-mockup-device-3d/  301
+/skills/poster-hero/  /plugins/example-poster-hero/  301
+/skills/ppt-keynote/  /plugins/example-ppt-keynote/  301
+/skills/pptx-html-fidelity-audit/  /plugins/example-pptx-html-fidelity-audit/  301
+/skills/resume-modern/  /plugins/example-resume-modern/  301
+/skills/social-reddit-card/  /plugins/example-social-reddit-card/  301
+/skills/social-spotify-card/  /plugins/example-social-spotify-card/  301
+/skills/social-x-post-card/  /plugins/example-social-x-post-card/  301
+/skills/vfx-text-cursor/  /plugins/example-vfx-text-cursor/  301
+/skills/video-hyperframes/  /plugins/example-video-hyperframes/  301
+/skills/*  /plugins/skills/  301
+
+# Bare catalog index pages.
+/skills/     /plugins/skills/     301
+/systems/    /plugins/systems/    301
+/templates/  /plugins/templates/  301
+
+# Locale-prefixed catalog variants degrade to locale plugin sections.
+/zh/skills/*     /zh/plugins/skills/     301
+/zh/systems/*    /zh/plugins/systems/    301
+/zh/templates/*  /zh/plugins/templates/  301
+/zh-tw/skills/*     /zh-tw/plugins/skills/     301
+/zh-tw/systems/*    /zh-tw/plugins/systems/    301
+/zh-tw/templates/*  /zh-tw/plugins/templates/  301
+/ja/skills/*     /ja/plugins/skills/     301
+/ja/systems/*    /ja/plugins/systems/    301
+/ja/templates/*  /ja/plugins/templates/  301
+/ko/skills/*     /ko/plugins/skills/     301
+/ko/systems/*    /ko/plugins/systems/    301
+/ko/templates/*  /ko/plugins/templates/  301
+/de/skills/*     /de/plugins/skills/     301
+/de/systems/*    /de/plugins/systems/    301
+/de/templates/*  /de/plugins/templates/  301
+/fr/skills/*     /fr/plugins/skills/     301
+/fr/systems/*    /fr/plugins/systems/    301
+/fr/templates/*  /fr/plugins/templates/  301
+/ru/skills/*     /ru/plugins/skills/     301
+/ru/systems/*    /ru/plugins/systems/    301
+/ru/templates/*  /ru/plugins/templates/  301
+/es/skills/*     /es/plugins/skills/     301
+/es/systems/*    /es/plugins/systems/    301
+/es/templates/*  /es/plugins/templates/  301
+/pt-br/skills/*     /pt-br/plugins/skills/     301
+/pt-br/systems/*    /pt-br/plugins/systems/    301
+/pt-br/templates/*  /pt-br/plugins/templates/  301
+/it/skills/*     /it/plugins/skills/     301
+/it/systems/*    /it/plugins/systems/    301
+/it/templates/*  /it/plugins/templates/  301
+/vi/skills/*     /vi/plugins/skills/     301
+/vi/systems/*    /vi/plugins/systems/    301
+/vi/templates/*  /vi/plugins/templates/  301
+/pl/skills/*     /pl/plugins/skills/     301
+/pl/systems/*    /pl/plugins/systems/    301
+/pl/templates/*  /pl/plugins/templates/  301
+/id/skills/*     /id/plugins/skills/     301
+/id/systems/*    /id/plugins/systems/    301
+/id/templates/*  /id/plugins/templates/  301
+/nl/skills/*     /nl/plugins/skills/     301
+/nl/systems/*    /nl/plugins/systems/    301
+/nl/templates/*  /nl/plugins/templates/  301
+/ar/skills/*     /ar/plugins/skills/     301
+/ar/systems/*    /ar/plugins/systems/    301
+/ar/templates/*  /ar/plugins/templates/  301
+/tr/skills/*     /tr/plugins/skills/     301
+/tr/systems/*    /tr/plugins/systems/    301
+/tr/templates/*  /tr/plugins/templates/  301
+/uk/skills/*     /uk/plugins/skills/     301
+/uk/systems/*    /uk/plugins/systems/    301
+/uk/templates/*  /uk/plugins/templates/  301
