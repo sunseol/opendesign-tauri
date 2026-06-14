@@ -57,6 +57,7 @@ import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
 import { PasteTextDialog } from './PasteTextDialog';
+import { ProjectTerminalPanel } from './ProjectTerminalPanel';
 import { QuickSwitcher } from './QuickSwitcher';
 import { SketchEditor } from './SketchEditor';
 import {
@@ -209,6 +210,7 @@ const DESIGN_SYSTEM_GUIDANCE_FILES = new Set([
   'readme-print.md',
   'skill.md',
 ]);
+const TERMINAL_TAB = '__terminal__';
 const DESIGN_SYSTEM_IMAGE_OR_FONT_EXTENSIONS = /\.(svg|png|jpe?g|gif|webp|avif|ico|otf|ttf|woff2?)$/i;
 
 export function FileWorkspace({
@@ -402,6 +404,11 @@ export function FileWorkspace({
     onTabsStateChange(workspaceTabsState(persistedTabs, activeTab, nextTabs));
   }
 
+  function openTerminalTab() {
+    setUploadError(null);
+    setActiveTab(TERMINAL_TAB);
+  }
+
   function activatePending(name: string) {
     // Pending sketches are not in tabsState.tabs — flip the local
     // activeTab without round-tripping through the parent.
@@ -428,7 +435,7 @@ export function FileWorkspace({
   // back to the last remaining tab. Skip transient activeTab values
   // (DESIGN_FILES_TAB, pending sketches) since those aren't in persistedTabs.
   useEffect(() => {
-    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return;
+    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB || activeTab === TERMINAL_TAB) return;
     if (isBrowserTabId(activeTab)) {
       if (!browserTabs.some((tab) => tab.id === activeTab)) {
         setActiveTab(DESIGN_FILES_TAB);
@@ -652,7 +659,7 @@ export function FileWorkspace({
   // The Design Files entry is already sticky-pinned, so we only scroll
   // for real workspace tabs. Issue #775.
   useEffect(() => {
-    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return;
+    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB || activeTab === TERMINAL_TAB) return;
     const tabBar = tabsBarRef.current;
     if (!tabBar) return;
     const el = tabBar.querySelector<HTMLElement>('.ws-tab.active');
@@ -922,7 +929,7 @@ export function FileWorkspace({
   }
 
   const activeFile = useMemo<ProjectFile | null>(() => {
-    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return null;
+    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB || activeTab === TERMINAL_TAB) return null;
     if (isBrowserTabId(activeTab)) return null;
     const onDisk = visibleFiles.find((f) => f.name === activeTab);
     if (onDisk) return onDisk;
@@ -939,7 +946,7 @@ export function FileWorkspace({
   }, [activeTab, visibleFiles, sketches]);
 
   const activeLiveArtifact = useMemo<LiveArtifactWorkspaceEntry | null>(() => {
-    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB) return null;
+    if (activeTab === DESIGN_FILES_TAB || activeTab === DESIGN_SYSTEM_TAB || activeTab === TERMINAL_TAB) return null;
     if (isBrowserTabId(activeTab)) return null;
     return liveArtifactEntries.find((entry) => entry.tabId === activeTab) ?? null;
   }, [activeTab, liveArtifactEntries]);
@@ -1033,6 +1040,15 @@ export function FileWorkspace({
             </span>
             <span className="ws-tab-label">{t('workspace.designFiles')}</span>
           </button>
+          {activeTab === TERMINAL_TAB ? (
+            <Tab
+              label="Terminal"
+              active
+              onActivate={() => setActiveTab(TERMINAL_TAB)}
+              onClose={() => setActiveTab(DESIGN_FILES_TAB)}
+              kind="terminal"
+            />
+          ) : null}
           {orderedWorkspaceTabs.map((entry) => {
             if (entry.kind === 'browser') {
               const browserTab = entry.browserTab;
@@ -1112,16 +1128,28 @@ export function FileWorkspace({
             );
           })}
         </div>
-        <button
-          type="button"
-          className="icon-only ws-tab-add"
-          data-testid="workspace-add-browser-tab"
-          title="New Browser"
-          aria-label="New Browser"
-          onClick={openBrowserTab}
-        >
-          <Icon name="external-link" size={15} />
-        </button>
+        <div className="ws-tabs-actions">
+          <button
+            type="button"
+            className="icon-only ws-tab-add"
+            data-testid="workspace-add-terminal-tab"
+            title="New Terminal"
+            aria-label="New Terminal"
+            onClick={openTerminalTab}
+          >
+            <Icon name="file-code" size={15} />
+          </button>
+          <button
+            type="button"
+            className="icon-only ws-tab-add"
+            data-testid="workspace-add-browser-tab"
+            title="New Browser"
+            aria-label="New Browser"
+            onClick={openBrowserTab}
+          >
+            <Icon name="external-link" size={15} />
+          </button>
+        </div>
       </div>
       <div className="ws-body">
         {/* Banner moved into DesignFilesPanel for the Design Files tab so
@@ -1160,7 +1188,9 @@ export function FileWorkspace({
             />
           </div>
         ))}
-        {isBrowserTabId(activeTab) ? null : activeTab === DESIGN_SYSTEM_TAB && designSystemProject ? (
+        {isBrowserTabId(activeTab) ? null : activeTab === TERMINAL_TAB ? (
+          <ProjectTerminalPanel projectId={projectId} />
+        ) : activeTab === DESIGN_SYSTEM_TAB && designSystemProject ? (
           <DesignSystemProjectPanel
             projectId={projectId}
             system={designSystemProject}
@@ -2901,7 +2931,7 @@ function Tab({
   onActivate: () => void;
   onClose?: () => void;
   closable?: boolean;
-  kind?: ProjectFile['kind'] | 'browser' | 'live-artifact';
+  kind?: ProjectFile['kind'] | 'browser' | 'live-artifact' | 'terminal';
   liveArtifact?: LiveArtifactWorkspaceEntry;
   draggable?: boolean;
   dragging?: boolean;
@@ -3016,6 +3046,7 @@ function kindIconName(
   | 'file'
   | null {
   if (kind === 'browser') return 'external-link';
+  if (kind === 'terminal') return 'file-code';
   if (kind === 'live-artifact') return 'file-code';
   if (kind === 'html') return 'file-code';
   if (kind === 'image') return 'image';

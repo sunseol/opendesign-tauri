@@ -11,6 +11,7 @@ import type {
   ImportLocalDesignSystemRequest,
   ImportLocalDesignSystemResponse,
   ReplaceProjectWorkingDirResponse,
+  TerminalSession,
 } from '@open-design/contracts';
 import type {
   AgentInfo,
@@ -1267,6 +1268,100 @@ export async function deleteProjectFolder(
     if (err instanceof Error) return false;
     throw err;
   }
+}
+
+export function projectTerminalStreamUrl(projectId: string, terminalId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/stream`;
+}
+
+export async function createProjectTerminal(projectId: string): Promise<TerminalSession | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/terminals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!resp.ok) return null;
+    return terminalFromResponse(await resp.json());
+  } catch (err) {
+    if (err instanceof Error) return null;
+    throw err;
+  }
+}
+
+export async function writeProjectTerminalInput(
+  projectId: string,
+  terminalId: string,
+  data: string,
+): Promise<TerminalSession | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/stdin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    if (!resp.ok) return null;
+    return terminalFromResponse(await resp.json());
+  } catch (err) {
+    if (err instanceof Error) return null;
+    throw err;
+  }
+}
+
+export async function killProjectTerminal(projectId: string, terminalId: string): Promise<TerminalSession | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/kill`, {
+      method: 'POST',
+    });
+    if (!resp.ok) return null;
+    return terminalFromResponse(await resp.json());
+  } catch (err) {
+    if (err instanceof Error) return null;
+    throw err;
+  }
+}
+
+function terminalFromResponse(value: unknown): TerminalSession | null {
+  if (!isTerminalObject(value)) return null;
+  return terminalSessionFromUnknown(value.terminal);
+}
+
+function terminalSessionFromUnknown(value: unknown): TerminalSession | null {
+  if (!isTerminalObject(value)) return null;
+  const id = readString(value.id);
+  const cwd = readString(value.cwd);
+  const shell = readString(value.shell);
+  const cols = readNumber(value.cols);
+  const rows = readNumber(value.rows);
+  const createdAt = readNumber(value.createdAt);
+  const updatedAt = readNumber(value.updatedAt);
+  const status = value.status === 'running' || value.status === 'exited' ? value.status : null;
+  if (!id || !cwd || !shell || !cols || !rows || !createdAt || !updatedAt || !status) return null;
+  return {
+    id,
+    projectId: typeof value.projectId === 'string' ? value.projectId : null,
+    cwd,
+    shell,
+    cols,
+    rows,
+    status,
+    createdAt,
+    updatedAt,
+    exitCode: typeof value.exitCode === 'number' ? value.exitCode : null,
+    signal: typeof value.signal === 'string' ? value.signal : null,
+  };
+}
+
+function isTerminalObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 export async function fetchLiveArtifacts(projectId: string): Promise<LiveArtifactSummary[]> {

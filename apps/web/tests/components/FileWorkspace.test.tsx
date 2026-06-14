@@ -5,15 +5,20 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { TerminalSession } from '@open-design/contracts';
 
 import { FileWorkspace, scrollWorkspaceTabsWithWheel } from '../../src/components/FileWorkspace';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import { projectSplitClassName } from '../../src/components/ProjectView';
 import {
   createProjectFolder,
+  createProjectTerminal,
   deleteProjectFolder,
   fetchProjectFolders,
+  killProjectTerminal,
+  projectTerminalStreamUrl,
   uploadProjectFiles,
+  writeProjectTerminalInput,
   writeProjectTextFile,
 } from '../../src/providers/registry';
 import type { ProjectFile, ProjectFolder } from '../../src/types';
@@ -25,17 +30,26 @@ vi.mock('../../src/providers/registry', async () => {
   return {
     ...actual,
     createProjectFolder: vi.fn(),
+    createProjectTerminal: vi.fn(),
     deleteProjectFolder: vi.fn(),
     fetchProjectFolders: vi.fn(async () => []),
+    killProjectTerminal: vi.fn(),
+    projectTerminalStreamUrl: vi.fn((projectId: string, terminalId: string) =>
+      `/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/stream`),
     uploadProjectFiles: vi.fn(),
+    writeProjectTerminalInput: vi.fn(),
     writeProjectTextFile: vi.fn(),
   };
 });
 
 const mockedCreateProjectFolder = vi.mocked(createProjectFolder);
+const mockedCreateProjectTerminal = vi.mocked(createProjectTerminal);
 const mockedDeleteProjectFolder = vi.mocked(deleteProjectFolder);
 const mockedFetchProjectFolders = vi.mocked(fetchProjectFolders);
+const mockedKillProjectTerminal = vi.mocked(killProjectTerminal);
+const mockedProjectTerminalStreamUrl = vi.mocked(projectTerminalStreamUrl);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
+const mockedWriteProjectTerminalInput = vi.mocked(writeProjectTerminalInput);
 const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
 
 let root: Root | null = null;
@@ -94,6 +108,41 @@ function workspaceFile(name: string): ProjectFile {
     kind: name.endsWith('.html') ? 'html' : 'text',
     mime: name.endsWith('.html') ? 'text/html' : 'text/plain',
   };
+}
+
+function terminalSession(overrides: Partial<TerminalSession> = {}): TerminalSession {
+  return {
+    id: 'term-1',
+    projectId: 'project-1',
+    cwd: '/tmp/project-1',
+    shell: '/bin/zsh',
+    cols: 80,
+    rows: 24,
+    status: 'running',
+    createdAt: 1,
+    updatedAt: 1,
+    exitCode: null,
+    signal: null,
+    ...overrides,
+  };
+}
+
+class WorkspaceFakeEventSource {
+  readonly listeners = new Map<string, Array<(event: MessageEvent) => void>>();
+  readonly url: string;
+  closed = false;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  addEventListener(type: string, listener: (event: MessageEvent) => void): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  close(): void {
+    this.closed = true;
+  }
 }
 
 function renderWorkspace(element: React.ReactElement) {
@@ -320,6 +369,37 @@ describe('FileWorkspace browser tabs', () => {
         ],
       });
     });
+  });
+
+  it('opens a project terminal workspace tab without persisting it as a file tab', async () => {
+    const onTabsStateChange = vi.fn();
+    mockedCreateProjectTerminal.mockResolvedValue(terminalSession());
+    vi.stubGlobal('EventSource', WorkspaceFakeEventSource);
+
+    renderWorkspace(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={onTabsStateChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Terminal' }));
+
+    expect(await screen.findByLabelText('Project terminal')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Terminal/u }).getAttribute('aria-selected')).toBe('true');
+    expect(mockedCreateProjectTerminal).toHaveBeenCalledWith('project-1');
+    expect(mockedProjectTerminalStreamUrl).toHaveBeenCalledWith('project-1', 'term-1');
+    expect(mockedKillProjectTerminal).not.toHaveBeenCalled();
+    expect(mockedWriteProjectTerminalInput).not.toHaveBeenCalled();
+    expect(onTabsStateChange).not.toHaveBeenCalledWith(expect.objectContaining({
+      active: '__terminal__',
+    }));
   });
 });
 
