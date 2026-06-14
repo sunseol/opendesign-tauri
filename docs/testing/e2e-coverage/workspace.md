@@ -35,6 +35,21 @@
 | WS-014 | 手动编辑模式支持内容、样式、源码 patch，以及 undo/redo | `app.test.ts` direct test |
 | WS-015 | deck 形态 HTML 在手动编辑模式下仍保留 deck 导航能力 | `app.test.ts` direct test |
 
+## #26 Studio Editing Parity
+
+#26 的关闭条件是：Design Files、deck/comment marker flow、comments 和 manual edits 能
+survive navigation and reload；viewer modals 与 inspector overlays 不能掉到
+composer/workspace chrome 下方。
+
+| Surface | 覆盖证据 | #26 合约 |
+| --- | --- | --- |
+| Design Files | `design-files-upload`, `design-files-delete`, `design-files-tab-persistence`, `e2e/ui/app-design-files.test.ts` | staged design file visibility、面板列表、打开标签和刷新后的 active tab 恢复一起覆盖。 |
+| Deck markers | `deck-pagination-next-prev-correctness`, `deck-pagination-per-file-isolated` | deck/comment marker flow 至少有 deck 侧回归；切换多个 HTML deck tab 时 slide state 不串档。 |
+| Comment markers | `comment-attachment-flow`, `apps/web/tests/comments.test.ts`, `apps/web/tests/components/FileViewer.test.tsx` | comment marker tracking 覆盖 saved marker 编号、free-pin iframe reload rehydrate、picker targeting、attach/remove/send payload。 |
+| Manual editor | `e2e/ui/app-manual-edit.test.ts`, `apps/web/tests/components/ManualEditPanel.test.tsx`, `apps/web/tests/components/FileViewer.manual-edit.test.tsx` | manual edit inspector 覆盖 page/element inspector 往返、style persistence、deck-shaped HTML navigation、pending save 在 file switch 时清理。 |
+| Overlay layering | `apps/web/tests/components/DesignSystemPreviewModal.layering.test.tsx`, `apps/web/tests/styles/project-design-system-picker.test.ts`, `apps/web/tests/styles/studio-overlay-layering.test.ts` | viewer modals、quick switcher、staged preview modal、comment popover 和 inspector color popover 必须浮在 composer/workspace chrome 或 preview overlay 之上。 |
+| Composer caret | `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`, `apps/web/tests/styles/home-hero-prompt-metrics.test.ts` | mention highlight overlay 与输入 text-flow/caret metrics 保持一致，@ picker 选择后 inline token 可见。 |
+
 ### 键盘优先工作区流
 
 | ID | 场景 | 来源 |
