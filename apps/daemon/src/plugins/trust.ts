@@ -1,11 +1,12 @@
 // Trust resolver. Spec §5.3 has two tiers — `trusted` and `restricted`.
 // Phase 1 keeps the policy minimal:
 //
-//   - Local installs default to `trusted` (the user copied the folder
-//     here themselves).
-//   - Anything else (bundled / marketplace / github / url / project) defaults
-//     to `restricted` until an explicit `od plugin trust <id>` flips it. Phase
-//     2A wires the marketplace trust roll-up; we just expose the helpers now.
+//   - User-installed plugins default to `restricted`, including local folders.
+//     A local path proves provenance only; it is not an approval to grant broad
+//     runtime capabilities.
+//   - Bundled plugins and trusted/official marketplace installs can be promoted
+//     by the upstream-approved install pipeline. Everything else stays
+//     `restricted` until an explicit `od plugin trust <id>` flips it.
 //   - `restricted` plugins ship the prompt:inject capability only. Apply-time
 //     adds explicit grants (e.g. `mcp:<name>`, `connector:<id>`) onto the
 //     snapshot; we never widen the registry-stored cache here.
@@ -23,7 +24,7 @@ export const TRUSTED_DEFAULT_CAPABILITIES: ReadonlyArray<string> = [
 export const RESTRICTED_DEFAULT_CAPABILITIES: ReadonlyArray<string> = ['prompt:inject'];
 
 export function defaultTrustForRecord(record: Pick<InstalledPluginRecord, 'sourceKind'>): TrustTier {
-  return record.sourceKind === 'local' ? 'trusted' : 'restricted';
+  return record.sourceKind === 'bundled' ? 'trusted' : 'restricted';
 }
 
 export function defaultCapabilities(trust: TrustTier): string[] {
@@ -155,15 +156,7 @@ export function grantCapabilities(args: {
   if (!row) {
     throw new Error(`plugin not found: ${args.pluginId}`);
   }
-  let existing: string[] = [];
-  try {
-    const parsed = JSON.parse(row.capabilities_granted ?? '[]') as unknown;
-    if (Array.isArray(parsed)) {
-      existing = parsed.filter((c): c is string => typeof c === 'string');
-    }
-  } catch {
-    existing = [];
-  }
+  const existing = parseCapabilitiesGranted(row.capabilities_granted);
   const merged = Array.from(new Set([...existing, ...args.capabilities])).sort();
   const now = Date.now();
   args.db
@@ -190,15 +183,7 @@ export function revokeCapabilities(args: {
   if (!row) {
     throw new Error(`plugin not found: ${args.pluginId}`);
   }
-  let existing: string[] = [];
-  try {
-    const parsed = JSON.parse(row.capabilities_granted ?? '[]') as unknown;
-    if (Array.isArray(parsed)) {
-      existing = parsed.filter((c): c is string => typeof c === 'string');
-    }
-  } catch {
-    existing = [];
-  }
+  const existing = parseCapabilitiesGranted(row.capabilities_granted);
   const drop = new Set(args.capabilities);
   drop.delete('prompt:inject');
   const next = existing.filter((c) => !drop.has(c));
@@ -213,4 +198,15 @@ export function revokeCapabilities(args: {
     )
     .run(JSON.stringify(next), now, args.pluginId);
   return next;
+}
+
+function parseCapabilitiesGranted(raw: string | undefined): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter((capability): capability is string => typeof capability === 'string')
+      : [];
+  } catch {
+    return [];
+  }
 }

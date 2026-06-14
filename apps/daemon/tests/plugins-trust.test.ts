@@ -15,6 +15,7 @@ import Database from 'better-sqlite3';
 import { migratePlugins } from '../src/plugins/persistence.js';
 import {
   defaultCapabilities,
+  defaultTrustForRecord,
   grantCapabilities,
   revokeCapabilities,
   validateCapabilityList,
@@ -116,6 +117,15 @@ describe('validateCapabilityList', () => {
   it('returns empty arrays for non-array input', () => {
     expect(validateCapabilityList(null)).toEqual({ accepted: [], rejected: [] });
     expect(validateCapabilityList('connector:slack')).toEqual({ accepted: [], rejected: [] });
+  });
+});
+
+describe('defaultTrustForRecord', () => {
+  it('keeps every non-bundled install restricted until the operator grants trust', () => {
+    expect(defaultTrustForRecord({ sourceKind: 'local' })).toBe('restricted');
+    expect(defaultTrustForRecord({ sourceKind: 'github' })).toBe('restricted');
+    expect(defaultTrustForRecord({ sourceKind: 'url' })).toBe('restricted');
+    expect(defaultTrustForRecord({ sourceKind: 'marketplace' })).toBe('restricted');
   });
 });
 

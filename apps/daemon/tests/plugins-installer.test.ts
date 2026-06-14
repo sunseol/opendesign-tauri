@@ -73,6 +73,7 @@ describe('installFromLocalFolder', () => {
     expect(list[0]?.id).toBe('sample-plugin');
     expect(list[0]?.sourceKind).toBe('local');
     expect(list[0]?.trust).toBe('restricted');
+    expect(list[0]?.capabilitiesGranted).toEqual(['prompt:inject']);
     expect(list[0]?.fsPath).toBe(path.join(pluginsRoot, 'sample-plugin'));
   });
 
@@ -172,20 +173,23 @@ describe('installFromLocalFolder', () => {
     if (!added.ok) throw new Error('marketplace setup failed');
 
     const resolved = resolvePluginInMarketplaces(db, 'vendor/sample-plugin');
-    expect(resolved).not.toBeNull();
+    if (!resolved) throw new Error('marketplace did not resolve vendor/sample-plugin');
+    if (!resolved.ref || !resolved.manifestDigest || !resolved.archiveIntegrity) {
+      throw new Error('marketplace fixture did not include complete provenance');
+    }
 
     let installedRecord: InstalledPluginRecord | null = null;
     for await (const ev of installPlugin(db, {
-      source: resolved!.source,
+      source: resolved.source,
       roots: { userPluginsRoot: pluginsRoot },
-      sourceMarketplaceId: resolved!.marketplaceId,
-      sourceMarketplaceEntryName: resolved!.pluginName,
-      sourceMarketplaceEntryVersion: resolved!.pluginVersion,
-      marketplaceTrust: resolved!.marketplaceTrust,
-      resolvedSource: resolved!.source,
-      resolvedRef: resolved!.ref!,
-      manifestDigest: resolved!.manifestDigest!,
-      archiveIntegrity: resolved!.archiveIntegrity!,
+      sourceMarketplaceId: resolved.marketplaceId,
+      sourceMarketplaceEntryName: resolved.pluginName,
+      sourceMarketplaceEntryVersion: resolved.pluginVersion,
+      marketplaceTrust: resolved.marketplaceTrust,
+      resolvedSource: resolved.source,
+      resolvedRef: resolved.ref,
+      manifestDigest: resolved.manifestDigest,
+      archiveIntegrity: resolved.archiveIntegrity,
       lockfilePath,
     })) {
       if (ev.kind === 'success') installedRecord = ev.plugin;
@@ -246,17 +250,17 @@ describe('installFromLocalFolder', () => {
     if (!added.ok) throw new Error('marketplace setup failed');
 
     const resolved = resolvePluginInMarketplaces(db, 'vendor/sample-plugin');
-    expect(resolved).not.toBeNull();
+    if (!resolved) throw new Error('marketplace did not resolve vendor/sample-plugin');
 
     let installedRecord: InstalledPluginRecord | null = null;
     for await (const ev of installPlugin(db, {
-      source: resolved!.source,
+      source: resolved.source,
       roots: { userPluginsRoot: pluginsRoot },
-      sourceMarketplaceId: resolved!.marketplaceId,
-      sourceMarketplaceEntryName: resolved!.pluginName,
-      sourceMarketplaceEntryVersion: resolved!.pluginVersion,
-      marketplaceTrust: resolved!.marketplaceTrust,
-      resolvedSource: resolved!.source,
+      sourceMarketplaceId: resolved.marketplaceId,
+      sourceMarketplaceEntryName: resolved.pluginName,
+      sourceMarketplaceEntryVersion: resolved.pluginVersion,
+      marketplaceTrust: resolved.marketplaceTrust,
+      resolvedSource: resolved.source,
     })) {
       if (ev.kind === 'success') installedRecord = ev.plugin;
       if (ev.kind === 'error') throw new Error(ev.message);
