@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { composeSystemPrompt, resolveExclusiveSurface } from '../../src/prompts/system.js';
+import {
+  composeSystemPrompt,
+  resolveExclusiveSurface,
+  type ComposeInput,
+} from '../../src/prompts/system.js';
+
+type PromptMetadata = NonNullable<ComposeInput['metadata']>;
+type ConnectedExternalMcp = NonNullable<ComposeInput['connectedExternalMcp']>;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,6 +88,15 @@ describe('composeSystemPrompt — activeStageBlocks splice (spec §23.4)', () =>
 });
 
 describe('composeSystemPrompt', () => {
+  it('routes Claude follow-up choices through question-form instead of AskUserQuestion', () => {
+    const prompt = composeSystemPrompt({ agentId: 'claude' });
+
+    expect(prompt).toContain('## Clarifying questions mid-conversation');
+    expect(prompt).toContain('emit a `<question-form>` block');
+    expect(prompt).not.toContain('AskUserQuestion');
+    expect(prompt).not.toContain('ask_user_question');
+  });
+
   it('injects Chinese quick brief guidance when the UI locale is zh-CN', () => {
     const prompt = composeSystemPrompt({ locale: 'zh-CN' });
 
@@ -143,7 +159,7 @@ describe('composeSystemPrompt', () => {
     const prompt = composeSystemPrompt({
       designSystemTitle: 'ComfyUI',
       designSystemBody: '# ComfyUI\n\n--accent: #ffd500',
-      metadata: { kind: 'prototype' } as any,
+      metadata: { kind: 'prototype' } satisfies PromptMetadata,
       activeStageBlocks: [
         '\n\n## Active stage: plan\n\n### direction-picker\n\nAsk for 3-5 directions.',
       ],
@@ -219,7 +235,7 @@ describe('composeSystemPrompt', () => {
       metadata: {
         kind: 'prototype',
         intent: 'live-artifact',
-      } as any,
+      } satisfies PromptMetadata,
     });
 
     expect(prompt).toContain('## Active skill — live-artifact');
@@ -253,7 +269,7 @@ describe('composeSystemPrompt', () => {
       metadata: {
         kind: 'video',
         videoModel: 'hyperframes-html',
-      } as any,
+      } satisfies PromptMetadata,
     });
 
     expect(prompt).toContain('## Active skill — hyperframes');
@@ -266,7 +282,7 @@ describe('composeSystemPrompt', () => {
       metadata: {
         kind: 'deck',
         speakerNotes: true,
-      } as any,
+      } satisfies PromptMetadata,
     });
 
     expect(prompt).toContain('- **kind**: deck');
@@ -276,7 +292,7 @@ describe('composeSystemPrompt', () => {
 
   it('tells artifact generation to summarize instead of dumping raw HTML source into chat', () => {
     const prompt = composeSystemPrompt({
-      metadata: { kind: 'prototype', fidelity: 'production' } as any,
+      metadata: { kind: 'prototype', fidelity: 'production' } satisfies PromptMetadata,
     });
 
     expect(prompt).toContain('Do not dump the full raw HTML source back into chat');
@@ -297,7 +313,7 @@ describe('composeSystemPrompt', () => {
     const prompt = composeSystemPrompt({
       skillMode: 'image',
       skillModes: ['deck', 'image'],
-      metadata: { kind: 'deck' } as any,
+      metadata: { kind: 'deck' } satisfies PromptMetadata,
     });
 
     expect(prompt).toContain('# Slide deck — fixed framework');
@@ -403,7 +419,7 @@ describe('composeSystemPrompt', () => {
         connectedExternalMcp: [
           { id: '   ', label: 'blank' },
           { id: '', label: 'empty' },
-        ] as any,
+        ] satisfies ConnectedExternalMcp,
       });
       expect(prompt).not.toContain('External MCP servers — already authenticated');
     });
