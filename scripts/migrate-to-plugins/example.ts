@@ -85,7 +85,7 @@ export async function runExampleGenerator(opts: ExampleGeneratorOptions): Promis
     const surface = fm.od?.surface ?? inferSurface(mode);
     const scenario = fm.od?.scenario ?? 'design';
     const platform = fm.od?.platform;
-    const exampleFile = await sideFiles(srcFolder);
+    const exampleFile = await collectSideFiles(srcFolder);
     const featured = normaliseFeatured(fm.od?.featured);
     // The plugin folder ships `example.html` (the baked output), not
     // the original `index.html` the skill renders into the project
@@ -227,14 +227,14 @@ function normaliseInput(raw: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-interface SideFileSummary { hasExample: boolean; assets: string[]; }
+export interface SideFileSummary { hasExample: boolean; assets: string[]; }
 
 // Side files are everything the SKILL.md references — `example.html`,
 // `assets/*`, `references/*`. We restrict to a small, well-known set so
 // the generated plugin folder stays compact and predictable. A future
 // patch can broaden the allowlist once we audit which file types the
 // daemon's compose path actually needs.
-async function sideFiles(srcFolder: string): Promise<SideFileSummary> {
+export async function collectSideFiles(srcFolder: string): Promise<SideFileSummary> {
   const out: string[] = [];
   let hasExample = false;
   for (const candidate of ['example.html']) {
@@ -252,7 +252,7 @@ async function sideFiles(srcFolder: string): Promise<SideFileSummary> {
     } catch {
       continue;
     }
-    for (const e of entries) {
+    for (const e of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!e.isFile()) continue;
       if (!/\.(md|html|css|js|json|txt|svg|png|jpg|jpeg|webp)$/i.test(e.name)) continue;
       out.push(`./${dir}/${e.name}`);

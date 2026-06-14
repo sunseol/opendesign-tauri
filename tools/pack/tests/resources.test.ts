@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { copyBundledResourceTrees } from "../src/resources.js";
+
+const repoRoot = resolve(import.meta.dirname, "../../..");
 
 describe("copyBundledResourceTrees", () => {
   it("includes daemon resource trees", async () => {
@@ -126,6 +128,60 @@ describe("copyBundledResourceTrees", () => {
           "utf8",
         ),
       ).resolves.toBe("{\"plugins\":[]}\n");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("copies restored #49 catalog entries into packaged resources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-catalog-"));
+    const resourceRoot = join(root, "resources");
+
+    try {
+      await copyBundledResourceTrees({ workspaceRoot: repoRoot, resourceRoot });
+
+      await expect(
+        readFile(
+          join(resourceRoot, "skills", "ecommerce-image-workflow", "SKILL.md"),
+          "utf8",
+        ),
+      ).resolves.toContain("Ecommerce Image Workflow");
+      await expect(
+        readFile(
+          join(
+            resourceRoot,
+            "skills",
+            "research-decision-room",
+            "references",
+            "evidence-model.md",
+          ),
+          "utf8",
+        ),
+      ).resolves.toContain("Evidence");
+      await expect(
+        readFile(
+          join(
+            resourceRoot,
+            "prompt-templates",
+            "video",
+            "video-seedance-desk-hologram-ar-realdesk.json",
+          ),
+          "utf8",
+        ),
+      ).resolves.toContain("video-seedance-desk-hologram-ar-realdesk");
+      await expect(
+        readFile(
+          join(
+            resourceRoot,
+            "design-templates",
+            "open-design-landing",
+            "assets",
+            "agents",
+            "openai.svg",
+          ),
+          "utf8",
+        ),
+      ).resolves.toContain("<svg");
     } finally {
       await rm(root, { force: true, recursive: true });
     }
