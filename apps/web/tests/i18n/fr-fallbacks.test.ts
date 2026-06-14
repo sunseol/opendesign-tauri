@@ -164,6 +164,64 @@ const FR_PLUGINS_HOME_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
   'pluginsHome.facet.githubGist',
 ];
 
+const FR_PLUGINS_VIEW_KEYS: ReadonlyArray<keyof Dict> = [
+  'pluginsView.lede',
+  'pluginsView.importPlugin',
+  'pluginsView.agentContext',
+  'pluginsView.summaryAria',
+  'pluginsView.areasAria',
+  'pluginsView.loading',
+  'pluginsView.tab.installed',
+  'pluginsView.tab.available',
+  'pluginsView.tab.sources',
+  'pluginsView.tab.team',
+  'pluginsView.tabHint.installed',
+  'pluginsView.tabHint.available',
+  'pluginsView.tabHint.sources',
+  'pluginsView.tabHint.team',
+  'pluginsView.installedTitle',
+  'pluginsView.installedSubtitle',
+  'pluginsView.installedEmpty',
+  'pluginsView.availableTitle',
+  'pluginsView.availableSubtitle',
+  'pluginsView.availableFiltersAria',
+  'pluginsView.searchAvailableAria',
+  'pluginsView.searchAvailablePlaceholder',
+  'pluginsView.clearAvailableSearch',
+  'pluginsView.source',
+  'pluginsView.availableEmptyInstalled',
+  'pluginsView.availableEmptyFiltered',
+  'pluginsView.availableEmptyNoSources',
+  'pluginsView.installing',
+  'pluginsView.install',
+  'pluginsView.sourcesTitle',
+  'pluginsView.sourcesSubtitle',
+  'pluginsView.sourceUrl',
+  'pluginsView.defaultTrust',
+  'pluginsView.trust.restricted',
+  'pluginsView.trust.trusted',
+  'pluginsView.trust.official',
+  'pluginsView.adding',
+  'pluginsView.addSource',
+  'pluginsView.sourcesEmpty',
+  'pluginsView.pluginsCount',
+  'pluginsView.catalogVersion',
+  'pluginsView.trustFor',
+  'pluginsView.refreshing',
+  'pluginsView.removing',
+  'pluginsView.teamTitle',
+  'pluginsView.teamBody',
+];
+
+const FR_PLUGINS_VIEW_STABLE_KEYS: ReadonlySet<keyof Dict> = new Set([
+  'pluginsView.source',
+  'pluginsView.tab.sources',
+]);
+
+const FR_PLUGINS_VIEW_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = FR_PLUGINS_VIEW_KEYS.filter(
+  (key) => !FR_PLUGINS_VIEW_STABLE_KEYS.has(key),
+);
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -240,6 +298,21 @@ describe('fr fallback parity', () => {
 
   it('keeps French plugins home catalog copy translated instead of falling back to English', () => {
     for (const key of FR_PLUGINS_HOME_TRANSLATED_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('declares French plugins view management labels explicitly instead of relying on fallback', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_PLUGINS_VIEW_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
+      expect(fr[key], `fr.${key}`).not.toHaveLength(0);
+    }
+  });
+
+  it('keeps French plugins view management copy translated instead of falling back to English', () => {
+    for (const key of FR_PLUGINS_VIEW_TRANSLATED_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
