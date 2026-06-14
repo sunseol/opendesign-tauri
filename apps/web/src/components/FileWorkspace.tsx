@@ -17,6 +17,7 @@ import { useT } from '../i18n';
 import { isMacPlatform } from '../utils/platform';
 import {
   deleteProjectFile,
+  fetchProjectFolders,
   fetchProjectFileText,
   projectFileUrl,
   projectRawUrl,
@@ -43,6 +44,7 @@ import {
   type DesignSystemSummary,
   type ProjectMetadata,
   type ProjectFile,
+  type ProjectFolder,
 } from '../types';
 import { DesignFilesPanel } from './DesignFilesPanel';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
@@ -263,11 +265,28 @@ export function FileWorkspace({
     () => files.filter((file) => !isLiveArtifactImplementationPath(file.name)),
     [files],
   );
+  const [projectFolders, setProjectFolders] = useState<ProjectFolder[]>([]);
 
   const liveArtifactEntries = useMemo(
     () => liveArtifacts.map(liveArtifactSummaryToWorkspaceEntry),
     [liveArtifacts],
   );
+
+  async function refreshFilesAndFolders(): Promise<void> {
+    await onRefreshFiles();
+    const folders = await fetchProjectFolders(projectId);
+    setProjectFolders(folders);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchProjectFolders(projectId).then((folders) => {
+      if (!cancelled) setProjectFolders(folders);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, filesRefreshKey, files.length]);
 
   // Pull the persisted active tab in when the parent's hydration completes
   // (or on project switch). Fall back to the Design Files browser so a
@@ -415,7 +434,7 @@ export function FileWorkspace({
       return;
     }
     if (result.uploaded.length > 0) {
-      await onRefreshFiles();
+      await refreshFilesAndFolders();
       const lastUploaded = result.uploaded[result.uploaded.length - 1];
       if (lastUploaded?.path) openFile(lastUploaded.path);
     }
@@ -540,7 +559,7 @@ export function FileWorkspace({
     if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
     const ok = await deleteProjectFile(projectId, name);
     if (ok) {
-      await onRefreshFiles();
+      await refreshFilesAndFolders();
       const nextTabs = persistedTabs.filter((n) => n !== name);
       if (activeTab === name) {
         // User is viewing the file being deleted: fall back to another
@@ -577,7 +596,7 @@ export function FileWorkspace({
       else failed.push(name);
     }
     if (deleted.length > 0) {
-      await onRefreshFiles();
+      await refreshFilesAndFolders();
       const deletedSet = new Set(deleted);
       const nextTabs = persistedTabs.filter((n) => !deletedSet.has(n));
       if (activeTab && deletedSet.has(activeTab)) {
@@ -612,7 +631,7 @@ export function FileWorkspace({
 
     const result = await renameProjectFile(projectId, oldName, nextName);
     const renamed = result.file;
-    await onRefreshFiles();
+    await refreshFilesAndFolders();
 
     const nextTabs = persistedTabs.map((name) => (name === oldName ? renamed.name : name));
     const nextActive = tabsState.active === oldName ? renamed.name : tabsState.active;
@@ -960,8 +979,9 @@ export function FileWorkspace({
             key={projectId}
             projectId={projectId}
             files={visibleFiles}
+            folders={projectFolders}
             liveArtifacts={liveArtifactEntries}
-            onRefreshFiles={onRefreshFiles}
+            onRefreshFiles={refreshFilesAndFolders}
             onOpenFile={openFile}
             onOpenLiveArtifact={(tabId) => openFile(tabId)}
             onRenameFile={handleRename}

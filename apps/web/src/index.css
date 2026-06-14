@@ -10079,6 +10079,47 @@ button.connector-action.is-loading {
   gap: 12px;
   flex-wrap: wrap;
 }
+.df-breadcrumbs {
+  margin: 0 20px 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.df-breadcrumb-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.df-breadcrumb-separator {
+  color: var(--text-faint);
+}
+.df-breadcrumb-btn {
+  all: unset;
+  cursor: pointer;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+}
+.df-breadcrumb-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.df-breadcrumb-current {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-weight: 600;
+}
 .df-controls-spacer {
   flex: 1 1 auto;
   min-width: 0;
@@ -10390,6 +10431,12 @@ button.connector-action.is-loading {
 
 .df-file-row {
   transition: background 120ms ease;
+}
+.df-folder-row {
+  cursor: pointer;
+}
+.df-folder-row .df-cell-menu {
+  pointer-events: none;
 }
 .df-file-row:hover { background: var(--bg-subtle); }
 .df-file-row.active:not(.selected) { background: var(--bg-subtle); }
@@ -26973,6 +27020,13 @@ body.desktop-pet-shell .pet-task-item {
   justify-content: flex-start;
   gap: 10px;
   flex-wrap: wrap;
+}
+.app .df-breadcrumbs {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.app .df-breadcrumb-btn {
+  border-radius: 7px;
 }
 .app .df-refresh-control {
   width: 31px;

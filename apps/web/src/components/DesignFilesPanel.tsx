@@ -4,7 +4,7 @@ import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { projectFileUrl } from '../providers/registry';
-import type { LiveArtifactWorkspaceEntry, ProjectFile, ProjectFileKind } from '../types';
+import type { LiveArtifactWorkspaceEntry, ProjectFile, ProjectFileKind, ProjectFolder } from '../types';
 import {
   createFileSystemReadError,
   FILE_SYSTEM_READ_ERROR_MESSAGE,
@@ -21,6 +21,7 @@ type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => 
 interface Props {
   projectId: string;
   files: ProjectFile[];
+  folders?: ProjectFolder[];
   liveArtifacts: LiveArtifactWorkspaceEntry[];
   onRefreshFiles: () => Promise<void> | void;
   onOpenFile: (name: string) => void;
@@ -44,6 +45,11 @@ type DesignFilesGroupMode = 'kind' | 'modified';
 type ModifiedSection = 'today' | 'yesterday' | 'previous7Days' | 'previous30Days' | 'older';
 type SortKey = 'name' | 'kind' | 'mtime';
 type SortDir = 'asc' | 'desc';
+type VisibleDirectory = {
+  readonly name: string;
+  readonly path: string;
+  readonly mtime: number;
+};
 type FileSystemEntryWithReader = FileSystemEntry & {
   createReader?: () => FileSystemDirectoryReader;
 };
@@ -81,6 +87,7 @@ const MODIFIED_SECTION_LABEL_KEY: Record<ModifiedSection, keyof Dict> = {
 export function DesignFilesPanel({
   projectId,
   files,
+  folders = [],
   liveArtifacts,
   onRefreshFiles,
   onOpenFile,
@@ -116,6 +123,7 @@ export function DesignFilesPanel({
   const [sharingFolder, setSharingFolder] = useState<string | null>(null);
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [groupMode, setGroupMode] = useState<DesignFilesGroupMode>('kind');
+  const [currentDir, setCurrentDir] = useState('');
   const [collapsedModifiedSections, setCollapsedModifiedSections] = useState<
     Set<ModifiedSection>
   >(new Set());
@@ -125,11 +133,64 @@ export function DesignFilesPanel({
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
 
+  const { dirsAtCurrentDir, filesAtCurrentDir } = useMemo(() => {
+    const prefix = currentDir === '' ? '' : `${currentDir}/`;
+    const dirs = new Map<string, VisibleDirectory>();
+    const localFiles: ProjectFile[] = [];
+
+    for (const f of files) {
+      if (!f.name.startsWith(prefix)) continue;
+      const remainder = f.name.slice(prefix.length);
+      if (!remainder) continue;
+      const slashIndex = remainder.indexOf('/');
+      if (slashIndex === -1) {
+        localFiles.push(f);
+        continue;
+      }
+      const name = remainder.slice(0, slashIndex);
+      const path = joinProjectPath(currentDir, name);
+      const existing = dirs.get(path);
+      dirs.set(path, {
+        name,
+        path,
+        mtime: existing ? Math.max(existing.mtime, f.mtime) : f.mtime,
+      });
+    }
+
+    for (const folder of folders) {
+      if (!folder.path.startsWith(prefix)) continue;
+      const remainder = folder.path.slice(prefix.length);
+      if (!remainder) continue;
+      const slashIndex = remainder.indexOf('/');
+      const name = slashIndex === -1 ? remainder : remainder.slice(0, slashIndex);
+      const path = joinProjectPath(currentDir, name);
+      const existing = dirs.get(path);
+      dirs.set(path, {
+        name,
+        path,
+        mtime: existing ? Math.max(existing.mtime, folder.mtime) : folder.mtime,
+      });
+    }
+
+    return {
+      dirsAtCurrentDir: Array.from(dirs.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      filesAtCurrentDir: localFiles,
+    };
+  }, [currentDir, files, folders]);
+
+  const breadcrumbSegments = useMemo(() => {
+    const parts = currentDir.split('/').filter(Boolean);
+    return parts.map((name, index) => ({
+      name,
+      path: parts.slice(0, index + 1).join('/'),
+    }));
+  }, [currentDir]);
+
   const kindCounts = useMemo(() => {
     const counts = new Map<ProjectFileKind, number>();
-    for (const f of files) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
+    for (const f of filesAtCurrentDir) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
     return counts;
-  }, [files]);
+  }, [filesAtCurrentDir]);
 
   const availableKinds = useMemo(
     () =>
@@ -157,9 +218,9 @@ export function DesignFilesPanel({
   }, [availableKinds]);
 
   const filteredFiles = useMemo(() => {
-    if (kindFilter.size === 0) return files;
-    return files.filter((f) => kindFilter.has(f.kind));
-  }, [files, kindFilter]);
+    if (kindFilter.size === 0) return filesAtCurrentDir;
+    return filesAtCurrentDir.filter((f) => kindFilter.has(f.kind));
+  }, [filesAtCurrentDir, kindFilter]);
 
   const sortedFiles = useMemo(() => {
     return [...filteredFiles].sort((a, b) => {
@@ -204,14 +265,32 @@ export function DesignFilesPanel({
   );
   const rangeStart = safePage * effectivePageSize + 1;
   const rangeEnd = Math.min((safePage + 1) * effectivePageSize, sortedFiles.length);
-  const allPageSelected = pageFiles.every((f) => selected.has(f.name));
+  const allPageSelected = pageFiles.length > 0 && pageFiles.every((f) => selected.has(f.name));
   const somePageSelected = !allPageSelected && pageFiles.some((f) => selected.has(f.name));
   const hasMultiplePages = totalPages > 1;
   const showListControls = sortedFiles.length > 15 || selected.size > 0;
+  const hasFileTableEntries = dirsAtCurrentDir.length > 0 || sortedFiles.length > 0;
 
   useEffect(() => {
     setPage(0);
   }, [pageSize]);
+
+  useEffect(() => {
+    if (currentDir === '') return;
+    const currentPrefix = `${currentDir}/`;
+    const hasCurrentDir =
+      folders.some((folder) => folder.path === currentDir || folder.path.startsWith(currentPrefix)) ||
+      files.some((file) => file.name.startsWith(currentPrefix));
+    if (!hasCurrentDir) setCurrentDir('');
+  }, [currentDir, files, folders]);
+
+  useEffect(() => {
+    setPage(0);
+    setPreview(null);
+    setMenuPos(null);
+    setRenaming(null);
+    setSelected(new Set());
+  }, [currentDir]);
 
   // Reset to the first page when the filter changes — the previous page
   // index may no longer exist (or may now sit past the new totalPages).
@@ -462,10 +541,65 @@ export function DesignFilesPanel({
     });
   }
 
+  function renderFolderRow(dir: VisibleDirectory) {
+    return (
+      <tr
+        key={`folder-${dir.path}`}
+        data-testid={`design-folder-row-${dir.path}`}
+        className="df-file-row df-folder-row"
+        onClick={() => setCurrentDir(dir.path)}
+        onDoubleClick={() => setCurrentDir(dir.path)}
+      >
+        <td className="df-cell-check" />
+        <td className="df-cell-icon df-cell-openable">
+          <span className="df-row-icon" data-kind="folder" aria-hidden>
+            <Icon name="folder" size={15} />
+          </span>
+        </td>
+        <td className="df-cell-name df-cell-openable">
+          <button
+            type="button"
+            className="df-row-name-btn"
+            onClick={(event) => {
+              event.stopPropagation();
+              setCurrentDir(dir.path);
+            }}
+          >
+            <span className="df-row-name-wrap">
+              <span className="df-row-name">{dir.name}</span>
+              <span className="df-row-sub">{dir.path}</span>
+            </span>
+          </button>
+        </td>
+        <td className="df-cell-kind df-cell-openable">
+          <span className="df-kind-label">Folder</span>
+        </td>
+        <td className="df-cell-time df-cell-openable">{relativeTime(dir.mtime, t)}</td>
+        <td className="df-cell-menu" />
+      </tr>
+    );
+  }
+
+  function renderFolderRows() {
+    if (dirsAtCurrentDir.length === 0) return [];
+    return [
+      <tr className="df-section-row" key="folders-label">
+        <td colSpan={6}>
+          <div className="df-section-label">
+            <span>Folders</span>
+            <span className="df-section-count">{dirsAtCurrentDir.length}</span>
+          </div>
+        </td>
+      </tr>,
+      ...dirsAtCurrentDir.map(renderFolderRow),
+    ];
+  }
+
   function renderFileRow(f: ProjectFile) {
     const active = preview === f.name;
     const isHovered = hover === f.name;
     const renameState = renaming?.name === f.name ? renaming : null;
+    const displayName = projectFileDisplayName(f.name, currentDir);
     return (
       <tr
         key={f.name}
@@ -559,7 +693,7 @@ export function DesignFilesPanel({
               }}
             >
               <span className="df-row-name-wrap">
-                <span className="df-row-name">{f.name}</span>
+                <span className="df-row-name">{displayName}</span>
                 <span className="df-row-sub">{humanBytes(f.size)}</span>
               </span>
             </button>
@@ -791,7 +925,7 @@ export function DesignFilesPanel({
     );
 
   const groupToggle =
-    files.length > 0 ? (
+    filesAtCurrentDir.length > 0 ? (
       <div
         className="df-group-toggle"
         role="group"
@@ -820,7 +954,7 @@ export function DesignFilesPanel({
     );
 
   const kindFilterControl =
-    files.length > 0 && availableKinds.length > 1 ? (
+    filesAtCurrentDir.length > 0 && availableKinds.length > 1 ? (
       <div className="df-kind-filter" ref={filterMenuRef}>
         <button
           type="button"
@@ -919,13 +1053,46 @@ export function DesignFilesPanel({
               ) : null}
             </div>
           ) : null}
+          <nav className="df-breadcrumbs" aria-label={t('designFiles.crumbs')}>
+            {currentDir === '' ? (
+              <span className="df-breadcrumb-current" data-testid="design-files-crumb-root">
+                {t('designFiles.crumbs')}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="df-breadcrumb-btn"
+                data-testid="design-files-crumb-root"
+                onClick={() => setCurrentDir('')}
+              >
+                {t('designFiles.crumbs')}
+              </button>
+            )}
+            {breadcrumbSegments.map((segment) => (
+              <span className="df-breadcrumb-segment" key={segment.path}>
+                <span className="df-breadcrumb-separator">/</span>
+                {segment.path === currentDir ? (
+                  <span className="df-breadcrumb-current">{segment.name}</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="df-breadcrumb-btn"
+                    data-testid={`design-files-crumb-${segment.path}`}
+                    onClick={() => setCurrentDir(segment.path)}
+                  >
+                    {segment.name}
+                  </button>
+                )}
+              </span>
+            ))}
+          </nav>
           <div className="df-controls-row">
             {refreshControl}
             {groupToggle}
             {kindFilterControl}
             {fileActions}
           </div>
-          {files.length === 0 && liveArtifacts.length === 0 ? (
+          {files.length === 0 && folders.length === 0 && liveArtifacts.length === 0 ? (
             <div className="df-empty" data-testid="design-files-empty">
               <div className="df-empty-pill">
                 <span className="df-empty-title">
@@ -1050,7 +1217,7 @@ export function DesignFilesPanel({
                   ))}
                 </div>
               ) : null}
-              {sortedFiles.length > 0 ? (
+              {hasFileTableEntries ? (
                 <>
                   {showListControls ? (
                     <div className="df-pagination df-pagination-start">
@@ -1144,6 +1311,7 @@ export function DesignFilesPanel({
                       </tr>
                     </thead>
                     <tbody>
+                      {renderFolderRows()}
                       {groupMode === 'modified'
                         ? renderModifiedSections()
                         : groupMode === 'kind'
@@ -1405,6 +1573,16 @@ function kindSortPriority(kind: ProjectFileKind): number {
   if (kind === 'video') return 9;
   if (kind === 'audio') return 10;
   return 11;
+}
+
+function joinProjectPath(dir: string, name: string): string {
+  return dir ? `${dir}/${name}` : name;
+}
+
+function projectFileDisplayName(name: string, currentDir: string): string {
+  if (!currentDir) return name;
+  const prefix = `${currentDir}/`;
+  return name.startsWith(prefix) ? name.slice(prefix.length) : name;
 }
 
 interface ModifiedSectionThresholds {

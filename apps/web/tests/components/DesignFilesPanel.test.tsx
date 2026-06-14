@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
-import type { ProjectFile, ProjectFileKind } from '../../src/types';
+import type { ProjectFile, ProjectFileKind, ProjectFolder } from '../../src/types';
 
 function extForKind(kind: ProjectFileKind): string {
   if (kind === 'html') return 'html';
@@ -28,6 +28,19 @@ function file(overrides: Partial<ProjectFile> & Pick<ProjectFile, 'name'>): Proj
   };
 }
 
+function folder(path: string, overrides: Partial<ProjectFolder> = {}): ProjectFolder {
+  const parts = path.split('/').filter(Boolean);
+  const name = parts.at(-1) ?? path;
+  return {
+    name,
+    path,
+    type: 'dir',
+    size: 0,
+    mtime: Date.now(),
+    ...overrides,
+  };
+}
+
 function generateFiles(count: number): ProjectFile[] {
   const kinds: ProjectFileKind[] = ['html', 'image', 'sketch', 'text', 'code', 'pdf'];
   return Array.from({ length: count }, (_, i) => {
@@ -42,7 +55,7 @@ function generateFiles(count: number): ProjectFile[] {
   });
 }
 
-function renderPanel(files: ProjectFile[]) {
+function renderPanel(files: ProjectFile[], overrides: Record<string, unknown> = {}) {
   const onOpenFile = vi.fn();
   const onDeleteFiles = vi.fn();
   const result = render(
@@ -60,6 +73,7 @@ function renderPanel(files: ProjectFile[]) {
       onUploadFiles={vi.fn()}
       onPaste={vi.fn()}
       onNewSketch={vi.fn()}
+      {...overrides}
     />,
   );
   return { ...result, onDeleteFiles, onOpenFile };
@@ -293,6 +307,48 @@ describe('DesignFilesPanel grouping', () => {
     expect(screen.getByText('Yesterday')).toBeTruthy();
     expect(screen.queryByText('Today')).toBeNull();
     expect(screen.getByTestId('design-file-row-late-edit.html')).toBeTruthy();
+  });
+});
+
+describe('DesignFilesPanel folder navigation', () => {
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it('opens nested design file folders without flattening every imported path at the root', () => {
+    const { onOpenFile } = renderPanel([
+      file({ name: 'index.html', kind: 'html', mime: 'text/html' }),
+      file({ name: 'assets/icons/icon.png', kind: 'image', mime: 'image/png' }),
+    ]);
+
+    expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    expect(screen.getByTestId('design-file-row-index.html')).toBeTruthy();
+    expect(screen.queryByTestId('design-file-row-assets/icons/icon.png')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    expect(screen.getByTestId('design-folder-row-assets/icons')).toBeTruthy();
+    expect(screen.queryByTestId('design-file-row-index.html')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('design-folder-row-assets/icons'));
+    const nestedRow = screen.getByTestId('design-file-row-assets/icons/icon.png');
+    expect(nestedRow).toBeTruthy();
+    fireEvent.doubleClick(within(nestedRow).getByRole('button', { name: /icon\.png/i }));
+    expect(onOpenFile).toHaveBeenCalledWith('assets/icons/icon.png');
+
+    fireEvent.click(screen.getByTestId('design-files-crumb-root'));
+    expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+  });
+
+  it('shows empty imported folders from the persisted project folder list', () => {
+    renderPanel([], { folders: [folder('assets/empty')] });
+
+    expect(screen.queryByTestId('design-files-empty')).toBeNull();
+    expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+
+    expect(screen.getByTestId('design-folder-row-assets/empty')).toBeTruthy();
   });
 });
 

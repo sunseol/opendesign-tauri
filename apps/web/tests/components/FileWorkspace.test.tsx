@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileWorkspace, scrollWorkspaceTabsWithWheel } from '../../src/components/FileWorkspace';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import { projectSplitClassName } from '../../src/components/ProjectView';
-import { uploadProjectFiles } from '../../src/providers/registry';
+import { fetchProjectFolders, uploadProjectFiles } from '../../src/providers/registry';
 import type { ProjectFile } from '../../src/types';
 
 vi.mock('../../src/providers/registry', async () => {
@@ -18,10 +18,12 @@ vi.mock('../../src/providers/registry', async () => {
   );
   return {
     ...actual,
+    fetchProjectFolders: vi.fn(async () => []),
     uploadProjectFiles: vi.fn(),
   };
 });
 
+const mockedFetchProjectFolders = vi.mocked(fetchProjectFolders);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
 
 let root: Root | null = null;
@@ -287,6 +289,39 @@ describe('FileWorkspace upload input', () => {
 
     expect(markup).toContain('data-testid="design-files-upload-input"');
     expect(markup).not.toContain('accept=');
+  });
+
+  it('loads persisted empty folders into the Design Files browser', async () => {
+    mockedFetchProjectFolders.mockResolvedValueOnce([
+      {
+        name: 'empty',
+        path: 'assets/empty',
+        type: 'dir',
+        size: 0,
+        mtime: 1700000000,
+      },
+    ]);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+
+    expect(screen.getByTestId('design-folder-row-assets/empty')).toBeTruthy();
   });
 
   it('hides upload failure details during in-panel preview and restores them after closing preview', async () => {
