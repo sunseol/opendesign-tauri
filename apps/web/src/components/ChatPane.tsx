@@ -17,8 +17,6 @@ import {
   DESIGN_SYSTEM_WORKSPACE_DISPLAY_TITLE,
   isDesignSystemWorkspacePrompt,
 } from '../design-system-auto-prompt';
-import { latestTodoWriteInputForPinnedCard } from '../runtime/todos';
-import { TodoCard } from './ToolCard';
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
 import { dayKey, dayLabel, exactDateTime, messageTime, relativeTimeLong } from '../utils/chatTime';
 import { commentsToAttachments, simplePositionLabel } from '../comments';
@@ -28,6 +26,7 @@ import {
   type ChatComposerHandle,
   type ChatSendMeta,
 } from './ChatComposer';
+import { PinnedTodoSlot } from './PinnedTodoSlot';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { Icon } from './Icon';
 
@@ -428,8 +427,10 @@ export function ChatPane({
       } else {
         window.sessionStorage.removeItem(dismissedTodoStorageKey);
       }
-    } catch {
+    } catch (error) {
       // sessionStorage can be unavailable in private or sandboxed contexts.
+      if (error instanceof DOMException) return;
+      throw error;
     }
   }, [dismissedTodoStorageKey]);
   const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
@@ -467,8 +468,9 @@ export function ChatPane({
   const nextUserContentByAssistantId = (() => {
     const map = new Map<string, string>();
     for (let i = 0; i < messages.length - 1; i++) {
-      const m = messages[i]!;
-      const next = messages[i + 1]!;
+      const m = messages[i];
+      const next = messages[i + 1];
+      if (!m || !next) continue;
       if (m.role === 'assistant' && next.role === 'user') {
         map.set(m.id, next.content);
       }
@@ -513,8 +515,9 @@ export function ChatPane({
         const assistantEls = el.querySelectorAll('.msg.assistant');
         const lastAssistantEl = assistantEls[assistantEls.length - 1];
         const formEl = lastAssistantEl?.querySelector<HTMLElement>('[data-form-id]');
-        if (formEl && !scrolledToFormRef.current.has(formEl.dataset.formId!)) {
-          scrolledToFormRef.current.add(formEl.dataset.formId!);
+        const formId = formEl?.dataset.formId;
+        if (formEl && formId && !scrolledToFormRef.current.has(formId)) {
+          scrolledToFormRef.current.add(formId);
           formEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
           pinnedToBottomRef.current = false;
           setScrolledFromBottom(true);
@@ -559,8 +562,9 @@ export function ChatPane({
         const assistantEls = el.querySelectorAll('.msg.assistant');
         const lastAssistantEl = assistantEls[assistantEls.length - 1];
         const formEl = lastAssistantEl?.querySelector<HTMLElement>('[data-form-id]');
-        if (formEl && !scrolledToFormRef.current.has(formEl.dataset.formId!)) {
-          scrolledToFormRef.current.add(formEl.dataset.formId!);
+        const formId = formEl?.dataset.formId;
+        if (formEl && formId && !scrolledToFormRef.current.has(formId)) {
+          scrolledToFormRef.current.add(formId);
           formEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
           pinnedToBottomRef.current = false;
           setScrolledFromBottom(true);
@@ -1121,6 +1125,7 @@ export function ChatPane({
             </button>
           </div>
           <PinnedTodoSlot
+            containerRef={pinnedTodoRef}
             messages={messages}
             streaming={streaming}
             dismissedKey={dismissedPinnedTodoKey}
@@ -1170,55 +1175,6 @@ export function ChatPane({
           />
         </>
       ) : null}
-    </div>
-  );
-}
-
-// Pinned task list above the chat composer. The latest TodoWrite snapshot
-// across the entire conversation is the canonical state; AssistantMessage
-// no longer renders these inline so there is exactly one TodoCard on
-// screen. When every task is complete the user can dismiss the card; the
-// dismissal sticks to the current snapshot only, so a fresh TodoWrite
-// from the agent re-shows it.
-function PinnedTodoSlot({
-  messages,
-  streaming,
-  dismissedKey,
-  onDismiss,
-}: {
-  messages: ChatMessage[];
-  streaming: boolean;
-  dismissedKey: string | null;
-  onDismiss: (key: string | null) => void;
-}) {
-  // `exiting` lets the dismiss click play a slide-down transition before
-  // the slot tears down. Without it React would unmount immediately and
-  // the card would pop out without animation.
-  const [exiting, setExiting] = useState(false);
-  const input = latestTodoWriteInputForPinnedCard(messages);
-  if (input == null) return null;
-  let snapshotKey: string;
-  try {
-    snapshotKey = JSON.stringify(input);
-  } catch {
-    snapshotKey = String(input);
-  }
-  if (snapshotKey === dismissedKey) return null;
-  return (
-    <div className={`chat-pinned-todo${exiting ? ' chat-pinned-todo-exit' : ''}`}>
-      <TodoCard
-        input={input}
-        runStreaming={streaming}
-        runSucceeded={!streaming}
-        onDismiss={() => {
-          if (exiting) return;
-          setExiting(true);
-          // Match the slide-out duration in CSS (220ms) — once the
-          // transition completes the snapshot key is recorded as
-          // dismissed and the slot is unmounted by the early return.
-          window.setTimeout(() => onDismiss(snapshotKey), 220);
-        }}
-      />
     </div>
   );
 }
