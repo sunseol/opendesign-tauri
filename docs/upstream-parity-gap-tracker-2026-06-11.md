@@ -40,7 +40,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | Landing/community/docs | `apps/landing-page` 270 files, `plugins/community` 100 files, `docs` 78 files | [#10](https://github.com/sunseol/opendesign-tauri/issues/10), [#13](https://github.com/sunseol/opendesign-tauri/issues/13), [#23](https://github.com/sunseol/opendesign-tauri/issues/23), [#24](https://github.com/sunseol/opendesign-tauri/issues/24), [#25](https://github.com/sunseol/opendesign-tauri/issues/25), [#39](https://github.com/sunseol/opendesign-tauri/issues/39), [#40](https://github.com/sunseol/opendesign-tauri/issues/40), [#54](https://github.com/sunseol/opendesign-tauri/issues/54) | In progress - fork governance links, template guard, initial locale host OS priority, and #4257/#4258 footer masthead/mobile clipping parity covered |
 | Desktop and packaged runtime | `apps/desktop` 34 files, `apps/packaged` 28 files | [#14](https://github.com/sunseol/opendesign-tauri/issues/14), [#27](https://github.com/sunseol/opendesign-tauri/issues/27), [#37](https://github.com/sunseol/opendesign-tauri/issues/37), [#50](https://github.com/sunseol/opendesign-tauri/issues/50) | In progress - runtime helper package closure guarded for Tauri packaging, packaged host OS locale detection, app version release-channel inference, updater control visibility lifecycle, Windows native folder-picker new-folder affordance, and packaged log append failure containment covered |
 | Release, CI, tools, fixtures | `.github` 88 files, `tools/pack` 87 files, `tools/pr` 20 files, `tools/serve` 10 files | [#12](https://github.com/sunseol/opendesign-tauri/issues/12), [#28](https://github.com/sunseol/opendesign-tauri/issues/28), [#36](https://github.com/sunseol/opendesign-tauri/issues/36), [#45](https://github.com/sunseol/opendesign-tauri/issues/45), [#52](https://github.com/sunseol/opendesign-tauri/issues/52), [#53](https://github.com/sunseol/opendesign-tauri/issues/53) | In progress - tools-dev local env/shared-port parity, tools-dev/tools-pack metatool metadata, tools-pack version helper parity, tools-pr fork-retention guard, tools-serve updater/release fixture, and Nix hash helper parity verified |
-| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#31](https://github.com/sunseol/opendesign-tauri/issues/31), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, prompt-stack diagnostics, and deploy docs covered; #32 observability closeout captured below |
+| Analytics and observability | contracts + web + daemon + telemetry worker | [#11](https://github.com/sunseol/opendesign-tauri/issues/11), [#51](https://github.com/sunseol/opendesign-tauri/issues/51) | In progress - telemetry worker object authorization, trace-scope registration, signed-token R2 writes, prompt-stack diagnostics, analytics event-family parity, and deploy docs covered; #31/#32 closeouts captured below |
 | Deployment assets | `charts`, `deploy`, deployment docs | [#46](https://github.com/sunseol/opendesign-tauri/issues/46) | In progress - Helm chart, one-click Docker/Podman installer, AWS/Azure templates, and cloud deployment docs imported with fork identity guardrails |
 | Curated data | `data` 4 files | [#54](https://github.com/sunseol/opendesign-tauri/issues/54), [#47](https://github.com/sunseol/opendesign-tauri/issues/47), [#23](https://github.com/sunseol/opendesign-tauri/issues/23) | In progress - data seed imported; packaged plugin-preview manifest path and integrity guard covered |
 
@@ -122,8 +122,8 @@ protect against unsafe parity claims.
 - Observability #32 is closed with object-relay URL derivation now rejecting
   non-`/api/objects/batch` relay targets before upload authority is inferred,
   plus fork-user docs for local Langfuse/PostHog-off behavior. Remaining
-  telemetry-worker deployment work stays under #51/#52, and analytics event
-  parity stays under #31/#11.
+  telemetry-worker deployment work stays under #51/#52, and the broader
+  analytics/telemetry umbrella stays under #11.
 - Contracts #43 now accepts the upstream chat run lifecycle status extensions
   (`cancelRequested`, child process ids, exit observation metadata, and cancel
   response run snapshots) plus the integrations connectors `gate_card`
@@ -212,6 +212,10 @@ protect against unsafe parity claims.
   now records durable message-finalization state, emits report-result analytics
   when the reporter returns delivery status, and schedules failed/canceled run
   terminal fallbacks without blocking a later real final-message report.
+  #31 is closed with a representative contracts test that type-checks the
+  product event families named in the ticket: plugins, questions forms,
+  reference board, workspace tabs, handoff/download/settings surfaces,
+  uploads, feedback, onboarding/AMR, and design-system lifecycle/apply results.
 - Tools-serve #52 matches the upstream fixture package except for the fork's
   Tauri metadata assertion. Its Vitest suite, typecheck, and a live
   `pnpm tools-serve start updater --channel beta --platform win --include-payload`
