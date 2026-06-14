@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import { listPromptTemplates, readPromptTemplate } from "../apps/daemon/src/prompt-templates.js";
 import { listSkills } from "../apps/daemon/src/skills.js";
+import { copyBundledResourceTrees } from "../tools/pack/src/resources.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const skillsRoot = path.join(repoRoot, "skills");
@@ -70,6 +73,40 @@ const restoredSkillIds = [
   "design-taste-frontend-v1",
 ] as const;
 
+const mediaParityFiles = [
+  "prompt-templates/video/video-seedance-desk-hologram-ar-realdesk.json",
+  "prompt-templates/video/3d-animated-boy-building-lego.json",
+  "prompt-templates/video/luxury-supercar-cinematic-narrative.json",
+  "prompt-templates/video/hyperframes-html-in-canvas-iphone-device.json",
+  "design-templates/video-shortform/SKILL.md",
+  "design-templates/hyperframes/SKILL.md",
+  "design-templates/hyperframes/references/tts.md",
+  "skills/video-hyperframes/SKILL.md",
+  "skills/mockup-device-3d/SKILL.md",
+  "skills/pptx-html-fidelity-audit/SKILL.md",
+  "skills/pptx/SKILL.md",
+  "skills/pdf/SKILL.md",
+  "skills/export-download-debugging/SKILL.md",
+] as const;
+
+const mediaPromptTemplates = [
+  {
+    id: "video-seedance-desk-hologram-ar-realdesk",
+    titlePattern: /Desk Hologram AR/,
+    promptPattern: /Seedance 2\.0/,
+  },
+  {
+    id: "3d-animated-boy-building-lego",
+    titlePattern: /3D Animated/,
+    promptPattern: /3D animation/i,
+  },
+  {
+    id: "luxury-supercar-cinematic-narrative",
+    titlePattern: /Luxury Supercar/,
+    promptPattern: /Quiet Luxury/,
+  },
+] as const;
+
 function repoPath(relativePath: string): string {
   return path.join(repoRoot, relativePath);
 }
@@ -111,6 +148,83 @@ test("ported #49 video prompt template loads through the prompt registry", async
     listed.some((entry) => entry.id === templateId && entry.surface === "video"),
     `${templateId} is missing from listPromptTemplates()`,
   );
+});
+
+test("ported #38 media template and export-fidelity files stay present", () => {
+  for (const relativePath of mediaParityFiles) {
+    assert.equal(existsSync(repoPath(relativePath)), true, `${relativePath} is missing`);
+  }
+});
+
+test("ported #38 media prompt templates load through the prompt registry", async () => {
+  const listed = await listPromptTemplates(promptTemplatesRoot);
+  const listedVideoIds = new Set(
+    listed.filter((entry) => entry.surface === "video").map((entry) => entry.id),
+  );
+
+  for (const expected of mediaPromptTemplates) {
+    const template = await readPromptTemplate(promptTemplatesRoot, "video", expected.id);
+    assert.ok(template, `${expected.id} did not load`);
+    assert.equal(template.id, expected.id);
+    assert.equal(template.surface, "video");
+    assert.equal(template.model, "seedance-2.0");
+    assert.match(template.title, expected.titlePattern);
+    assert.match(template.prompt, expected.promptPattern);
+    assert.match(template.previewImageUrl ?? "", /^https?:\/\//);
+    assert.match(template.previewVideoUrl ?? "", /^https?:\/\//);
+    assert.ok(listedVideoIds.has(expected.id), `${expected.id} is missing from listPromptTemplates()`);
+  }
+});
+
+test("ported #38 media provider catalogue exposes video and TTS paths", () => {
+  const registry = readFileSync(repoPath("apps/web/src/media/models.ts"), "utf8");
+
+  assert.match(registry, /id: 'volcengine'[\s\S]*hint: 'Seedance 2\.0 \/ Seedream'/);
+  assert.match(registry, /id: 'hyperframes'[\s\S]*Local HTML -> MP4 renderer/);
+  assert.match(registry, /id: 'senseaudio'[\s\S]*defaultBaseUrl: 'https:\/\/api\.senseaudio\.cn'/);
+  assert.match(registry, /id: 'aihubmix'[\s\S]*OpenAI-compatible aggregator/);
+  assert.match(
+    registry,
+    /id: 'doubao-seedance-2-0-260128'[\s\S]*provider: 'volcengine'[\s\S]*caps: \['t2v', 'i2v', 'audio'\]/,
+  );
+  assert.match(registry, /id: 'hyperframes-html'[\s\S]*provider: 'hyperframes'[\s\S]*caps: \['t2v'\]/);
+  assert.match(registry, /id: 'senseaudio-tts'[\s\S]*provider: 'senseaudio'[\s\S]*caps: \['tts', 'voice-clone'\]/);
+});
+
+test("ported #38 media and export resources copy into packaged resources", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "open-design-media-parity-"));
+  const resourceRoot = path.join(root, "resources");
+
+  try {
+    await copyBundledResourceTrees({ workspaceRoot: repoRoot, resourceRoot });
+
+    assert.match(
+      await readFile(
+        path.join(
+          resourceRoot,
+          "prompt-templates",
+          "video",
+          "video-seedance-desk-hologram-ar-realdesk.json",
+        ),
+        "utf8",
+      ),
+      /desk-hologram/,
+    );
+    assert.match(
+      await readFile(path.join(resourceRoot, "design-templates", "hyperframes", "references", "tts.md"), "utf8"),
+      /Text-to-Speech/,
+    );
+    assert.match(
+      await readFile(path.join(resourceRoot, "skills", "pptx-html-fidelity-audit", "SKILL.md"), "utf8"),
+      /PPTX.*HTML Fidelity Audit/,
+    );
+    assert.match(
+      await readFile(path.join(resourceRoot, "skills", "export-download-debugging", "SKILL.md"), "utf8"),
+      /payload has non-zero bytes/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("guard runs the #49 skill and template parity check", () => {
