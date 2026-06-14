@@ -3,7 +3,7 @@
 // we want a single source of truth for "what file is open" — encoding
 // that in the URL is the simplest way to make it deep-linkable.
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 // Entry-shell sub-views. The home/project landing renders one of three
 // columns and each sub-view now owns a top-level path so the browser
@@ -137,6 +137,11 @@ export function buildPath(route: Route): string {
 // Centralized navigation. Components call this instead of mutating
 // `window.location` directly so we can fan the change out to any
 // `useRoute()` subscriber via a custom event.
+//
+// Dispatching `popstate` in a microtask lets callers invoke `navigate()`
+// from React state updaters without forcing route subscribers to update
+// while another component is still rendering. The history mutation stays
+// synchronous so the address bar updates immediately.
 export function navigate(route: Route, opts: { replace?: boolean } = {}): void {
   const target = buildPath(route);
   const current = window.location.pathname;
@@ -146,15 +151,28 @@ export function navigate(route: Route, opts: { replace?: boolean } = {}): void {
   } else {
     window.history.pushState(null, '', target);
   }
-  window.dispatchEvent(new PopStateEvent('popstate'));
+  queueMicrotask(() => {
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+}
+
+let cachedPathname: string | null = null;
+let cachedRoute: Route | null = null;
+
+function getRouteSnapshot(): Route {
+  const pathname = window.location.pathname;
+  if (cachedPathname !== pathname || cachedRoute === null) {
+    cachedPathname = pathname;
+    cachedRoute = parseRoute(pathname);
+  }
+  return cachedRoute;
+}
+
+function subscribeToRouteChanges(onStoreChange: () => void): () => void {
+  window.addEventListener('popstate', onStoreChange);
+  return () => window.removeEventListener('popstate', onStoreChange);
 }
 
 export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
-  useEffect(() => {
-    const onPop = () => setRoute(parseRoute(window.location.pathname));
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-  return route;
+  return useSyncExternalStore(subscribeToRouteChanges, getRouteSnapshot, getRouteSnapshot);
 }
