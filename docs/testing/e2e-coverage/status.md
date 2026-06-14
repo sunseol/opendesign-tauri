@@ -20,6 +20,32 @@
 
 当前策略是明确的：继续增强 `extended` 的信号，但不把 `critical` 变成一个越来越慢的大杂烩。
 
+## #28 P0 Smoke Suite
+
+这张表是 #28 的当前验收地图：它记录 Tauri fork 里哪些 P0 smoke
+路径保护 `web`、`daemon`、`desktop` 和 `packaged` surface，避免把 release
+smoke、UI P0、mock agent replay、CI alert 当成互不相干的散点。
+
+| Surface | Gate | Command / job | Signal |
+| --- | --- | --- | --- |
+| `web` | UI P0 PR smoke | `pnpm -C e2e exec tsx scripts/ui-p0-shards.ts smoke` | Home entry controls, settings entry, project creation shell, and the PR-level P0 shard in `.github/workflows/ui-p0-pr.yml`. |
+| `daemon` | Vitest/API P0 smoke | `pnpm -C e2e run test:p0` | Non-UI daemon/API smoke that prefers inspect, reports, mock servers, and fake local CLIs over browser-only patching. |
+| `desktop` | mac desktop runtime smoke | `e2e/specs/mac.spec.ts` | Local desktop/runtime smoke; mac packaged execution remains gated by platform env flags when a real bundle is required. |
+| `packaged` | Tauri package smoke | `packaged_smoke_tauri_win`, `packaged_smoke_tauri_linux` | CI package gates run `e2e/scripts/release-smoke.ts` against Windows NSIS and Linux AppImage/Tauri evidence when packaging-relevant paths change. |
+
+Replay fake-agent matrix is intentionally practical rather than theoretical.
+The default `createFakeAgentRuntimes()` path covers `codex`, `claude`,
+`gemini`, `opencode`, `cursor-agent`, `qwen`, `qoder`, and `copilot`, matching
+the supported local-agent protocols that the current fake harness can replay
+without real provider credentials.
+
+CI alert routing is split by failure kind:
+
+- `.github/workflows/notify-main-ci-feishu.yml` owns fork-gated code failure
+  alerts for failed or timed-out main `ci` runs.
+- `.github/workflows/fork-pr-workflow-approval.yml` owns maintainer workflow approval waiting,
+  so an `action_required` fork workflow does not look like a product/build code failure.
+
 ## 最近补强了什么
 
 ### 1. 资源驱动场景的 contract 断言
