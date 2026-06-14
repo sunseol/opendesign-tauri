@@ -58,6 +58,11 @@ function baseFile(overrides: Partial<ProjectFile>): ProjectFile {
   };
 }
 
+function requireArtifactManifest(file: ProjectFile): NonNullable<ProjectFile['artifactManifest']> {
+  if (!file.artifactManifest) throw new Error('Expected artifact manifest');
+  return file.artifactManifest;
+}
+
 function deferredResponse() {
   let resolve!: (value: Response) => void;
   const promise = new Promise<Response>((next) => {
@@ -578,7 +583,7 @@ describe('FileViewer SVG artifacts', () => {
       name: 'second.html',
       path: 'second.html',
       artifactManifest: {
-        ...first.artifactManifest!,
+        ...requireArtifactManifest(first),
         title: 'Second',
         entry: 'second.html',
       },
@@ -828,7 +833,9 @@ describe('FileViewer SVG artifacts', () => {
     expect(container.querySelector('.palette-tweaks-anchor')).toBeTruthy();
     expect(container.querySelector('.viewer-viewport-switcher')).toBeTruthy();
 
-    fireEvent.click(container.querySelector('.viewer-mode-trigger')!);
+    const modeTrigger = container.querySelector('.viewer-mode-trigger');
+    if (!modeTrigger) throw new Error('Expected viewer mode trigger');
+    fireEvent.click(modeTrigger);
     fireEvent.click(screen.getByRole('menuitem', { name: /code/i }));
 
     await waitFor(() => {
@@ -1151,7 +1158,7 @@ describe('FileViewer SVG artifacts', () => {
         exports: ['html'],
       },
     });
-    let deployBody: any = null;
+    let deployBody: unknown = null;
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
       const method = init?.method || (input instanceof Request ? input.method : 'GET');
@@ -1240,7 +1247,9 @@ describe('FileViewer SVG artifacts', () => {
     fireEvent.change(screen.getByLabelText(/Subdomain prefix/i), { target: { value: 'demo' } });
 
     const deployButtons = screen.getAllByRole('button', { name: /Deploy to Cloudflare Pages/i });
-    fireEvent.click(deployButtons[deployButtons.length - 1]!);
+    const deployButton = deployButtons.at(-1);
+    if (!deployButton) throw new Error('Expected deploy button');
+    fireEvent.click(deployButton);
 
     const pagesDevLabel = await screen.findByText('pages.dev URL');
     const customDomainLabel = await screen.findByText('Custom domain');
@@ -1603,7 +1612,9 @@ describe('FileViewer tweaks toolbar', () => {
 
     const queue = screen.getByRole('button', { name: 'Queue' }) as HTMLButtonElement;
     expect(queue.disabled).toBe(false);
-    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
+    const send = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    expect(send.getAttribute('data-tooltip') || send.getAttribute('title')).toBeTruthy();
     expect(screen.queryByText('Queues while working')).toBeNull();
   });
 
@@ -1662,8 +1673,8 @@ describe('FileViewer tweaks toolbar', () => {
     const closeButton = screen
       .getByTestId('comment-side-panel')
       .querySelector<HTMLButtonElement>('.comment-side-close');
-    expect(closeButton).toBeTruthy();
-    fireEvent.click(closeButton!);
+    if (!closeButton) throw new Error('Expected comment side close button');
+    fireEvent.click(closeButton);
 
     expect(screen.queryByTestId('comment-side-panel')).toBeNull();
     expect(screen.queryByTestId('comment-side-collapsed-rail')).toBeNull();
@@ -1939,7 +1950,9 @@ describe('FileViewer tweaks toolbar', () => {
     await waitFor(() => expect(tweaksButton()?.getAttribute('aria-pressed')).toBe('true'));
 
     // User toggles OFF on first file.
-    fireEvent.click(tweaksButton()!);
+    const initialTweaksButton = tweaksButton();
+    if (!initialTweaksButton) throw new Error('Expected tweaks button');
+    fireEvent.click(initialTweaksButton);
     await waitFor(() => expect(tweaksButton()?.getAttribute('aria-pressed')).toBe('false'));
 
     // Switch to second file. The second artifact also mounts panel-visible
@@ -2644,8 +2657,8 @@ describe('LiveArtifactViewer', () => {
 
     const requestFullscreen = vi.fn(() => Promise.reject(new Error('denied')));
     const previewHost = container.querySelector('.viewer-body');
-    expect(previewHost).toBeTruthy();
-    Object.defineProperty(previewHost!, 'requestFullscreen', {
+    if (!previewHost) throw new Error('Expected viewer body');
+    Object.defineProperty(previewHost, 'requestFullscreen', {
       configurable: true,
       value: requestFullscreen,
     });
@@ -2686,8 +2699,8 @@ describe('LiveArtifactViewer', () => {
 
     const requestFullscreen = vi.fn(() => Promise.resolve());
     const previewHost = container.querySelector('.viewer-body');
-    expect(previewHost).toBeTruthy();
-    Object.defineProperty(previewHost!, 'requestFullscreen', {
+    if (!previewHost) throw new Error('Expected viewer body');
+    Object.defineProperty(previewHost, 'requestFullscreen', {
       configurable: true,
       value: requestFullscreen,
     });
