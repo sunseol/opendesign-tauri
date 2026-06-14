@@ -14,6 +14,16 @@ const FR_INTEGRATIONS_SURFACE_KEYS: ReadonlyArray<keyof Dict> = [
   'integrations.tabHint.useEverywhere',
 ];
 
+const FR_MANUAL_EDIT_ACTION_KEYS: ReadonlyArray<keyof Dict> = [
+  'manualEdit.deleteElement',
+  'manualEdit.deleteElementConfirm',
+  'manualEdit.focusSlides',
+  'manualEdit.showPanels',
+  'manualEdit.uploadImage',
+  'manualEdit.uploadImageFailed',
+  'manualEdit.uploadingImage',
+];
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -33,6 +43,12 @@ describe('fr fallback parity', () => {
 
   it('keeps French integration surface hints translated instead of falling back to English', () => {
     for (const key of FR_INTEGRATIONS_SURFACE_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French manual edit actions translated instead of falling back to English', () => {
+    for (const key of FR_MANUAL_EDIT_ACTION_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
