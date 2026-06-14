@@ -92,6 +92,14 @@ const HIGH_VISIBILITY_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'settings.onboardingAmrCloudUpcomingRouting',
   'settings.onboardingAmrCloudUpcomingSkills',
 ];
+const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'designFiles.filterBy',
+  'designFiles.filterClear',
+  'designFiles.filterCount',
+  'entry.navIntegrations',
+  'entry.navPlugins',
+  'entry.navTasks',
+];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -301,6 +309,14 @@ describe('i18n locales', () => {
     const { fr } = await import('../../src/i18n/locales/fr');
 
     for (const key of HIGH_VISIBILITY_FALLBACK_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French navigation and file filters translated instead of falling back to English', async () => {
+    const { fr } = await import('../../src/i18n/locales/fr');
+
+    for (const key of FR_NAV_AND_FILE_FALLBACK_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
