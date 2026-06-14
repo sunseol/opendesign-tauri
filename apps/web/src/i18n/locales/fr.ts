@@ -54,12 +54,16 @@ export const fr: Dict = {
   'homeHero.chip.createPluginHint':
     'Créer une extension Open Design réutilisable et l’ajouter à Mes extensions.',
   'homeHero.chip.deck': 'Présentation',
+  'homeHero.chip.prototype': 'Prototype interactif',
+  'homeHero.chip.image': 'Visuel',
   'homeHero.chip.figma': 'Depuis Figma',
   'homeHero.chip.figmaHint': 'Migrer un frame Figma vers le système de design actif.',
   'homeHero.chip.folder': 'Depuis un dossier',
   'homeHero.chip.folderHint': 'Importer un dossier local existant et continuer l’édition.',
+  'homeHero.chip.hyperframes': 'HyperFrames',
   'homeHero.chip.hyperframesHint':
     'Créer du motion HTML : sous-titres, visuels réactifs à l’audio et transitions de scènes.',
+  'homeHero.chip.audio': 'Son',
   'homeHero.chip.liveArtifact': 'Artefact dynamique',
   'homeHero.chip.liveArtifactHint':
     'Créer un artefact HTML/CSS/JS interactif prévisualisable en direct.',
@@ -442,9 +446,11 @@ export const fr: Dict = {
     'Connectez des systèmes externes, ajoutez des outils MCP à la boucle de votre agent et utilisez Open Design depuis d’autres IDE, scripts et automatisations.',
   'integrations.agentReady': 'Prêt pour l’agent',
   'integrations.areasAria': 'Zones d’intégration',
+  'integrations.tabLabel.mcp': 'MCP',
   'integrations.tabLabel.skills': 'Compétences',
   'integrations.tabHint.mcp': 'Outils externes',
   'integrations.tabHint.connectors': 'Comptes et API',
+  'integrations.tabHint.useEverywhere': 'CLI, HTTP et MCP',
   'integrations.skillsTitle': 'Intégrations de compétences',
   'integrations.skillsBody':
     'La gestion des intégrations au niveau des compétences est reprise depuis une autre branche. Cet onglet est réservé afin que MCP, Connecteurs et futures Compétences vivent dans la même route Intégration.',
