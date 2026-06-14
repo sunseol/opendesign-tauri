@@ -4,10 +4,18 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DesignBrowserPanel } from '../../src/components/DesignBrowserPanel';
+import { writeProjectTextFile } from '../../src/providers/registry';
+
+vi.mock('../../src/providers/registry', () => ({
+  writeProjectTextFile: vi.fn(),
+}));
+
+const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.clearAllMocks();
 });
 
 describe('DesignBrowserPanel', () => {
@@ -46,6 +54,34 @@ describe('DesignBrowserPanel', () => {
     if (!(address instanceof HTMLInputElement)) throw new TypeError('Expected browser address input');
     expect(address.value).toBe('');
     expect(screen.getByTestId('design-browser-reference-board')).toBeTruthy();
+  });
+
+  it('saves the current page brief into project files and opens it', async () => {
+    const onRefreshFiles = vi.fn();
+    const onOpenFile = vi.fn();
+    mockedWriteProjectTextFile.mockResolvedValue({
+      name: 'browser/browser-brief-dribbble.md',
+      path: 'browser/browser-brief-dribbble.md',
+      type: 'file',
+      size: 100,
+      mtime: 1,
+      kind: 'text',
+      mime: 'text/markdown',
+    });
+
+    renderBrowserPanel({ projectId: 'proj-capture', onRefreshFiles, onOpenFile });
+    fireEvent.click(screen.getByRole('button', { name: 'Open Dribbble' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save brief' }));
+
+    await expect.poll(() => mockedWriteProjectTextFile.mock.calls.length).toBe(1);
+    const call = mockedWriteProjectTextFile.mock.calls[0];
+    if (!call) throw new Error('Expected writeProjectTextFile call');
+    expect(call[0]).toBe('proj-capture');
+    expect(call[1]).toMatch(/^browser\/browser-brief-dribbble\.com-[\dTZ-]+\.md$/);
+    expect(call[2]).toContain('# Dribbble');
+    expect(call[2]).toContain('Source: https://dribbble.com/');
+    expect(onRefreshFiles).toHaveBeenCalledTimes(1);
+    expect(onOpenFile).toHaveBeenCalledWith('browser/browser-brief-dribbble.md');
   });
 });
 

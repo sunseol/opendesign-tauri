@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
+import { writeProjectTextFile } from '../providers/registry';
 import { DesignBrowserReferenceBoard } from './DesignBrowserReferenceBoard';
 import {
   EMPTY_BROWSER_URL,
+  browserFileName,
   faviconUrl,
   isHistoryUrl,
   labelFromUrl,
   loadHistory,
   normalizeBrowserAddress,
+  pageBriefMarkdown,
   referenceIconUrl,
   sameUrl,
   saveHistory,
@@ -37,7 +40,9 @@ export function DesignBrowserPanel({
   initialIconUrl,
   initialTitle,
   initialUrl,
+  onOpenFile,
   projectId,
+  onRefreshFiles,
   onPageInfoChange,
 }: DesignBrowserPanelProps) {
   const initialInfo = useMemo(
@@ -47,6 +52,9 @@ export function DesignBrowserPanel({
   const [pageInfo, setPageInfo] = useState<BrowserPageInfo>(initialInfo);
   const [addressValue, setAddressValue] = useState(initialInfo.url === EMPTY_BROWSER_URL ? '' : initialInfo.url);
   const [history, setHistory] = useState<readonly BrowserHistoryEntry[]>(() => loadHistory(projectId));
+  const [isSavingBrief, setIsSavingBrief] = useState(false);
+  const [briefStatus, setBriefStatus] = useState<string | null>(null);
+  const canSaveBrief = isHistoryUrl(pageInfo.url);
 
   useEffect(() => {
     setHistory(loadHistory(projectId));
@@ -56,6 +64,7 @@ export function DesignBrowserPanel({
     const nextInfo = pageInfoForUrl(url, title, explicitIconUrl);
     setPageInfo(nextInfo);
     setAddressValue(url === EMPTY_BROWSER_URL ? '' : url);
+    setBriefStatus(null);
     onPageInfoChange?.(nextInfo);
     if (!isHistoryUrl(url)) return;
     setHistory((current) => {
@@ -81,6 +90,32 @@ export function DesignBrowserPanel({
     openUrl(normalized, labelFromUrl(normalized), faviconUrl(normalized));
   }
 
+  async function saveCurrentPageBrief(): Promise<void> {
+    if (!canSaveBrief || isSavingBrief) return;
+    setIsSavingBrief(true);
+    setBriefStatus(null);
+    const markdown = pageBriefMarkdown({ title: pageInfo.title, url: pageInfo.url }, pageInfo.url);
+    const filename = browserFileName('browser-brief', pageInfo.url, 'md');
+    try {
+      const file = await writeProjectTextFile(projectId, filename, markdown);
+      if (!file) {
+        setBriefStatus('Brief was not saved');
+        return;
+      }
+      await onRefreshFiles();
+      onOpenFile(file.name);
+      setBriefStatus('Brief saved');
+    } catch (error) {
+      if (error instanceof Error) {
+        setBriefStatus(error.message);
+        return;
+      }
+      throw error;
+    } finally {
+      setIsSavingBrief(false);
+    }
+  }
+
   return (
     <section className="db-panel" aria-label="Design browser">
       <form className="db-address-bar" onSubmit={submitAddress}>
@@ -94,15 +129,27 @@ export function DesignBrowserPanel({
           placeholder="Search or enter address"
           aria-label="Browser address"
         />
-        <button type="submit" aria-label="Open address">
-          <Icon name="external-link" size={13} />
-          Open
-        </button>
+        <div>
+          <button type="submit" aria-label="Open address">
+            <Icon name="external-link" size={13} />
+            Open
+          </button>
+          <button
+            type="button"
+            aria-label="Save brief"
+            disabled={!canSaveBrief || isSavingBrief}
+            onClick={() => void saveCurrentPageBrief()}
+          >
+            <Icon name="file" size={13} />
+            {isSavingBrief ? 'Saving' : 'Save brief'}
+          </button>
+        </div>
       </form>
 
       <div className="db-current-page" role="status">
         <span>{pageInfo.title}</span>
         <small>{pageInfo.url === EMPTY_BROWSER_URL ? 'Ready for references' : pageInfo.url}</small>
+        {briefStatus ? <small>{briefStatus}</small> : null}
       </div>
 
       {history.length > 0 ? (
