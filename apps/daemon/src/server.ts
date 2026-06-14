@@ -423,6 +423,7 @@ import { LiveArtifactRefreshUnavailableError, refreshLiveArtifact } from './live
 import { LiveArtifactRefreshAbortError } from './live-artifacts/refresh.js';
 import { registerConnectorRoutes } from './connectors/routes.js';
 import { registerActiveContextRoutes } from './active-context-routes.js';
+import { registerTerminalRoutes } from './terminal-routes.js';
 import { registerHostToolsRoutes } from './host-tools-routes.js';
 import { registerMcpRoutes } from './mcp-routes.js';
 import { registerVelaRoutes } from './vela-routes.js';
@@ -5042,6 +5043,12 @@ export async function startServer({
   registerActiveContextRoutes(app, {
     db,
     http: httpDeps,
+    projectStore: projectStoreDeps,
+  });
+  registerTerminalRoutes(app, {
+    db,
+    http: httpDeps,
+    paths: pathDeps,
     projectStore: projectStoreDeps,
   });
   registerHostToolsRoutes(app, {
