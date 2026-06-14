@@ -203,7 +203,110 @@ function notifyRunsChanged() {
   window.dispatchEvent(new Event(RUNS_CHANGED_EVENT));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readStringField(record: Record<string, unknown> | null, key: string): string | null {
+  const value = record?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readNumberField(record: Record<string, unknown> | null, key: string): number | null {
+  const value = record?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function readBooleanField(record: Record<string, unknown> | null, key: string): boolean | null {
+  const value = record?.[key];
+  return typeof value === 'boolean' ? value : null;
+}
+
+interface OpenCodeSessionErrorDetails {
+  source: string | null;
+  code: string | null;
+  message: string | null;
+  statusCode: number | null;
+  retryable: boolean | null;
+  suggestion: string | null;
+  responseBodyPreview: string | null;
+}
+
+function inferOpenCodeRetryable(statusCode: number | null): boolean | null {
+  if (statusCode === null) return null;
+  return statusCode === 429 || statusCode >= 500;
+}
+
+function normalizeOpenCodeSessionErrorDetails(value: unknown): OpenCodeSessionErrorDetails | null {
+  if (!isRecord(value) || value.kind !== 'opencode_session_error') return null;
+  const statusCode = readNumberField(value, 'statusCode');
+  return {
+    source: readStringField(value, 'source'),
+    code: readStringField(value, 'code'),
+    message: readStringField(value, 'message'),
+    statusCode,
+    retryable: readBooleanField(value, 'retryable') ?? inferOpenCodeRetryable(statusCode),
+    suggestion: readStringField(value, 'suggestion'),
+    responseBodyPreview: readStringField(value, 'responseBodyPreview'),
+  };
+}
+
+function linkErrorMessageFromResponseBodyPreview(preview: string | null): string | null {
+  if (!preview) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(preview);
+  } catch {
+    return null;
+  }
+  const error = isRecord(parsed) && isRecord(parsed.error) ? parsed.error : null;
+  return readStringField(error, 'message');
+}
+
+function retryExhaustedMessage(details: OpenCodeSessionErrorDetails): string | null {
+  const linkMessage = linkErrorMessageFromResponseBodyPreview(details.responseBodyPreview);
+  if (!linkMessage) return null;
+  const retryMatch = linkMessage.match(/\bRetried the upstream request\s+(\d+)\s+times\b/i);
+  if (!retryMatch) return null;
+  const retryCount = retryMatch[1];
+  if (!retryCount) return null;
+  return [
+    'The upstream model service is temporarily unavailable.',
+    '',
+    `We already retried ${retryCount} times, but the request still failed. Please retry later or switch to another model.`,
+  ].join('\n');
+}
+
+function formatOpenCodeSessionError(value: unknown): string | null {
+  const details = normalizeOpenCodeSessionErrorDetails(value);
+  if (!details) return null;
+  const statusCode = details.statusCode;
+  const message = details.message;
+  if (details.source === 'opencode' && details.code === 'ROLE_MARKER_HALLUCINATION') {
+    return message;
+  }
+  if (statusCode === 404) {
+    return 'The model service returned 404 Not Found for the configured runtime endpoint. Check the AMR Link URL or model route.';
+  }
+  if (statusCode === 401 || statusCode === 403) {
+    return 'AMR authentication failed. Please sign in again or refresh the runtime key.';
+  }
+  if (statusCode === 429) {
+    return 'The model service rejected the request due to quota or rate limits. Retry later or check quota and rate limits.';
+  }
+  if (typeof statusCode === 'number' && statusCode >= 500) {
+    const exhaustedMessage = retryExhaustedMessage(details);
+    if (exhaustedMessage) return exhaustedMessage;
+    return 'The upstream model provider returned a temporary error. Please retry or switch models.';
+  }
+  const base = message ? `OpenCode session failed: ${message}` : 'OpenCode session failed.';
+  return details.suggestion ? `${base}\n${details.suggestion}` : base;
+}
+
 function daemonSseErrorMessage(data: SseErrorPayload): string {
+  const formattedOpenCodeError = formatOpenCodeSessionError(data.error?.details);
+  if (formattedOpenCodeError) return formattedOpenCodeError;
+
   const message = String(data.error?.message ?? data.message ?? 'daemon error');
   const detail =
     data.error?.details &&
@@ -216,10 +319,14 @@ function daemonSseErrorMessage(data: SseErrorPayload): string {
   return `${message}\n${detail}`;
 }
 
-function daemonSseError(data: SseErrorPayload): Error & { code?: string } {
-  const error = new Error(daemonSseErrorMessage(data)) as Error & { code?: string };
+function daemonSseError(data: SseErrorPayload): Error & { code?: string; details?: unknown } {
+  const error = new Error(daemonSseErrorMessage(data)) as Error & {
+    code?: string;
+    details?: unknown;
+  };
   const code = data.error?.code ?? (data as { code?: unknown }).code;
   if (typeof code === 'string') error.code = code;
+  if (data.error?.details !== undefined) error.details = data.error.details;
   return error;
 }
 
@@ -699,6 +806,13 @@ function translateAgentEvent(data: DaemonAgentPayload): AgentEvent | null {
       outputTokens: usage.output_tokens,
       costUsd: typeof data.costUsd === 'number' ? data.costUsd : undefined,
       durationMs: typeof data.durationMs === 'number' ? data.durationMs : undefined,
+    };
+  }
+  if (t === 'fabricated_role_marker' && typeof data.marker === 'string') {
+    return {
+      kind: 'status',
+      label: 'warning',
+      detail: `Model emitted fabricated role marker ("${data.marker}"). Response was truncated to prevent unauthorized instruction injection.`,
     };
   }
   if (t === 'raw' && typeof data.line === 'string') {

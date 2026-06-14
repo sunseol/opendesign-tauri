@@ -664,6 +664,53 @@ test('attachAcpSession preserves structured OpenCode session error details from 
   });
 });
 
+test('attachAcpSession promotes allowlisted OpenCode role-marker ACP errors', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  const details = {
+    kind: 'opencode_session_error',
+    source: 'opencode',
+    code: 'ROLE_MARKER_HALLUCINATION',
+    upstream_name: 'RoleMarkerHallucinationError',
+    message: 'Model emitted fabricated role marker ("## user"). Response was truncated to prevent unauthorized instruction injection.',
+    marker: '## user',
+    retryable: true,
+  };
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpError(child, 3, {
+    code: -32600,
+    message: 'OpenCode session failed: ROLE_MARKER_HALLUCINATION',
+    data: details,
+  });
+
+  const errorEvents = events.filter((entry) => entry.event === 'error');
+  assert.equal(errorEvents.length, 1);
+  assert.deepEqual(errorEvents[0]?.payload, {
+    message: details.message,
+    error: {
+      code: 'ROLE_MARKER_HALLUCINATION',
+      message: details.message,
+      retryable: true,
+      details: {
+        ...details,
+        promoted_by: 'open_design_acp',
+      },
+    },
+  });
+});
+
 test('attachAcpSession force-terminates the child after a clean prompt completion if it does not exit on stdin.end()', async () => {
   vi.useFakeTimers();
   try {

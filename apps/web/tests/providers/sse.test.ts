@@ -137,6 +137,125 @@ describe('streamViaDaemon', () => {
     expect(handlers.onDone).not.toHaveBeenCalled();
   });
 
+  it('renders structured OpenCode session errors without JSON-RPC wrapper text', async () => {
+    const handlers = createDaemonHandlers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(jsonResponse({ runId: 'run-1' }))
+        .mockResolvedValueOnce(
+          sseResponse(
+            [
+              'event: error',
+              `data: ${JSON.stringify({
+                message: 'json-rpc id 4: OpenCode session failed: Not Found',
+                error: {
+                  code: 'AGENT_EXECUTION_FAILED',
+                  message: 'json-rpc id 4: OpenCode session failed: Not Found',
+                  details: {
+                    kind: 'opencode_session_error',
+                    source: 'opencode',
+                    message: 'Not Found',
+                    statusCode: 404,
+                    retryable: false,
+                    url: 'https://example.invalid/v1/chat/completions',
+                    suggestion: 'Check the configured AMR Link URL or model route.',
+                  },
+                },
+              })}`,
+              '',
+              '',
+            ].join('\n'),
+          ),
+        ),
+    );
+
+    await streamViaDaemon({
+      agentId: 'amr',
+      history: [{ id: '1', role: 'user', content: 'hello' }],
+      systemPrompt: '',
+      signal: new AbortController().signal,
+      handlers,
+    });
+
+    expect(handlers.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('404 Not Found'),
+        code: 'AGENT_EXECUTION_FAILED',
+        details: expect.objectContaining({
+          kind: 'opencode_session_error',
+          statusCode: 404,
+        }),
+      }),
+    );
+    const message = (handlers.onError.mock.calls[0]?.[0] as Error).message;
+    expect(message).toContain('AMR Link URL or model route');
+    expect(message).not.toContain('json-rpc id 4');
+    expect(message).not.toContain('https://example.invalid');
+    expect(handlers.onDone).not.toHaveBeenCalled();
+  });
+
+  it('renders promoted OpenCode role-marker errors without OpenCode-session prefixing', async () => {
+    const handlers = createDaemonHandlers();
+    const message =
+      'Model emitted fabricated role marker ("## user"). Response was truncated to prevent unauthorized instruction injection.';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(jsonResponse({ runId: 'run-1' }))
+        .mockResolvedValueOnce(
+          sseResponse(
+            [
+              'event: error',
+              `data: ${JSON.stringify({
+                message: 'json-rpc id 4: OpenCode session failed: ROLE_MARKER_HALLUCINATION',
+                error: {
+                  code: 'ROLE_MARKER_HALLUCINATION',
+                  message: 'json-rpc id 4: OpenCode session failed: ROLE_MARKER_HALLUCINATION',
+                  retryable: true,
+                  details: {
+                    kind: 'opencode_session_error',
+                    source: 'opencode',
+                    code: 'ROLE_MARKER_HALLUCINATION',
+                    upstream_name: 'RoleMarkerHallucinationError',
+                    message,
+                    marker: '## user',
+                    retryable: true,
+                    promoted_by: 'open_design_acp',
+                  },
+                },
+              })}`,
+              '',
+              '',
+            ].join('\n'),
+          ),
+        ),
+    );
+
+    await streamViaDaemon({
+      agentId: 'amr',
+      history: [{ id: '1', role: 'user', content: 'hello' }],
+      systemPrompt: '',
+      signal: new AbortController().signal,
+      handlers,
+    });
+
+    expect(handlers.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message,
+        code: 'ROLE_MARKER_HALLUCINATION',
+        details: expect.objectContaining({
+          kind: 'opencode_session_error',
+          code: 'ROLE_MARKER_HALLUCINATION',
+          marker: '## user',
+        }),
+      }),
+    );
+    const renderedMessage = (handlers.onError.mock.calls[0]?.[0] as Error).message;
+    expect(renderedMessage).not.toContain('OpenCode session failed');
+    expect(handlers.onDone).not.toHaveBeenCalled();
+  });
+
   it('drops prior assistant turns from another agent when composing daemon transcript', async () => {
     const handlers = createDaemonHandlers();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
