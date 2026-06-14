@@ -18,6 +18,7 @@ import {
   $isParagraphNode,
   $isRangeSelection,
   $isTextNode,
+  $nodesOfType,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   INSERT_LINE_BREAK_COMMAND,
@@ -45,6 +46,11 @@ import {
   buildInlineMentionParts,
   type InlineMentionEntity,
 } from '../../utils/inlineMentions';
+import {
+  $createMentionNode,
+  $isMentionNode,
+  MentionNode,
+} from './MentionNode';
 
 export interface ComposerTriggerState {
   mention: { q: string } | null;
@@ -86,6 +92,7 @@ const EDITOR_THEME = {
 
 function serializeNode(node: LexicalNode): string {
   if ($isLineBreakNode(node)) return '\n';
+  if ($isMentionNode(node)) return node.getTextContent();
   return node.getTextContent();
 }
 
@@ -101,7 +108,31 @@ function serializeEditorText(): string {
   return blocks.join('\n');
 }
 
-function setEditorText(text: string): void {
+function appendTextWithMentionNodes(
+  paragraph: ReturnType<typeof $createParagraphNode>,
+  text: string,
+  knownEntities: InlineMentionEntity[],
+): void {
+  const parts = buildInlineMentionParts(text, knownEntities, {
+    highlightUnknown: false,
+  });
+  if (!parts) {
+    paragraph.append($createTextNode(text));
+    return;
+  }
+  for (const part of parts) {
+    paragraph.append(
+      part.kind === 'mention'
+        ? $createMentionNode(part.entity)
+        : $createTextNode(part.text),
+    );
+  }
+}
+
+function setEditorText(
+  text: string,
+  knownEntities: InlineMentionEntity[] = [],
+): void {
   const root = $getRoot();
   root.clear();
   const paragraph = $createParagraphNode();
@@ -110,7 +141,7 @@ function setEditorText(text: string): void {
   const lines = text.split('\n');
   lines.forEach((line, index) => {
     if (index > 0) paragraph.append($createLineBreakNode());
-    if (line) paragraph.append($createTextNode(line));
+    if (line) appendTextWithMentionNodes(paragraph, line, knownEntities);
   });
   paragraph.selectEnd();
 }
@@ -145,22 +176,57 @@ function replaceActiveTriggerInSelection(selection: RangeSelection, text: string
   return true;
 }
 
+function insertMentionInSelection(selection: RangeSelection, insert: MentionInsert): void {
+  const node = selection.anchor.getNode();
+  const mention = $createMentionNode({
+    ...insert.entity,
+    token: insert.token,
+  });
+  const trailingSpace = $createTextNode(' ');
+  if (!$isTextNode(node)) {
+    selection.insertNodes([mention, trailingSpace]);
+    return;
+  }
+  const offset = selection.anchor.offset;
+  const before = node.getTextContent().slice(0, offset);
+  const match = /(^|\s)[@/][^\s@/]*$/.exec(before);
+  if (!match) {
+    selection.insertNodes([mention, trailingSpace]);
+    return;
+  }
+  const token = match[0].replace(/^\s+/, '');
+  const start = offset - token.length;
+  if (start < 0) {
+    selection.insertNodes([mention, trailingSpace]);
+    return;
+  }
+  selection.setTextNodeRange(node, start, node, offset);
+  selection.insertNodes([mention, trailingSpace]);
+}
+
 function readPresentEntities(
   text: string,
   knownEntities: InlineMentionEntity[],
 ): InlineMentionEntity[] {
+  const present: InlineMentionEntity[] = [];
+  const seen = new Set<string>();
+  const add = (entity: InlineMentionEntity) => {
+    if (entity.kind === 'unknown') return;
+    const key = `${entity.kind}:${entity.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    present.push(entity);
+  };
+  for (const node of $nodesOfType(MentionNode)) {
+    add(node.getMentionEntity());
+  }
   const parts = buildInlineMentionParts(text, knownEntities, {
     highlightUnknown: false,
   });
-  if (!parts) return [];
-  const present: InlineMentionEntity[] = [];
-  const seen = new Set<string>();
+  if (!parts) return present;
   for (const part of parts) {
-    if (part.kind !== 'mention' || part.entity.kind === 'unknown') continue;
-    const key = `${part.entity.kind}:${part.entity.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    present.push(part.entity);
+    if (part.kind !== 'mention') continue;
+    add(part.entity);
   }
   return present;
 }
@@ -352,8 +418,10 @@ function PastePlugin({
 
 function SeedingPlugin({
   draft,
+  knownEntities,
 }: {
   draft: string;
+  knownEntities: InlineMentionEntity[];
 }) {
   const [editor] = useLexicalComposerContext();
   const lastSeeded = useRef<string | null>(null);
@@ -362,8 +430,8 @@ function SeedingPlugin({
     const current = editor.getEditorState().read(serializeEditorText);
     if (draft === current || draft === lastSeeded.current) return;
     lastSeeded.current = draft;
-    editor.update(setEditorText.bind(null, draft), { discrete: true });
-  }, [draft, editor]);
+    editor.update(setEditorText.bind(null, draft, knownEntities), { discrete: true });
+  }, [draft, editor, knownEntities]);
   return null;
 }
 
@@ -387,11 +455,13 @@ export const LexicalComposerInput = forwardRef<
   ref,
 ) {
   const editorRef = useRef<LexicalEditor | null>(null);
+  const knownEntitiesRef = useRef(knownEntities);
+  knownEntitiesRef.current = knownEntities;
 
   const initialConfig: InitialConfigType = {
     namespace: 'chat-composer',
     editable: true,
-    nodes: [],
+    nodes: [MentionNode],
     theme: EDITOR_THEME,
     onError(error) {
       if (process.env.NODE_ENV !== 'production') {
@@ -408,10 +478,16 @@ export const LexicalComposerInput = forwardRef<
         return editor ? editor.getEditorState().read(serializeEditorText) : '';
       },
       setText(text: string) {
-        editorRef.current?.update(setEditorText.bind(null, text), { discrete: true });
+        editorRef.current?.update(
+          setEditorText.bind(null, text, knownEntitiesRef.current),
+          { discrete: true },
+        );
       },
       clear() {
-        editorRef.current?.update(setEditorText.bind(null, ''), { discrete: true });
+        editorRef.current?.update(
+          setEditorText.bind(null, '', knownEntitiesRef.current),
+          { discrete: true },
+        );
       },
       focus() {
         editorRef.current?.focus();
@@ -438,8 +514,7 @@ export const LexicalComposerInput = forwardRef<
               selection = $getSelection();
             }
             if (!$isRangeSelection(selection)) return;
-            const inserted = replaceActiveTriggerInSelection(selection, `${insert.token} `);
-            if (!inserted) selection.insertText(`${insert.token} `);
+            insertMentionInSelection(selection, insert);
           },
           { discrete: true },
         );
@@ -494,7 +569,7 @@ export const LexicalComposerInput = forwardRef<
         popoverOpen={popoverOpen}
       />
       <PastePlugin onPasteFiles={onPasteFiles} />
-      <SeedingPlugin draft={draft} />
+      <SeedingPlugin draft={draft} knownEntities={knownEntities} />
     </LexicalComposer>
   );
 });

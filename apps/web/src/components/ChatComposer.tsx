@@ -695,7 +695,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     async function insertSkillMention(skill: SkillSummary) {
       const applied = await applyProjectSkill(skill);
       if (!applied) return;
-      replaceMentionWithText(`${inlineMentionToken(skill.name)} `);
+      insertActiveMentionEntity(skillMentionEntity(skill));
     }
 
     function insertTextAtCursor(text: string) {
@@ -721,13 +721,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     async function pickSkillFromTools(skill: SkillSummary, close: () => void) {
       const applied = await applyProjectSkill(skill);
       if (!applied) return;
-      insertTextAtCursor(`${inlineMentionToken(skill.name)} `);
+      insertMentionEntityAtCursor(skillMentionEntity(skill));
       close();
     }
 
     function pickProjectFileFromTools(file: ProjectFile, close: () => void) {
       const filePath = file.path ?? file.name;
-      insertTextAtCursor(`@${filePath} `);
+      insertMentionEntityAtCursor(fileMentionEntity(filePath));
       if (!staged.some((s) => s.path === filePath)) {
         setStaged((s) => [
           ...s,
@@ -1014,8 +1014,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     function insertMention(filePath: string) {
       if (!mention) return;
-      editorRef.current?.replaceActiveTrigger(`@${filePath} `);
-      setMention(null);
+      insertActiveMentionEntity(fileMentionEntity(filePath));
       if (!staged.some((s) => s.path === filePath)) {
         setStaged((s) => [
           ...s,
@@ -1026,20 +1025,27 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
           },
         ]);
       }
-      editorRef.current?.focus();
     }
 
     async function insertPluginMention(record: InstalledPluginRecord) {
-      const inserted = replaceMentionWithText(`${inlineMentionToken(record.title)} `);
-      if (!inserted) return;
+      insertActiveMentionEntity(pluginMentionEntity(record));
       await pluginsSectionRef.current?.applyById(record.id, record);
     }
 
-    function replaceMentionWithText(text: string): boolean {
-      if (!mention) return false;
-      editorRef.current?.replaceActiveTrigger(text);
+    function insertMentionEntityAtCursor(entity: InlineMentionEntity): void {
+      const token = entity.token ?? inlineMentionToken(entity.label);
+      editorRef.current?.insertMention({
+        entity: { ...entity, token },
+        token,
+      });
       setMention(null);
+      setSlash(null);
       editorRef.current?.focus();
+    }
+
+    function insertActiveMentionEntity(entity: InlineMentionEntity): boolean {
+      if (!mention) return false;
+      insertMentionEntityAtCursor(entity);
       return true;
     }
 
@@ -1047,14 +1053,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       setStagedMcpServers((current) => (
         current.some((item) => item.id === server.id) ? current : [...current, server]
       ));
-      replaceMentionWithText(`${inlineMentionToken(server.label || server.id)} `);
+      insertActiveMentionEntity(mcpMentionEntity(server));
     }
 
     function insertConnectorMention(connector: ConnectorDetail) {
       setStagedConnectors((current) => (
         current.some((item) => item.id === connector.id) ? current : [...current, connector]
       ));
-      replaceMentionWithText(`${inlineMentionToken(connector.name)} `);
+      insertActiveMentionEntity(connectorMentionEntity(connector));
     }
 
     async function applyProjectSkill(skill: SkillSummary): Promise<boolean> {
@@ -1591,22 +1597,10 @@ function buildComposerMentionEntities({
 }): InlineMentionEntity[] {
   const entities: InlineMentionEntity[] = [];
   for (const plugin of plugins) {
-    entities.push({
-      id: plugin.id,
-      kind: 'plugin',
-      label: plugin.title,
-      token: inlineMentionToken(plugin.title),
-      title: `Plugin: ${plugin.title}`,
-    });
+    entities.push(pluginMentionEntity(plugin));
   }
   for (const skill of skills) {
-    entities.push({
-      id: skill.id,
-      kind: 'skill',
-      label: skill.name,
-      token: inlineMentionToken(skill.name),
-      title: `Skill: ${skill.name}`,
-    });
+    entities.push(skillMentionEntity(skill));
     if (skill.id !== skill.name) {
       entities.push({
         id: skill.id,
@@ -1619,13 +1613,7 @@ function buildComposerMentionEntities({
   }
   for (const server of mcpServers) {
     const label = server.label || server.id;
-    entities.push({
-      id: server.id,
-      kind: 'mcp',
-      label,
-      token: inlineMentionToken(label),
-      title: `MCP: ${label}`,
-    });
+    entities.push(mcpMentionEntity(server));
     if (server.id !== label) {
       entities.push({
         id: server.id,
@@ -1637,13 +1625,7 @@ function buildComposerMentionEntities({
     }
   }
   for (const connector of connectors) {
-    entities.push({
-      id: connector.id,
-      kind: 'connector',
-      label: connector.name,
-      token: inlineMentionToken(connector.name),
-      title: `Connector: ${connector.name}`,
-    });
+    entities.push(connectorMentionEntity(connector));
     if (connector.id !== connector.name) {
       entities.push({
         id: connector.id,
@@ -1659,26 +1641,65 @@ function buildComposerMentionEntities({
     const path = file.path ?? file.name;
     if (!path || filePaths.has(path)) continue;
     filePaths.add(path);
-    entities.push({
-      id: path,
-      kind: 'file',
-      label: path,
-      token: inlineMentionToken(path),
-      title: `File: ${path}`,
-    });
+    entities.push(fileMentionEntity(path));
   }
   for (const attachment of staged) {
     if (!attachment.path || filePaths.has(attachment.path)) continue;
     filePaths.add(attachment.path);
-    entities.push({
-      id: attachment.path,
-      kind: 'file',
-      label: attachment.path,
-      token: inlineMentionToken(attachment.path),
-      title: `File: ${attachment.path}`,
-    });
+    entities.push(fileMentionEntity(attachment.path));
   }
   return entities;
+}
+
+function pluginMentionEntity(plugin: InstalledPluginRecord): InlineMentionEntity {
+  return {
+    id: plugin.id,
+    kind: 'plugin',
+    label: plugin.title,
+    token: inlineMentionToken(plugin.title),
+    title: `Plugin: ${plugin.title}`,
+  };
+}
+
+function skillMentionEntity(skill: SkillSummary): InlineMentionEntity {
+  return {
+    id: skill.id,
+    kind: 'skill',
+    label: skill.name,
+    token: inlineMentionToken(skill.name),
+    title: `Skill: ${skill.name}`,
+  };
+}
+
+function mcpMentionEntity(server: McpServerConfig): InlineMentionEntity {
+  const label = server.label || server.id;
+  return {
+    id: server.id,
+    kind: 'mcp',
+    label,
+    token: inlineMentionToken(label),
+    title: `MCP: ${label}`,
+  };
+}
+
+function connectorMentionEntity(connector: ConnectorDetail): InlineMentionEntity {
+  return {
+    id: connector.id,
+    kind: 'connector',
+    label: connector.name,
+    token: inlineMentionToken(connector.name),
+    title: `Connector: ${connector.name}`,
+  };
+}
+
+function fileMentionEntity(path: string): InlineMentionEntity {
+  return {
+    id: path,
+    kind: 'file',
+    label: path,
+    token: inlineMentionToken(path),
+    title: `File: ${path}`,
+  };
 }
 
 function StagedAttachments({

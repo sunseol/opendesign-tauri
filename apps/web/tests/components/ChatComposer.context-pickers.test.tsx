@@ -125,6 +125,14 @@ function renderComposer(overrides: Partial<ComponentProps<typeof ChatComposer>> 
   );
 }
 
+function mentionChips(): HTMLElement[] {
+  return Array.from(
+    screen
+      .getByTestId('chat-composer-input')
+      .querySelectorAll<HTMLElement>('.composer-inline-mention'),
+  );
+}
+
 beforeEach(() => {
   plugins = [COMMUNITY_PLUGIN, USER_PLUGIN];
   skills = [SKILL];
@@ -264,6 +272,46 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(screen.getByText('My Export'));
 
     await waitFor(() => expect(composerText()).toBe('@My Export '));
+  });
+
+  it('renders selected plugin and file mentions as atomic inline chips', async () => {
+    renderComposer({
+      projectFiles: [
+        {
+          name: 'hero.png',
+          path: 'assets/hero.png',
+          type: 'file',
+          size: 1280,
+          mtime: 0,
+          kind: 'image',
+          mime: 'image/png',
+        },
+      ],
+    });
+
+    await flushComposerMount();
+    await typeAndSettle('@export');
+    await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
+    fireEvent.click(screen.getByText('My Export'));
+
+    await waitFor(() => {
+      const [chip] = mentionChips();
+      expect(chip?.textContent).toBe('@My Export');
+      expect(chip?.dataset.mentionKind).toBe('plugin');
+      expect(chip?.dataset.mentionId).toBe('my-export');
+    });
+
+    await typeAndSettle('@hero');
+    await waitFor(() => expect(screen.getByText('assets/hero.png')).toBeTruthy());
+    fireEvent.click(screen.getByText('assets/hero.png'));
+
+    await waitFor(() => {
+      const chips = mentionChips();
+      const fileChip = chips.find((chip) => chip.dataset.mentionKind === 'file');
+      expect(composerText()).toBe('@assets/hero.png ');
+      expect(fileChip?.textContent).toBe('@assets/hero.png');
+      expect(fileChip?.dataset.mentionId).toBe('assets/hero.png');
+    });
   });
 
 });
