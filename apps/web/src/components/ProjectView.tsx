@@ -67,6 +67,7 @@ import {
   buildDesignSystemPackageAuditRepairPrompt,
   summarizeDesignSystemPackageAudit,
 } from '../runtime/design-system-package-audit';
+import { conversationForkSeedMessages } from './conversationFork';
 import { isLiveArtifactTabId, liveArtifactTabId } from '../types';
 import {
   DESIGN_SYSTEM_WORKSPACE_DISPLAY_TITLE,
@@ -702,6 +703,7 @@ export function ProjectView({
   // its own createConversation, so a concurrent "New conversation" click
   // would spawn a second conversation behind the resumed one.
   const newConversationDisabled = creatingConversation || resumingConversation;
+  const forkConversationDisabled = creatingConversation || resumingConversation || currentConversationBusy;
   // Resume needs a transcript to summarize, and must not race a busy
   // conversation or a synthesis already in flight.
   const resumeConversationDisabled =
@@ -3268,6 +3270,58 @@ export function ProjectView({
     config,
   ]);
 
+  const handleForkConversation = useCallback(async (assistantMessage: ChatMessage) => {
+    if (forkConversationDisabled || creatingConversationRef.current) return;
+    if (!activeConversationId) return;
+    const seedMessages = conversationForkSeedMessages(messages, assistantMessage.id);
+    if (seedMessages.length === 0) return;
+    creatingConversationRef.current = true;
+    setCreatingConversation(true);
+    setConversationLoadError(null);
+    try {
+      const sourceConversation = conversations.find((conversation) => conversation.id === activeConversationId);
+      const sourceTitle = sourceConversation?.title?.trim();
+      const fresh = await createConversation(project.id, {
+        forkAfterMessageId: assistantMessage.id,
+        seedFromConversationId: activeConversationId,
+        seedMessages,
+        title: sourceTitle ? `${sourceTitle} fork` : 'Forked conversation',
+      });
+      if (!fresh) throw new Error('Could not fork this conversation.');
+      setMessages([]);
+      setStreaming(false);
+      streamingConversationIdRef.current = null;
+      setStreamingConversationId(null);
+      setMessagesConversationId(null);
+      messagesConversationIdRef.current = fresh.id;
+      setConversations((curr) => [fresh, ...curr]);
+      setActiveConversationId(fresh.id);
+      navigate(
+        {
+          kind: 'project',
+          projectId: project.id,
+          conversationId: fresh.id,
+          fileName: openTabsState.active ?? null,
+        },
+        { replace: true },
+      );
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not fork this conversation.';
+      setProjectActionsToast({ message, details: null });
+    } finally {
+      creatingConversationRef.current = false;
+      setCreatingConversation(false);
+    }
+  }, [
+    activeConversationId,
+    conversations,
+    forkConversationDisabled,
+    messages,
+    openTabsState.active,
+    project.id,
+  ]);
+
   const handleSelectConversation = useCallback((id: string) => {
     if (id === activeConversationId && failedMessagesConversationId !== id) return;
     setMessages([]);
@@ -3984,6 +4038,8 @@ export function ProjectView({
               }}
               onContinueRemainingTasks={handleContinueRemainingTasks}
               onAssistantFeedback={handleAssistantFeedback}
+              onForkConversation={handleForkConversation}
+              forkConversationDisabled={forkConversationDisabled}
               onNewConversation={handleNewConversation}
               newConversationDisabled={newConversationDisabled}
               onResumeConversation={handleResumeConversation}

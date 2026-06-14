@@ -455,6 +455,8 @@ interface Props {
   onSubmitForm?: (text: string) => void;
   onContinueRemainingTasks?: (assistantMessage: ChatMessage, todos: TodoItem[]) => void;
   onAssistantFeedback?: (assistantMessage: ChatMessage, change: ChatMessageFeedbackChange) => void;
+  onForkConversation?: (assistantMessage: ChatMessage) => void;
+  forkConversationDisabled?: boolean;
   onShareToOpenDesign?: () => void;
   shareToOpenDesignBusy?: boolean;
   // Header "+" button — kicks off ProjectView's create-conversation flow.
@@ -542,6 +544,8 @@ export function ChatPane({
   onSubmitForm,
   onContinueRemainingTasks,
   onAssistantFeedback,
+  onForkConversation,
+  forkConversationDisabled = false,
   onShareToOpenDesign,
   shareToOpenDesignBusy = false,
   onNewConversation,
@@ -1249,6 +1253,12 @@ export function ChatPane({
                             ? (rating) => onAssistantFeedback(m, rating)
                             : undefined
                         }
+                        onForkConversation={
+                          onForkConversation
+                            ? () => onForkConversation(m)
+                            : undefined
+                        }
+                        forkConversationDisabled={forkConversationDisabled}
                         onShareToOpenDesign={onShareToOpenDesign}
                         shareToOpenDesignBusy={shareToOpenDesignBusy}
                       />

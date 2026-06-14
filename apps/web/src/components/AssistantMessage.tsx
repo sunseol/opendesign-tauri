@@ -88,6 +88,8 @@ interface Props {
   onSubmitForm?: (text: string) => void;
   onContinueRemainingTasks?: (todos: TodoItem[]) => void;
   onFeedback?: (change: ChatMessageFeedbackChange) => void;
+  onForkConversation?: () => void;
+  forkConversationDisabled?: boolean;
   onShareToOpenDesign?: () => void;
   shareToOpenDesignBusy?: boolean;
   suppressDirectionForms?: boolean;
@@ -118,6 +120,8 @@ export function AssistantMessage({
   onSubmitForm,
   onContinueRemainingTasks,
   onFeedback,
+  onForkConversation,
+  forkConversationDisabled = false,
   onShareToOpenDesign,
   shareToOpenDesignBusy = false,
   suppressDirectionForms = false,
@@ -343,6 +347,17 @@ export function AssistantMessage({
                 {shareToOpenDesignBusy
                   ? t('assistant.shareToOpenDesignBusy')
                   : t('assistant.shareToOpenDesign')}
+              </button>
+            ) : null}
+            {onForkConversation && !streaming ? (
+              <button
+                type="button"
+                className="assistant-share-to-od-btn"
+                data-testid="assistant-fork-conversation"
+                disabled={forkConversationDisabled}
+                onClick={onForkConversation}
+              >
+                Fork
               </button>
             ) : null}
           </div>
