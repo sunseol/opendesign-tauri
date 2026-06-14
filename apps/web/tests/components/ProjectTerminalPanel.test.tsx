@@ -9,6 +9,7 @@ import { ProjectTerminalPanel } from '../../src/components/ProjectTerminalPanel'
 import {
   createProjectTerminal,
   killProjectTerminal,
+  resizeProjectTerminal,
   writeProjectTerminalInput,
 } from '../../src/providers/registry';
 
@@ -17,11 +18,13 @@ vi.mock('../../src/providers/registry', () => ({
   killProjectTerminal: vi.fn(),
   projectTerminalStreamUrl: (projectId: string, terminalId: string) =>
     `/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/stream`,
+  resizeProjectTerminal: vi.fn(),
   writeProjectTerminalInput: vi.fn(),
 }));
 
 const mockedCreateProjectTerminal = vi.mocked(createProjectTerminal);
 const mockedKillProjectTerminal = vi.mocked(killProjectTerminal);
+const mockedResizeProjectTerminal = vi.mocked(resizeProjectTerminal);
 const mockedWriteProjectTerminalInput = vi.mocked(writeProjectTerminalInput);
 
 class FakeEventSource {
@@ -50,9 +53,37 @@ class FakeEventSource {
   }
 }
 
+class FakeResizeObserver {
+  static readonly instances: FakeResizeObserver[] = [];
+  readonly observed = new Set<Element>();
+  private callback: (entries: Array<{ contentRect: { height: number; width: number } }>) => void;
+
+  constructor(callback: (entries: Array<{ contentRect: { height: number; width: number } }>) => void) {
+    this.callback = callback;
+    FakeResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed.add(target);
+  }
+
+  disconnect(): void {
+    this.observed.clear();
+  }
+
+  unobserve(target: Element): void {
+    this.observed.delete(target);
+  }
+
+  emit(width: number, height: number): void {
+    this.callback([{ contentRect: { width, height } }]);
+  }
+}
+
 afterEach(() => {
   cleanup();
   FakeEventSource.instances.length = 0;
+  FakeResizeObserver.instances.length = 0;
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -104,6 +135,24 @@ describe('ProjectTerminalPanel', () => {
       expect(mockedKillProjectTerminal).toHaveBeenCalledWith('project-1', 'term-1');
     });
     expect(screen.getByText('Stopped SIGTERM')).toBeTruthy();
+  });
+
+  it('resizes the daemon terminal when the output viewport changes', async () => {
+    mockedCreateProjectTerminal.mockResolvedValue(terminalSession({ cols: 80, rows: 24, status: 'running' }));
+    mockedResizeProjectTerminal.mockResolvedValue(terminalSession({ cols: 120, rows: 20, updatedAt: 2 }));
+    vi.stubGlobal('EventSource', FakeEventSource);
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+    render(<ProjectTerminalPanel projectId="project-1" />);
+
+    await screen.findByText('/tmp/project-1');
+    act(() => {
+      FakeResizeObserver.instances[0]?.emit(960, 360);
+    });
+
+    await waitFor(() => {
+      expect(mockedResizeProjectTerminal).toHaveBeenCalledWith('project-1', 'term-1', 120, 20);
+    });
   });
 });
 

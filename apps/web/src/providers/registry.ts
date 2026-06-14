@@ -1308,6 +1308,26 @@ export async function writeProjectTerminalInput(
   }
 }
 
+export async function resizeProjectTerminal(
+  projectId: string,
+  terminalId: string,
+  cols: number,
+  rows: number,
+): Promise<TerminalSession | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/resize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cols, rows }),
+    });
+    if (!resp.ok) return null;
+    return terminalFromResponse(await resp.json());
+  } catch (err) {
+    if (err instanceof Error) return null;
+    throw err;
+  }
+}
+
 export async function killProjectTerminal(projectId: string, terminalId: string): Promise<TerminalSession | null> {
   try {
     const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/terminals/${encodeURIComponent(terminalId)}/kill`, {

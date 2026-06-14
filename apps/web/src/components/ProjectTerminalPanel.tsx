@@ -4,11 +4,18 @@ import {
   createProjectTerminal,
   killProjectTerminal,
   projectTerminalStreamUrl,
+  resizeProjectTerminal,
   writeProjectTerminalInput,
 } from '../providers/registry';
 import { Icon } from './Icon';
 
 type TerminalPhase = 'starting' | 'running' | 'exited' | 'error';
+const TERMINAL_CELL_WIDTH_PX = 8;
+const TERMINAL_ROW_HEIGHT_PX = 18;
+const MIN_TERMINAL_COLS = 20;
+const MAX_TERMINAL_COLS = 400;
+const MIN_TERMINAL_ROWS = 5;
+const MAX_TERMINAL_ROWS = 120;
 
 export function ProjectTerminalPanel({ projectId }: { projectId: string }) {
   const [terminal, setTerminal] = useState<TerminalSession | null>(null);
@@ -19,6 +26,7 @@ export function ProjectTerminalPanel({ projectId }: { projectId: string }) {
   const [sending, setSending] = useState(false);
   const sourceRef = useRef<EventSource | null>(null);
   const outputRef = useRef<HTMLPreElement | null>(null);
+  const lastResizeRef = useRef<{ cols: number; rows: number; terminalId: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +96,50 @@ export function ProjectTerminalPanel({ projectId }: { projectId: string }) {
     if (!outputEl) return;
     outputEl.scrollTop = outputEl.scrollHeight;
   }, [output]);
+
+  useEffect(() => {
+    const activeTerminal = terminal;
+    const outputEl = outputRef.current;
+    if (!activeTerminal || phase !== 'running' || typeof ResizeObserver === 'undefined' || !outputEl) return;
+    let disposed = false;
+    lastResizeRef.current = {
+      cols: activeTerminal.cols,
+      rows: activeTerminal.rows,
+      terminalId: activeTerminal.id,
+    };
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const nextSize = terminalSizeFromRect(entry.contentRect.width, entry.contentRect.height);
+      if (!nextSize) return;
+      const lastSize = lastResizeRef.current;
+      if (
+        lastSize?.terminalId === activeTerminal.id &&
+        lastSize.cols === nextSize.cols &&
+        lastSize.rows === nextSize.rows
+      ) {
+        return;
+      }
+      lastResizeRef.current = { ...nextSize, terminalId: activeTerminal.id };
+      resizeProjectTerminal(projectId, activeTerminal.id, nextSize.cols, nextSize.rows)
+        .then((updated) => {
+          if (!disposed && updated) setTerminal(updated);
+        })
+        .catch((err: unknown) => {
+          if (disposed) return;
+          if (err instanceof Error) {
+            setError(err.message);
+            return;
+          }
+          throw err;
+        });
+    });
+    observer.observe(outputEl);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+    };
+  }, [phase, projectId, terminal]);
 
   async function sendInput(): Promise<void> {
     const activeTerminal = terminal;
@@ -200,6 +252,18 @@ function terminalStatusLabel(terminal: TerminalSession, phase: TerminalPhase): s
   if (terminal.exitCode !== null) return `Exited ${terminal.exitCode}`;
   if (terminal.status === 'exited') return 'Exited';
   return phase === 'starting' ? 'Starting' : 'Running';
+}
+
+function terminalSizeFromRect(width: number, height: number): { cols: number; rows: number } | null {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return {
+    cols: clampInteger(Math.floor(width / TERMINAL_CELL_WIDTH_PX), MIN_TERMINAL_COLS, MAX_TERMINAL_COLS),
+    rows: clampInteger(Math.floor(height / TERMINAL_ROW_HEIGHT_PX), MIN_TERMINAL_ROWS, MAX_TERMINAL_ROWS),
+  };
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function terminalDataFromEvent(event: Event): string | null {
