@@ -330,6 +330,7 @@ import {
   ensureProject,
   isSafeId,
   listFiles,
+  listProjectFolders,
   mimeFor,
   parseByteRange,
   projectDir,
@@ -341,7 +342,8 @@ import {
   sanitizeName,
   sanitizePath,
   searchProjectFiles,
-  resolveProjectDir,
+  createProjectFolder,
+  deleteProjectFolder,
   resolveProjectFilePath,
   writeProjectFile,
 } from './projects.js';
@@ -4852,6 +4854,9 @@ export async function startServer({
   const projectFileDeps = {
     ensureProject,
     listFiles,
+    listProjectFolders,
+    createProjectFolder,
+    deleteProjectFolder,
     searchProjectFiles,
     readProjectFile,
     resolveProjectDir,

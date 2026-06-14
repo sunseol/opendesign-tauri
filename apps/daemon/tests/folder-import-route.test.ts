@@ -358,6 +358,80 @@ describe('POST /api/import/folder', () => {
     });
   });
 
+  it('lists nested project folders including empty imported directories', async () => {
+    const real = makeFolder();
+    await writeFile(path.join(real, 'index.html'), '<!doctype html>');
+    await mkdir(path.join(real, 'assets', 'icons'), { recursive: true });
+    await mkdir(path.join(real, 'assets', 'empty'), { recursive: true });
+    await writeFile(path.join(real, 'assets', 'icons', 'icon.png'), 'icon');
+    const importResp = await importFolder({ baseDir: real });
+    expect(importResp.status).toBe(200);
+    const { project } = (await importResp.json()) as {
+      project: { id: string };
+    };
+
+    const foldersResp = await fetch(`${baseUrl}/api/projects/${project.id}/folders`);
+
+    expect(foldersResp.status).toBe(200);
+    const body = (await foldersResp.json()) as {
+      folders: Array<{ name: string; path: string; type: string; size: number; mtime: number }>;
+    };
+    expect(body.folders.map((folder) => folder.path)).toEqual([
+      'assets',
+      'assets/empty',
+      'assets/icons',
+    ]);
+    expect(body.folders).toContainEqual(
+      expect.objectContaining({
+        name: 'assets/empty',
+        path: 'assets/empty',
+        size: 0,
+        type: 'dir',
+      }),
+    );
+    expect(body.folders.every((folder) => Number.isFinite(folder.mtime))).toBe(true);
+  });
+
+  it('creates and deletes project folders inside metadata.baseDir', async () => {
+    const real = makeFolder();
+    await writeFile(path.join(real, 'index.html'), '<!doctype html>');
+    const importResp = await importFolder({ baseDir: real });
+    expect(importResp.status).toBe(200);
+    const { project } = (await importResp.json()) as {
+      project: { id: string; metadata: { baseDir: string } };
+    };
+
+    const createResp = await fetch(`${baseUrl}/api/projects/${project.id}/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'assets/new-empty' }),
+    });
+
+    expect(createResp.status).toBe(200);
+    const createBody = (await createResp.json()) as {
+      folder: { name: string; path: string; type: string; size: number };
+    };
+    expect(createBody.folder).toMatchObject({
+      name: 'assets/new-empty',
+      path: 'assets/new-empty',
+      size: 0,
+      type: 'dir',
+    });
+    const createdStat = await stat(path.join(project.metadata.baseDir, 'assets', 'new-empty'));
+    expect(createdStat.isDirectory()).toBe(true);
+
+    const deleteResp = await fetch(`${baseUrl}/api/projects/${project.id}/folders`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'assets/new-empty' }),
+    });
+
+    expect(deleteResp.status).toBe(200);
+    await expect(stat(path.join(project.metadata.baseDir, 'assets', 'new-empty'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+  });
+
   it('refuses raw reads through a descendant symlink that escapes the folder', async () => {
     const real = makeFolder();
     await mkdir(path.join(real, 'assets'));

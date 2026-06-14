@@ -13,8 +13,11 @@ import {
   fetchConnectorDetail,
   fetchConnectorDiscovery,
   fetchProjectDesignSystemPackageAudit,
+  fetchProjectFolders,
   fetchProjectFileText,
   fetchSkillExample,
+  createProjectFolder,
+  deleteProjectFolder,
   isDeployProviderId,
   updateDeployConfig,
   uploadProjectFiles,
@@ -644,6 +647,59 @@ describe('uploadProjectFiles', () => {
     expect(result.uploaded).toHaveLength(2);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0]).toMatchObject({ name: 'c.txt' });
+  });
+});
+
+describe('project folder registry helpers', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches project folders from the daemon', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      folders: [
+        { name: 'assets', path: 'assets', type: 'dir', size: 0, mtime: 123 },
+      ],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchProjectFolders('project 1')).resolves.toEqual([
+      { name: 'assets', path: 'assets', type: 'dir', size: 0, mtime: 123 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/project%201/folders');
+  });
+
+  it('creates project folders with a JSON body', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      folder: { name: 'assets/new', path: 'assets/new', type: 'dir', size: 0, mtime: 456 },
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createProjectFolder('project-1', 'assets/new')).resolves.toEqual({
+      name: 'assets/new',
+      path: 'assets/new',
+      type: 'dir',
+      size: 0,
+      mtime: 456,
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/folders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'assets/new' }),
+    });
+  });
+
+  it('deletes project folders with a JSON path body', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteProjectFolder('project-1', 'assets/new')).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/folders', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'assets/new' }),
+    });
   });
 });
 

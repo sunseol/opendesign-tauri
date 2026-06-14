@@ -49,6 +49,7 @@ import type {
   PromptTemplateDetail,
   PromptTemplateSummary,
   ProjectFile,
+  ProjectFolder,
   RenameProjectFileResponse,
   SkillDetail,
   SkillSummary,
@@ -1217,6 +1218,54 @@ export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[
     return json.files ?? [];
   } catch {
     return [];
+  }
+}
+
+export async function fetchProjectFolders(projectId: string): Promise<ProjectFolder[]> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/folders`);
+    if (!resp.ok) return [];
+    const json = (await resp.json()) as { folders?: ProjectFolder[] };
+    return json.folders ?? [];
+  } catch (err) {
+    if (err instanceof Error) return [];
+    throw err;
+  }
+}
+
+export async function createProjectFolder(
+  projectId: string,
+  name: string,
+): Promise<ProjectFolder | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as { folder?: ProjectFolder };
+    return json.folder ?? null;
+  } catch (err) {
+    if (err instanceof Error) return null;
+    throw err;
+  }
+}
+
+export async function deleteProjectFolder(
+  projectId: string,
+  folderPath: string,
+): Promise<boolean> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/folders`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: folderPath }),
+    });
+    return resp.ok;
+  } catch (err) {
+    if (err instanceof Error) return false;
+    throw err;
   }
 }
 

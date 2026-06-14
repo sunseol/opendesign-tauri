@@ -835,7 +835,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
   const { upload } = ctx.uploads;
   const { fs } = ctx.node;
   const { getProject } = ctx.projectStore;
-  const { listFiles, searchProjectFiles, readProjectFile, resolveProjectDir, resolveProjectFilePath, parseByteRange, renameProjectFile, deleteProjectFile, writeProjectFile, sanitizePath, ensureProject } = ctx.projectFiles;
+  const { listFiles, listProjectFolders, createProjectFolder, deleteProjectFolder, searchProjectFiles, readProjectFile, resolveProjectDir, resolveProjectFilePath, parseByteRange, renameProjectFile, deleteProjectFile, writeProjectFile, sanitizePath, ensureProject } = ctx.projectFiles;
   const { buildDocumentPreview } = ctx.documents;
   const { validateArtifactManifestInput } = ctx.artifacts;
 
@@ -876,6 +876,85 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       });
       res.json({ query, matches });
     } catch (err: any) {
+      sendApiError(res, 400, 'BAD_REQUEST', String(err));
+    }
+  });
+
+  app.get('/api/projects/:id/folders', async (req, res) => {
+    try {
+      const project = getProject(db, req.params.id);
+      if (!project) {
+        sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+        return;
+      }
+      const folders = await listProjectFolders(PROJECTS_DIR, req.params.id, {
+        metadata: project.metadata,
+      });
+      const body = { folders };
+      res.json(body);
+    } catch (err) {
+      if (err instanceof Error) {
+        sendApiError(res, 400, 'BAD_REQUEST', err.message);
+        return;
+      }
+      sendApiError(res, 400, 'BAD_REQUEST', String(err));
+    }
+  });
+
+  app.post('/api/projects/:id/folders', async (req, res) => {
+    try {
+      const { name } = req.body || {};
+      if (typeof name !== 'string' || !name.trim()) {
+        sendApiError(res, 400, 'BAD_REQUEST', 'name required');
+        return;
+      }
+      const project = getProject(db, req.params.id);
+      if (!project) {
+        sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+        return;
+      }
+      const folder = await createProjectFolder(
+        PROJECTS_DIR,
+        req.params.id,
+        name,
+        project.metadata,
+      );
+      const body = { folder };
+      res.json(body);
+    } catch (err) {
+      if (err instanceof Error) {
+        sendApiError(res, 400, 'BAD_REQUEST', err.message);
+        return;
+      }
+      sendApiError(res, 400, 'BAD_REQUEST', String(err));
+    }
+  });
+
+  app.delete('/api/projects/:id/folders', async (req, res) => {
+    try {
+      const { path: folderPath } = req.body || {};
+      if (typeof folderPath !== 'string' || !folderPath.trim()) {
+        sendApiError(res, 400, 'BAD_REQUEST', 'path required');
+        return;
+      }
+      const project = getProject(db, req.params.id);
+      if (!project) {
+        sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+        return;
+      }
+      await deleteProjectFolder(
+        PROJECTS_DIR,
+        req.params.id,
+        folderPath,
+        project.metadata,
+      );
+      const body = { ok: true };
+      res.json(body);
+    } catch (err) {
+      if (err instanceof Error) {
+        sendApiError(res, 400, 'BAD_REQUEST', err.message);
+        return;
+      }
       sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
   });
