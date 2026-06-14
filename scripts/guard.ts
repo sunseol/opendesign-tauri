@@ -128,6 +128,9 @@ const residualAllowedExactPaths = new Set([
   "apps/web/postcss.config.mjs",
   // Subprocess fixture executed directly through spawn() to cover Vela CLI login behavior.
   "apps/daemon/tests/fixtures/fake-vela.mjs",
+  // CI-only preview capture script. puppeteer-core is installed ephemerally by
+  // the workflow so local/package builds do not pull in a headless browser.
+  "scripts/bake-plugin-previews.mjs",
   "scripts/bake-html-ppt-examples.mjs",
   "scripts/scaffold-html-ppt-skills.mjs",
   "scripts/sync-hyperframes-skill.mjs",

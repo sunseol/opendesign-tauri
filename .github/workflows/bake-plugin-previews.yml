@@ -1,0 +1,122 @@
+name: bake-plugin-previews
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/_official/**'
+      - 'scripts/bake-plugin-previews.mjs'
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bake-plugin-previews
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    name: Bake plugin previews
+    if: ${{ github.repository == 'sunseol/opendesign-tauri' && vars.PLUGIN_PREVIEW_BAKE_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Install ffmpeg, fonts, and puppeteer-core
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-cjk fonts-noto-color-emoji
+          pnpm add -w puppeteer-core
+
+      - name: Build daemon and tools
+        run: |
+          pnpm --filter "./packages/**" build
+          pnpm --filter @open-design/daemon build
+          pnpm --filter @open-design/tools-dev build
+
+      - name: Start daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm tools-dev start daemon --namespace ci --daemon-port 17470
+          for _ in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:17470/api/plugins; then
+              echo "daemon ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "daemon did not become ready" >&2
+          exit 1
+
+      - name: Bake preview clips
+        env:
+          BASE_URL: http://127.0.0.1:17470
+          PREVIEW_REMOTE: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(which google-chrome || which google-chrome-stable || which chromium-browser)"
+          export CHROME
+          echo "resolved CHROME=$CHROME"
+          mkdir -p .tmp/plugin-previews
+          cp data/plugin-previews/manifest.json .tmp/plugin-previews/manifest.json
+          node scripts/bake-plugin-previews.mjs --out .tmp/plugin-previews
+
+      - name: Upload clips to R2
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_REPOSITORY_ASSETS_AK }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_REPOSITORY_ASSETS_SK }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_REPOSITORY_ASSETS_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_REPOSITORY_ASSETS_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="${R2_ENDPOINT%/}"
+          aws s3 cp .tmp/plugin-previews "s3://$R2_BUCKET/plugin-previews/" \
+            --recursive --no-progress \
+            --endpoint-url "$endpoint" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude manifest.json
+
+      - name: Open manifest PR for review
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.PREVIEW_BAKE_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .tmp/plugin-previews/manifest.json data/plugin-previews/manifest.json
+          if git diff --quiet -- data/plugin-previews/manifest.json; then
+            echo "manifest unchanged; nothing to review"
+            exit 0
+          fi
+          branch="chore/plugin-previews-${{ github.run_id }}"
+          git config user.name "opendesign-tauri-bot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add data/plugin-previews/manifest.json
+          git commit -m "chore(plugin-previews): refresh baked preview manifest"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "chore(plugin-previews): refresh baked preview manifest" \
+            --body "Automated by bake-plugin-previews: clips were rendered and uploaded to R2, and this PR updates data/plugin-previews/manifest.json to match."
+
+      - name: Stop daemon
+        if: always()
+        run: pnpm tools-dev stop --namespace ci || true
