@@ -35,6 +35,11 @@ export type PageBrief = {
   readonly colors?: readonly PageBriefColor[];
 };
 
+export type PageCaptureCard = {
+  readonly title: string;
+  readonly url: string;
+};
+
 export function normalizeBrowserAddress(rawAddress: string): string {
   const value = rawAddress.trim();
   if (!value || value === EMPTY_BROWSER_URL) return EMPTY_BROWSER_URL;
@@ -143,7 +148,7 @@ export function saveHistory(projectId: string, history: readonly BrowserHistoryE
   }
 }
 
-export function browserFileName(prefix: string, url: string, extension: 'md' | 'png'): string {
+export function browserFileName(prefix: string, url: string, extension: 'md' | 'png' | 'svg'): string {
   const host = labelFromUrl(url).replace(/[^a-z0-9._-]+/giu, '-').replace(/^-+|-+$/gu, '') || 'page';
   const stamp = new Date().toISOString().replace(/[:.]/gu, '-');
   return `browser/${prefix}-${host}-${stamp}.${extension}`;
@@ -164,6 +169,34 @@ export function pageBriefMarkdown(brief: PageBrief, fallbackUrl: string): string
     ...listSection('Colors', brief.colors?.map((color) => `${color.value} (${color.count})`)),
   ];
   return `${lines.join('\n').trim()}\n`;
+}
+
+export function pageCaptureSvg(page: PageCaptureCard, capturedAt = new Date()): string {
+  const title = page.title.trim() || labelFromUrl(page.url);
+  const url = page.url.trim() || EMPTY_BROWSER_URL;
+  const host = hostnameFromUrl(url);
+  const capturedAtLabel = capturedAt.toISOString();
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img">',
+    `<title>${escapeSvgText(title)} page capture</title>`,
+    '<rect width="1280" height="720" fill="#f8fafc"/>',
+    '<rect x="48" y="48" width="1184" height="624" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>',
+    '<rect x="48" y="48" width="1184" height="76" rx="24" fill="#0f172a"/>',
+    '<circle cx="92" cy="86" r="10" fill="#ef4444"/>',
+    '<circle cx="124" cy="86" r="10" fill="#f59e0b"/>',
+    '<circle cx="156" cy="86" r="10" fill="#22c55e"/>',
+    '<rect x="200" y="70" width="864" height="32" rx="16" fill="#1e293b"/>',
+    `<text x="224" y="92" font-family="Inter, Arial, sans-serif" font-size="18" fill="#cbd5e1">${escapeSvgText(url)}</text>`,
+    '<rect x="96" y="176" width="1088" height="304" rx="28" fill="#eef2ff"/>',
+    '<rect x="128" y="208" width="132" height="132" rx="28" fill="#ffffff" stroke="#c7d2fe"/>',
+    `<text x="194" y="286" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="700" fill="#4f46e5">${escapeSvgText(host.slice(0, 1).toUpperCase())}</text>`,
+    `<text x="296" y="270" font-family="Inter, Arial, sans-serif" font-size="52" font-weight="700" fill="#111827">${escapeSvgText(title)}</text>`,
+    `<text x="296" y="318" font-family="Inter, Arial, sans-serif" font-size="24" fill="#475569">${escapeSvgText(host)}</text>`,
+    '<rect x="128" y="520" width="1024" height="2" fill="#e2e8f0"/>',
+    `<text x="128" y="568" font-family="Inter, Arial, sans-serif" font-size="22" fill="#334155">Captured from Open Design Reference Board</text>`,
+    `<text x="128" y="604" font-family="Inter, Arial, sans-serif" font-size="18" fill="#64748b">${escapeSvgText(capturedAtLabel)}</text>`,
+    '</svg>',
+  ].join('');
 }
 
 function historyStorageKey(projectId: string): string {
@@ -204,4 +237,12 @@ function listSection(title: string, values: readonly string[] | undefined): read
   const filtered = (values ?? []).map((value) => value.trim()).filter(Boolean);
   if (filtered.length === 0) return [];
   return [`## ${title}`, '', ...filtered.map((value) => `- ${value}`), ''];
+}
+
+function escapeSvgText(value: string): string {
+  return value
+    .replace(/&/gu, '&amp;')
+    .replace(/</gu, '&lt;')
+    .replace(/>/gu, '&gt;')
+    .replace(/"/gu, '&quot;');
 }

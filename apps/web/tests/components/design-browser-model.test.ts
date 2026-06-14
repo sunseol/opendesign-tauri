@@ -13,6 +13,7 @@ import {
   labelFromUrl,
   loadHistory,
   normalizeBrowserAddress,
+  pageCaptureSvg,
   pageBriefMarkdown,
   referenceIconUrl,
   sameUrl,
@@ -123,9 +124,11 @@ describe('design browser history model', () => {
 describe('design browser captured artifacts', () => {
   it('generates stable project-relative names for page captures', () => {
     const imageName = browserFileName('browser-capture', 'https://www.example.com/page', 'png');
+    const svgName = browserFileName('browser-capture', 'https://www.example.com/page', 'svg');
     const markdownName = browserFileName('browser-brief', 'about:blank', 'md');
 
     expect(imageName).toMatch(/^browser\/browser-capture-example\.com-[\dTZ-]+\.png$/);
+    expect(svgName).toMatch(/^browser\/browser-capture-example\.com-[\dTZ-]+\.svg$/);
     expect(markdownName).toMatch(/^browser\/browser-brief-New-Tab-[\dTZ-]+\.md$/);
   });
 
@@ -150,5 +153,17 @@ describe('design browser captured artifacts', () => {
     expect(markdown).not.toContain('## Images');
     expect(markdown).toContain('- Docs - https://example.com/docs');
     expect(markdown).toContain('- rgb(0, 0, 0) (4)');
+  });
+
+  it('renders a safe SVG fallback for page captures', () => {
+    const svg = pageCaptureSvg(
+      { title: 'Example <Design>', url: 'https://example.com/page?x=1&y=2' },
+      new Date('2026-06-15T00:00:00.000Z'),
+    );
+
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('Example &lt;Design&gt;');
+    expect(svg).toContain('https://example.com/page?x=1&amp;y=2');
+    expect(svg).toContain('2026-06-15T00:00:00.000Z');
   });
 });

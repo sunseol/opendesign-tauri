@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { captureHostPage } from '@open-design/host';
 
-import { writeProjectTextFile } from '../providers/registry';
+import { writeProjectBase64File, writeProjectTextFile } from '../providers/registry';
 import { DesignBrowserReferenceBoard } from './DesignBrowserReferenceBoard';
 import {
   EMPTY_BROWSER_URL,
@@ -10,6 +11,7 @@ import {
   labelFromUrl,
   loadHistory,
   normalizeBrowserAddress,
+  pageCaptureSvg,
   pageBriefMarkdown,
   referenceIconUrl,
   sameUrl,
@@ -53,7 +55,9 @@ export function DesignBrowserPanel({
   const [addressValue, setAddressValue] = useState(initialInfo.url === EMPTY_BROWSER_URL ? '' : initialInfo.url);
   const [history, setHistory] = useState<readonly BrowserHistoryEntry[]>(() => loadHistory(projectId));
   const [isSavingBrief, setIsSavingBrief] = useState(false);
+  const [isSavingCapture, setIsSavingCapture] = useState(false);
   const [briefStatus, setBriefStatus] = useState<string | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
   const canSaveBrief = isHistoryUrl(pageInfo.url);
 
   useEffect(() => {
@@ -116,8 +120,44 @@ export function DesignBrowserPanel({
     }
   }
 
+  async function saveCurrentPageCapture(): Promise<void> {
+    if (!canSaveBrief || isSavingCapture) return;
+    setIsSavingCapture(true);
+    setBriefStatus(null);
+    try {
+      const capturedDataUrl = await captureCurrentPanelDataUrl(panelRef.current);
+      const capturedBase64 = capturedDataUrl ? base64FromDataUrl(capturedDataUrl) : null;
+      const file = capturedBase64
+        ? await writeProjectBase64File(
+          projectId,
+          browserFileName('browser-capture', pageInfo.url, 'png'),
+          capturedBase64,
+        )
+        : await writeProjectTextFile(
+          projectId,
+          browserFileName('browser-capture', pageInfo.url, 'svg'),
+          pageCaptureSvg({ title: pageInfo.title, url: pageInfo.url }),
+        );
+      if (!file) {
+        setBriefStatus('Capture was not saved');
+        return;
+      }
+      await onRefreshFiles();
+      onOpenFile(file.name);
+      setBriefStatus('Capture saved');
+    } catch (error) {
+      if (error instanceof Error) {
+        setBriefStatus(error.message);
+        return;
+      }
+      throw error;
+    } finally {
+      setIsSavingCapture(false);
+    }
+  }
+
   return (
-    <section className="db-panel" aria-label="Design browser">
+    <section ref={panelRef} className="db-panel" aria-label="Design browser">
       <form className="db-address-bar" onSubmit={submitAddress}>
         <button type="button" aria-label="Browser home" onClick={() => openUrl(EMPTY_BROWSER_URL)}>
           <Icon name="home" size={13} />
@@ -142,6 +182,15 @@ export function DesignBrowserPanel({
           >
             <Icon name="file" size={13} />
             {isSavingBrief ? 'Saving' : 'Save brief'}
+          </button>
+          <button
+            type="button"
+            aria-label="Save capture"
+            disabled={!canSaveBrief || isSavingCapture}
+            onClick={() => void saveCurrentPageCapture()}
+          >
+            <Icon name="image" size={13} />
+            {isSavingCapture ? 'Saving' : 'Save capture'}
           </button>
         </div>
       </form>
@@ -195,4 +244,26 @@ function historyEntryForPage(info: BrowserPageInfo, existing: BrowserHistoryEntr
   return info.iconUrl
     ? { iconUrl: info.iconUrl, lastVisitedAt, title: info.title, url: info.url, visitCount }
     : { lastVisitedAt, title: info.title, url: info.url, visitCount };
+}
+
+async function captureCurrentPanelDataUrl(panel: HTMLElement | null): Promise<string | null> {
+  const rect = panel?.getBoundingClientRect();
+  const clip = rect && rect.width > 0 && rect.height > 0
+    ? {
+      x: Math.max(0, Math.round(rect.left)),
+      y: Math.max(0, Math.round(rect.top)),
+      width: Math.max(1, Math.round(rect.width)),
+      height: Math.max(1, Math.round(rect.height)),
+    }
+    : undefined;
+  const result = await captureHostPage(clip ? { clip } : undefined);
+  return result.ok ? result.dataUrl : null;
+}
+
+function base64FromDataUrl(dataUrl: string): string | null {
+  const base64Marker = ';base64,';
+  const markerIndex = dataUrl.indexOf(base64Marker);
+  if (markerIndex < 0) return null;
+  const base64 = dataUrl.slice(markerIndex + base64Marker.length).trim();
+  return base64 || null;
 }
