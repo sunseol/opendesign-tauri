@@ -10,6 +10,12 @@ import {
 } from "@open-design/sidecar-proto";
 
 const rustSource = readFileSync(new URL("../../src-tauri/src/main.rs", import.meta.url), "utf8");
+const desktopMenuUrl = new URL("../../src-tauri/src/desktop_menu.rs", import.meta.url);
+const desktopMenuSource = existsSync(desktopMenuUrl) ? readFileSync(desktopMenuUrl, "utf8") : "";
+const amrProfileUrl = new URL("../../src-tauri/src/amr_profile.rs", import.meta.url);
+const amrProfileSource = existsSync(amrProfileUrl) ? readFileSync(amrProfileUrl, "utf8") : "";
+const desktopShellSource = `${rustSource}\n${desktopMenuSource}\n${amrProfileSource}`;
+const cargoToml = readFileSync(new URL("../../src-tauri/Cargo.toml", import.meta.url), "utf8");
 const defaultCapability = JSON.parse(
   readFileSync(new URL("../../src-tauri/capabilities/default.json", import.meta.url), "utf8"),
 ) as {
@@ -69,18 +75,18 @@ describe("Tauri sidecar contract constants", () => {
   });
 
   it("installs native desktop Help menu links", () => {
-    expect(rustSource).toContain("MenuBuilder");
-    expect(rustSource).toContain("SubmenuBuilder");
-    expect(rustSource).toContain('SubmenuBuilder::new(app, "Help")');
-    expect(rustSource).toContain('"Documentation"');
-    expect(rustSource).toContain('"Contact Us"');
-    expect(rustSource).toContain('"Report Issue"');
-    expect(rustSource).toContain('"Join Discord"');
-    expect(rustSource).toContain('"https://github.com/sunseol/opendesign-tauri#readme"');
-    expect(rustSource).toContain('"https://github.com/sunseol/opendesign-tauri/issues/new"');
-    expect(rustSource).toContain('"https://x.com/nexudotio"');
-    expect(rustSource).toContain('"https://discord.gg/mHAjSMV6gz"');
-    expect(rustSource).toContain("app.on_menu_event");
+    expect(desktopShellSource).toContain("MenuBuilder");
+    expect(desktopShellSource).toContain("SubmenuBuilder");
+    expect(desktopShellSource).toContain('SubmenuBuilder::new(app_handle, "Help")');
+    expect(desktopShellSource).toContain('"Documentation"');
+    expect(desktopShellSource).toContain('"Contact Us"');
+    expect(desktopShellSource).toContain('"Report Issue"');
+    expect(desktopShellSource).toContain('"Join Discord"');
+    expect(desktopShellSource).toContain('"https://github.com/sunseol/opendesign-tauri#readme"');
+    expect(desktopShellSource).toContain('"https://github.com/sunseol/opendesign-tauri/issues/new"');
+    expect(desktopShellSource).toContain('"https://x.com/nexudotio"');
+    expect(desktopShellSource).toContain('"https://discord.gg/mHAjSMV6gz"');
+    expect(desktopShellSource).toContain("on_menu_event");
   });
 
   it("keeps JSON IPC response envelopes aligned with sidecar runtime framing", () => {
@@ -119,5 +125,21 @@ describe("Tauri sidecar contract constants", () => {
     const splashVideo = readFileSync(splashVideoUrl);
     expect(splashVideo.subarray(4, 8).toString("ascii")).toBe("ftyp");
     expect(splashVideo.byteLength).toBeGreaterThan(100_000);
+  });
+
+  it("keeps the AMR profile menu hidden behind the desktop shortcut", () => {
+    expect(cargoToml).toContain('tauri-plugin-global-shortcut = "2.3.2"');
+    expect(desktopMenuSource).toContain("GlobalShortcutExt");
+    expect(desktopMenuSource).toContain("ShortcutState::Pressed");
+    expect(desktopMenuSource).toContain("develop_menu_visible");
+    expect(desktopMenuSource).toContain("AMR Profile");
+    expect(desktopShellSource).toContain("amr-profile-prod");
+    expect(desktopShellSource).toContain("amr-profile-test");
+    expect(desktopShellSource).toContain("amr-profile-local");
+    expect(desktopShellSource).toContain("OPEN_DESIGN_AMR_PROFILE");
+    expect(desktopShellSource).toContain("/api/app-config");
+    expect(desktopShellSource).toContain("agentModels");
+    expect(desktopShellSource).toContain("od:app-config-changed");
+    expect(desktopMenuSource).toContain("Code::KeyD");
   });
 });
