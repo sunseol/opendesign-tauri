@@ -9,6 +9,7 @@
     "frontendDist": "static"
   },
   "app": {
+    "macOSPrivateApi": true,
     "withGlobalTauri": true,
     "security": {
       "csp": null

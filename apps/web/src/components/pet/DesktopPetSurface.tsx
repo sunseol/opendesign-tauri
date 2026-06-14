@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { setHostPetVisible } from '@open-design/host';
 import { RUNS_CHANGED_EVENT, listProjectRuns } from '../../providers/daemon';
+import { setDesktopPetVisible } from '../../native/desktop-bridge';
 import { loadConfig } from '../../state/config';
 import { listProjects } from '../../state/projects';
 import type { AppConfig } from '../../types';
@@ -37,7 +37,7 @@ export function DesktopPetSurface() {
   }, []);
 
   useEffect(() => {
-    setHostPetVisible(Boolean(pet));
+    void setDesktopPetVisible(Boolean(pet));
   }, [pet]);
 
   useEffect(() => {

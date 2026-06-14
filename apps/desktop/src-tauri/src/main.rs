@@ -25,7 +25,12 @@ use url::Url;
 
 mod amr_profile;
 mod desktop_menu;
+mod desktop_pet;
 use desktop_menu::install_desktop_menu;
+use desktop_pet::{
+    install_desktop_pet_window, navigate_desktop_pet_window, set_desktop_pet_visible,
+    DESKTOP_PET_WINDOW_LABEL,
+};
 
 const APP_DESKTOP: &str = "desktop";
 const APP_DAEMON: &str = "daemon";
@@ -652,8 +657,9 @@ fn set_status_title(state: &AppState, title: Option<String>) {
     status.title = title;
 }
 
-async fn poll_web_url(state: AppState, window: WebviewWindow) {
+async fn poll_web_url(state: AppState, window: WebviewWindow, pet_window: WebviewWindow) {
     let mut loaded_url: Option<String> = None;
+    let mut loaded_pet_url: Option<String> = None;
     loop {
         let next_url = discover_web_url(&state.web_ipc).await;
         if let Some(url) = next_url.clone() {
@@ -670,6 +676,19 @@ async fn poll_web_url(state: AppState, window: WebviewWindow) {
                     }
                     Err(error) => {
                         eprintln!("[open-design tauri] discovered invalid web URL {url}: {error}")
+                    }
+                }
+            }
+            match navigate_desktop_pet_window(&pet_window, &url) {
+                Ok(Some(pet_url)) => {
+                    if loaded_pet_url.as_deref() != Some(pet_url.as_str()) {
+                        loaded_pet_url = Some(pet_url);
+                    }
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    if loaded_pet_url.is_none() {
+                        eprintln!("[open-design tauri] failed to navigate desktop pet: {error}");
                     }
                 }
             }
@@ -1470,6 +1489,16 @@ async fn desktop_pick_and_import(
 }
 
 #[tauri::command]
+async fn desktop_set_pet_visible(window: WebviewWindow, visible: bool) -> Result<(), String> {
+    if window.label() != DESKTOP_PET_WINDOW_LABEL {
+        return Err(
+            "desktop pet visibility can only be changed by the desktop pet window".to_string(),
+        );
+    }
+    set_desktop_pet_visible(&window, visible)
+}
+
+#[tauri::command]
 async fn desktop_inspect_eval_result(
     state: tauri::State<'_, AppState>,
     id: String,
@@ -1540,6 +1569,7 @@ fn main() {
             desktop_open_external,
             desktop_open_project_path,
             desktop_pick_and_import,
+            desktop_set_pet_visible,
             desktop_inspect_eval_result,
         ])
         .setup(move |app| {
@@ -1547,6 +1577,7 @@ fn main() {
                 .get_webview_window("main")
                 .ok_or_else(|| "missing main Tauri window".to_string())?;
             install_desktop_menu(app)?;
+            let pet_window = install_desktop_pet_window(app.handle())?;
             write_packaged_desktop_identity_marker(app, &state)?;
             if let Some(child) = start_packaged_sidecars(app, &state)? {
                 *state
@@ -1559,6 +1590,7 @@ fn main() {
             start_ipc_server(state.clone(), window.clone());
             let poll_state = state.clone();
             let poll_window = window.clone();
+            let poll_pet_window = pet_window.clone();
             tauri::async_runtime::spawn(async move {
                 if !register_desktop_auth(&poll_state).await {
                     eprintln!(
@@ -1566,7 +1598,7 @@ fn main() {
                          first folder-import attempt will retry registration before failing"
                     );
                 }
-                poll_web_url(poll_state, poll_window).await;
+                poll_web_url(poll_state, poll_window, poll_pet_window).await;
             });
             Ok(())
         })

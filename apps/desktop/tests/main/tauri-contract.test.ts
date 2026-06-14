@@ -14,11 +14,14 @@ const desktopMenuUrl = new URL("../../src-tauri/src/desktop_menu.rs", import.met
 const desktopMenuSource = existsSync(desktopMenuUrl) ? readFileSync(desktopMenuUrl, "utf8") : "";
 const amrProfileUrl = new URL("../../src-tauri/src/amr_profile.rs", import.meta.url);
 const amrProfileSource = existsSync(amrProfileUrl) ? readFileSync(amrProfileUrl, "utf8") : "";
-const desktopShellSource = `${rustSource}\n${desktopMenuSource}\n${amrProfileSource}`;
+const desktopPetUrl = new URL("../../src-tauri/src/desktop_pet.rs", import.meta.url);
+const desktopPetSource = existsSync(desktopPetUrl) ? readFileSync(desktopPetUrl, "utf8") : "";
+const desktopShellSource = `${rustSource}\n${desktopMenuSource}\n${amrProfileSource}\n${desktopPetSource}`;
 const cargoToml = readFileSync(new URL("../../src-tauri/Cargo.toml", import.meta.url), "utf8");
 const defaultCapability = JSON.parse(
   readFileSync(new URL("../../src-tauri/capabilities/default.json", import.meta.url), "utf8"),
 ) as {
+  windows?: string[];
   permissions?: string[];
   remote?: {
     urls?: string[];
@@ -26,6 +29,7 @@ const defaultCapability = JSON.parse(
 };
 const tauriConfig = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8")) as {
   app?: {
+    macOSPrivateApi?: boolean;
     withGlobalTauri?: boolean;
   };
 };
@@ -141,5 +145,25 @@ describe("Tauri sidecar contract constants", () => {
     expect(desktopShellSource).toContain("agentModels");
     expect(desktopShellSource).toContain("od:app-config-changed");
     expect(desktopMenuSource).toContain("Code::KeyD");
+  });
+
+  it("keeps the auxiliary desktop pet window from demoting the macOS Dock app", () => {
+    expect(rustSource).toContain("mod desktop_pet;");
+    expect(rustSource).toContain("install_desktop_pet_window");
+    expect(rustSource).toContain("desktop_set_pet_visible");
+    expect(desktopPetSource).toContain('DESKTOP_PET_WINDOW_LABEL: &str = "desktop-pet"');
+    expect(desktopPetSource).toContain("WebviewWindowBuilder::new");
+    expect(desktopPetSource).toContain("desktop_pet_url");
+    expect(desktopPetSource).toContain('set_path("/desktop-pet")');
+    expect(desktopPetSource).toContain("always_on_top(true)");
+    expect(desktopPetSource).toContain("visible_on_all_workspaces(true)");
+    expect(desktopPetSource).toContain("skip_taskbar(true)");
+    expect(desktopPetSource).toContain("focusable(false)");
+    expect(desktopPetSource).toContain("transparent(true)");
+    expect(desktopPetSource).not.toContain("set_dock_visibility(false)");
+    expect(desktopPetSource).not.toContain("ActivationPolicy::Accessory");
+    expect(tauriConfig.app?.macOSPrivateApi).toBe(true);
+    expect(defaultCapability.windows).toEqual(expect.arrayContaining(["main", "desktop-pet"]));
+    expect(defaultCapability.permissions).toEqual(expect.arrayContaining(["allow-desktop-set-pet-visible"]));
   });
 });

@@ -1,3 +1,4 @@
+import { setHostPetVisible } from '@open-design/host';
 import type { ImportFolderResponse } from '@open-design/contracts';
 
 export type DesktopBridgeKind = 'electron' | 'tauri';
@@ -90,4 +91,11 @@ export function resolveDesktopBridge(): DesktopBridge | null {
 
 export function hasDesktopBridge(): boolean {
   return resolveDesktopBridge() != null;
+}
+
+export async function setDesktopPetVisible(visible: boolean): Promise<void> {
+  const hostResult = setHostPetVisible(visible);
+  if (hostResult.ok) return;
+  if (typeof window === 'undefined' || !hasTauriRuntime(window)) return;
+  await invokeTauri<void>('desktop_set_pet_visible', { visible });
 }

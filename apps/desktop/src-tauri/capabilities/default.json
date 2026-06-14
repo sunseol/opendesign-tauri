@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Open Design desktop bridge commands",
-  "windows": ["main"],
+  "windows": ["main", "desktop-pet"],
   "remote": {
     "urls": ["http://127.0.0.1:*/**", "http://localhost:*/**"]
   },
@@ -11,6 +11,7 @@
     "allow-desktop-inspect-eval-result",
     "allow-desktop-open-external",
     "allow-desktop-open-project-path",
-    "allow-desktop-pick-and-import"
+    "allow-desktop-pick-and-import",
+    "allow-desktop-set-pet-visible"
   ]
 }
