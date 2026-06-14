@@ -132,6 +132,70 @@ describe('runTokenMap — multi-kind matching', () => {
   });
 });
 
+describe('runTokenMap — semantic role inference', () => {
+  it('maps anonymous color tokens from usage evidence and leaves ambiguous roles unmatched', async () => {
+    const semanticDs: DesignSystemTokenBag = {
+      tokens: [
+        { name: '--ds-color-primary',    value: '#0050d8', kind: 'color' },
+        { name: '--ds-color-link',       value: '#0645ad', kind: 'color' },
+        { name: '--ds-color-focus-ring', value: '#70a7ff', kind: 'color' },
+        { name: '--ds-color-border',     value: '#98a2b3', kind: 'color' },
+      ],
+    };
+    const source = codeTokens({
+      colors: [
+        {
+          kind: 'color',
+          name: 'color-3',
+          value: '#5B8DEF',
+          sources: ['figma:Button/Primary'],
+          usage: ['Button/Primary fill', 'Selected tab indicator', 'Active nav item'],
+        },
+        {
+          kind: 'color',
+          name: 'color-4',
+          value: '#5B8DEF',
+          sources: ['figma:Settings/Links'],
+          usage: ['Link text in Settings frame', 'Inline help link', 'Docs link'],
+        },
+        {
+          kind: 'color',
+          name: 'paint-17',
+          value: '#84CAFF',
+          sources: ['figma:Focus states'],
+          usage: ['Button/Focus outline', 'Input/Focus ring', 'Menu item focus halo'],
+        },
+        {
+          kind: 'color',
+          name: 'color-7',
+          value: '#F59E0B',
+          sources: ['figma:Dashboard chart'],
+          usage: ['Chart series 2', 'Illustration accent', 'One-off metric badge'],
+        },
+      ],
+    });
+
+    const report = await runTokenMap({ cwd, source: { kind: 'figma', report: source }, designSystem: semanticDs });
+
+    expect(report.colors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceName: 'color-3', target: '--ds-color-primary', via: 'name' }),
+        expect.objectContaining({ sourceName: 'color-4', target: '--ds-color-link', via: 'name' }),
+        expect.objectContaining({ sourceName: 'paint-17', target: '--ds-color-focus-ring', via: 'name' }),
+      ]),
+    );
+    expect(report.unmatched).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceName: 'color-7',
+          reason: 'no-target-equivalent',
+          hint: expect.stringContaining('chart-series'),
+        }),
+      ]),
+    );
+  });
+});
+
 describe('runTokenMap — disk inputs + outputs', () => {
   it('reads code/tokens.json when source is omitted + persists every bucket file', async () => {
     await mkdir(path.join(cwd, 'code'), { recursive: true });

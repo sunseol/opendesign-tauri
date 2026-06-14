@@ -22,6 +22,9 @@
 //   3. Named source token AND a target with a matching name (e.g.
 //      --primary-500 → ds-primary-500). Fuzzy match strips '--' /
 //      'ds-' prefixes and lower-cases.
+//   4. Conservative semantic color role inference from usage evidence
+//      (e.g. Button/Primary fill → --ds-color-primary). Ambiguous roles
+//      stay unmatched with a hint.
 //
 // Anything else lands in unmatched[] with one of the reasons:
 //   'no-target-equivalent'   — no target with the same value/name.
@@ -164,7 +167,8 @@ export async function runTokenMap(opts: TokenMapOptions): Promise<TokenMapReport
         // Spec §21.3.1 target-collision: the second source claiming
         // the same target lands unmatched with a hint pointing at
         // the first claimant.
-        const first = claimed.get(claimKey)!;
+        const first = claimed.get(claimKey);
+        if (!first) continue;
         unmatched.push({
           source:     result.match.source,
           ...(result.match.sourceName ? { sourceName: result.match.sourceName } : {}),
@@ -274,19 +278,24 @@ interface IndexedDesignSystem {
   byValue: Map<string, DesignSystemToken[]>;     // exact value (case-preserving)
   byNormalisedHex: Map<string, DesignSystemToken[]>; // #aabbcc lowercase
   byFuzzyName: Map<string, DesignSystemToken[]>; // strip prefix + lowercase
+  bySemanticRole: Map<SemanticColorRole, DesignSystemToken[]>;
 }
 
 function indexDesignSystem(tokens: DesignSystemToken[]): IndexedDesignSystem {
   const byValue = new Map<string, DesignSystemToken[]>();
   const byNormalisedHex = new Map<string, DesignSystemToken[]>();
   const byFuzzyName = new Map<string, DesignSystemToken[]>();
+  const bySemanticRole = new Map<SemanticColorRole, DesignSystemToken[]>();
   for (const t of tokens) {
     push(byValue, t.value, t);
     const norm = normaliseHex(t.value);
     if (norm) push(byNormalisedHex, norm, t);
     push(byFuzzyName, fuzzyName(t.name), t);
+    for (const role of semanticRolesForTarget(t)) {
+      push(bySemanticRole, role, t);
+    }
   }
-  return { byValue, byNormalisedHex, byFuzzyName };
+  return { byValue, byNormalisedHex, byFuzzyName, bySemanticRole };
 }
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
@@ -306,7 +315,9 @@ function fuzzyName(name: string): string {
 function normaliseHex(value: string): string | null {
   const m = HEX_RE.exec(value.trim());
   if (!m) return null;
-  let hex = m[1]!.toLowerCase();
+  const rawHex = m[1];
+  if (!rawHex) return null;
+  let hex = rawHex.toLowerCase();
   if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
   if (hex.length === 4) hex = hex.split('').map((c) => c + c).join('');
   return `#${hex}`;
@@ -354,6 +365,9 @@ function matchOne(
     }
   }
 
+  const semantic = matchSemanticColorRole(entry, index, sourceValue, sourceName, tokenKind);
+  if (semantic) return semantic;
+
   return {
     unmatched: {
       source:    sourceValue,
@@ -380,6 +394,222 @@ function pickKindMatch(candidates: DesignSystemToken[], kind: DesignTokenKind): 
   return candidates[0];
 }
 
+type SemanticColorRole =
+  | 'surface'
+  | 'foreground'
+  | 'primary'
+  | 'link'
+  | 'border'
+  | 'focus-ring'
+  | 'danger'
+  | 'warning';
+
+const SEMANTIC_TARGET_PATTERNS: Record<SemanticColorRole, RegExp[]> = {
+  surface: [
+    /(?:^|-)surface(?:-|$)/,
+    /(?:^|-)background(?:-|$)/,
+    /(?:^|-)bg(?:-|$)/,
+    /(?:^|-)canvas(?:-|$)/,
+  ],
+  foreground: [
+    /(?:^|-)fg(?:-|$)/,
+    /(?:^|-)foreground(?:-|$)/,
+    /(?:^|-)text(?:-|$)/,
+    /(?:^|-)body(?:-|$)/,
+  ],
+  primary: [
+    /(?:^|-)primary(?:-|$)/,
+    /(?:^|-)brand(?:-|$)/,
+    /(?:^|-)accent(?:-|$)/,
+  ],
+  link: [
+    /(?:^|-)link(?:-|$)/,
+  ],
+  border: [
+    /(?:^|-)border(?:-|$)/,
+    /(?:^|-)divider(?:-|$)/,
+    /(?:^|-)separator(?:-|$)/,
+  ],
+  'focus-ring': [
+    /(?:^|-)focus(?:-|$)/,
+    /(?:^|-)focus-ring(?:-|$)/,
+    /(?:^|-)ring(?:-|$)/,
+  ],
+  danger: [
+    /(?:^|-)danger(?:-|$)/,
+    /(?:^|-)error(?:-|$)/,
+    /(?:^|-)destructive(?:-|$)/,
+  ],
+  warning: [
+    /(?:^|-)warning(?:-|$)/,
+    /(?:^|-)caution(?:-|$)/,
+  ],
+};
+
+const SEMANTIC_EVIDENCE_PATTERNS: Record<SemanticColorRole, RegExp[]> = {
+  surface: [
+    /\bapp shell\b/i,
+    /\bcanvas fill\b/i,
+    /\bcard\/default fill\b/i,
+    /\bmodal\/surface\b/i,
+    /\bsurface\b/i,
+    /\bbackground\b/i,
+  ],
+  foreground: [
+    /\bbody text\b/i,
+    /\btable cell text\b/i,
+    /\bdefault foreground\b/i,
+    /\bicon\/default foreground\b/i,
+    /\bforeground\b/i,
+  ],
+  primary: [
+    /\bbutton\/primary\b/i,
+    /\bprimary\b/i,
+    /\bselected tab\b/i,
+    /\bactive nav\b/i,
+    /\bcta\b/i,
+  ],
+  link: [
+    /\blink text\b/i,
+    /\binline help link\b/i,
+    /\bdocs link\b/i,
+    /\blink\b/i,
+  ],
+  border: [
+    /\bborder\b/i,
+    /\bdivider\b/i,
+    /\bseparator\b/i,
+  ],
+  'focus-ring': [
+    /\bfocus ring\b/i,
+    /\bfocus outline\b/i,
+    /\bfocus halo\b/i,
+    /\bfocus\b/i,
+  ],
+  danger: [
+    /\berror\b/i,
+    /\bdanger\b/i,
+    /\bdestructive\b/i,
+    /\balert\b/i,
+    /\bcritical\b/i,
+  ],
+  warning: [
+    /\bwarning\b/i,
+    /\bcaution\b/i,
+  ],
+};
+
+const NON_TARGET_ROLE_HINTS: Array<{ role: string; patterns: RegExp[] }> = [
+  { role: 'chart-series',        patterns: [/\bchart\b/i, /\bseries\b/i] },
+  { role: 'illustration-accent', patterns: [/\billustration\b/i] },
+  { role: 'metric-badge',        patterns: [/\bmetric badge\b/i] },
+];
+
+function semanticRolesForTarget(token: DesignSystemToken): SemanticColorRole[] {
+  if (token.kind !== 'color') return [];
+  const targetName = fuzzyName(token.name);
+  const targetDescription = token.description ? fuzzyName(token.description) : '';
+  const roles: SemanticColorRole[] = [];
+  for (const [role, patterns] of Object.entries(SEMANTIC_TARGET_PATTERNS) as Array<[SemanticColorRole, RegExp[]]>) {
+    if (patterns.some((pattern) => pattern.test(targetName) || pattern.test(targetDescription))) roles.push(role);
+  }
+  return roles;
+}
+
+function matchSemanticColorRole(
+  entry: DesignTokenEntry,
+  index: IndexedDesignSystem,
+  sourceValue: string,
+  sourceName: string | undefined,
+  tokenKind: DesignTokenKind,
+): MatchOutcome | null {
+  if (tokenKind !== 'color') return null;
+  const inference = inferSemanticColorRole(entry);
+  if (!inference) return null;
+  if (!inference.role) {
+    return semanticUnmatched(sourceValue, sourceName, tokenKind, inference.hint);
+  }
+
+  const candidates = index.bySemanticRole.get(inference.role) ?? [];
+  const sameKindCandidates = candidates.filter((candidate) => candidate.kind === tokenKind);
+  const targetCandidates = sameKindCandidates.length > 0 ? sameKindCandidates : candidates;
+  if (targetCandidates.length !== 1) {
+    return semanticUnmatched(
+      sourceValue,
+      sourceName,
+      tokenKind,
+      targetCandidates.length > 1
+        ? `ambiguous semantic role '${inference.role}'; candidates: ${targetCandidates.map((token) => token.name).join(', ')}`
+        : `semantic role '${inference.role}' has no active design-system target`,
+    );
+  }
+
+  const target = targetCandidates[0];
+  if (!target) {
+    return semanticUnmatched(sourceValue, sourceName, tokenKind, `semantic role '${inference.role}' has no active design-system target`);
+  }
+  return wrapMatch(target, sourceValue, sourceName, 'name', tokenKind, entry.sources);
+}
+
+function inferSemanticColorRole(entry: DesignTokenEntry): { role?: SemanticColorRole; hint?: string } | null {
+  const evidence = [entry.name, ...entry.usage, ...entry.sources]
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (evidence.length === 0) return null;
+
+  const scores = new Map<SemanticColorRole, number>();
+  for (const text of evidence) {
+    for (const [role, patterns] of Object.entries(SEMANTIC_EVIDENCE_PATTERNS) as Array<[SemanticColorRole, RegExp[]]>) {
+      if (patterns.some((pattern) => pattern.test(text))) {
+        scores.set(role, (scores.get(role) ?? 0) + 1);
+      }
+    }
+  }
+
+  const nonTargetRoles = new Set<string>();
+  for (const text of evidence) {
+    for (const hint of NON_TARGET_ROLE_HINTS) {
+      if (hint.patterns.some((pattern) => pattern.test(text))) nonTargetRoles.add(hint.role);
+    }
+  }
+
+  const ranked = [...scores.entries()]
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (ranked.length === 0) {
+    if (nonTargetRoles.size === 0) return null;
+    return { hint: `ambiguous semantic role; candidates: ${[...nonTargetRoles].sort().join(', ')}` };
+  }
+
+  const [topRole, topScore] = ranked[0] ?? [];
+  const secondScore = ranked[1]?.[1] ?? 0;
+  if (!topRole || secondScore === topScore || nonTargetRoles.size > 0) {
+    const candidates = [
+      ...ranked.filter(([, score]) => score === topScore).map(([role]) => role),
+      ...nonTargetRoles,
+    ].sort();
+    return { hint: `ambiguous semantic role; candidates: ${candidates.join(', ')}` };
+  }
+
+  return { role: topRole };
+}
+
+function semanticUnmatched(
+  sourceValue: string,
+  sourceName: string | undefined,
+  kind: DesignTokenKind,
+  hint?: string,
+): MatchOutcome {
+  return {
+    unmatched: {
+      source: sourceValue,
+      ...(sourceName ? { sourceName } : {}),
+      kind,
+      reason: 'no-target-equivalent',
+      ...(hint ? { hint } : {}),
+    },
+  };
+}
+
 function wrapMatch(
   target: DesignSystemToken,
   sourceValue: string,
@@ -390,13 +620,13 @@ function wrapMatch(
 ): MatchOutcome {
   const match: TokenMapMatch = {
     source:      sourceValue,
+    ...(sourceName ? { sourceName } : {}),
     target:      target.name,
     targetValue: target.value,
     via,
     kind,
     sources:     sources.slice(),
-  } as TokenMapMatch;
-  if (sourceName) match.sourceName = sourceName;
+  };
   return {
     match,
     unmatched: { source: sourceValue, kind, reason: 'no-target-equivalent' },
