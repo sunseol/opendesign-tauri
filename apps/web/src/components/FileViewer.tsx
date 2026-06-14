@@ -65,6 +65,7 @@ import {
 } from '../runtime/exports';
 import { buildReactComponentSrcdoc } from '../runtime/react-component';
 import { findHtmlEntriesReferencing } from '../runtime/jsx-module-refs';
+import { shouldConsumeSlideNav } from '../runtime/slide-nav';
 import { buildLazySrcdocTransport, buildSrcdoc, canActivateSrcDocTransport } from '../runtime/srcdoc';
 import {
   hasTweaksTemplate,
@@ -282,17 +283,23 @@ function manualEditInspectorStyleValue(key: keyof ManualEditStyles, value: strin
 function normalizeManualEditInspectorColor(value: string): string {
   const trimmed = value.trim();
   if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed.toLowerCase();
-  if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
-    const r = trimmed[1]!, g = trimmed[2]!, b = trimmed[3]!;
+  const shortHex = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(trimmed);
+  if (shortHex) {
+    const r = shortHex[1] ?? '';
+    const g = shortHex[2] ?? '';
+    const b = shortHex[3] ?? '';
     return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
   }
   const rgba = trimmed.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
   if (!rgba) return trimmed;
   if (rgba[4] !== undefined && Number(rgba[4]) === 0) return '';
+  const red = rgba[1] ?? '0';
+  const green = rgba[2] ?? '0';
+  const blue = rgba[3] ?? '0';
   const toHex = (raw: string) => Math.max(0, Math.min(255, Math.round(Number(raw))))
     .toString(16)
     .padStart(2, '0');
-  return `#${toHex(rgba[1]!)}${toHex(rgba[2]!)}${toHex(rgba[3]!)}`;
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
 }
 
 function manualEditPersistedValueMatchesSavedSnapshot(
@@ -310,7 +317,9 @@ function canonicalManualEditStyleValue(key: keyof ManualEditStyles, value: strin
 }
 
 function getDeployProviderOption(providerId: WebDeployProviderId): DeployProviderOption {
-  return DEPLOY_PROVIDER_OPTIONS.find((option) => option.id === providerId) ?? DEPLOY_PROVIDER_OPTIONS[0]!;
+  const fallback = DEPLOY_PROVIDER_OPTIONS[0];
+  if (!fallback) throw new Error('Missing deploy provider options');
+  return DEPLOY_PROVIDER_OPTIONS.find((option) => option.id === providerId) ?? fallback;
 }
 
 function normalizeCloudflareDomainPrefixInput(raw: string): string {
@@ -320,6 +329,12 @@ function normalizeCloudflareDomainPrefixInput(raw: string): string {
 function isValidCloudflareDomainPrefixInput(raw: string): boolean {
   const prefix = normalizeCloudflareDomainPrefixInput(raw);
   return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(prefix);
+}
+
+function defaultPreviewViewportPreset(): PreviewViewportPreset {
+  const preset = PREVIEW_VIEWPORT_PRESETS[0];
+  if (!preset) throw new Error('Missing preview viewport presets');
+  return preset;
 }
 
 function deployResultState(status?: string): 'ready' | 'delayed' | 'protected' | 'failed' {
@@ -407,7 +422,7 @@ function PreviewViewportControls({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const listboxId = useId();
   const activePreset =
-    PREVIEW_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? PREVIEW_VIEWPORT_PRESETS[0]!;
+    PREVIEW_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? defaultPreviewViewportPreset();
 
   useEffect(() => {
     if (!open) return;
@@ -475,7 +490,7 @@ function previewViewportStyle(
   previewScale = 1,
   canvasSize?: PreviewCanvasSize,
 ): CSSProperties & Record<string, string | number> {
-  const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === viewport) ?? PREVIEW_VIEWPORT_PRESETS[0]!;
+  const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === viewport) ?? defaultPreviewViewportPreset();
   if (!preset.width) return {};
   const effectiveScale = effectivePreviewScale(viewport, previewScale, canvasSize);
   return {
@@ -609,6 +624,7 @@ interface Props {
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean) => Promise<PreviewComment | null>;
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
+  slideNavRequest?: { slideIndex: number; nonce: number } | null;
   onFileSaved?: () => Promise<void> | void;
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
 }
@@ -626,6 +642,7 @@ export function FileViewer({
   onSavePreviewComment,
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
+  slideNavRequest,
   onFileSaved,
   onOpenFileReplacing,
 }: Props) {
@@ -664,6 +681,7 @@ export function FileViewer({
         onSavePreviewComment={onSavePreviewComment}
         onRemovePreviewComment={onRemovePreviewComment}
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
+        slideNavRequest={slideNavRequest}
         onFileSaved={onFileSaved}
       />
     );
@@ -909,7 +927,9 @@ export function LiveArtifactViewer({
       }
       await onRefreshArtifacts?.();
     } catch (error) {
-      const message = refreshErrorMessage(error, t);
+      const message = error instanceof Error
+        ? refreshErrorMessage(error, t)
+        : refreshErrorMessage(new Error(String(error)), t);
       setRefreshError(message);
       setRefreshEvents((prev) => appendRefreshEvent(prev, { phase: 'failed', error: message }));
     } finally {
@@ -1452,7 +1472,8 @@ function exportReadyNudgeKey(projectId: string, fileName: string): string {
 function hasSeenExportReadyNudge(projectId: string, fileName: string): boolean {
   try {
     return window.sessionStorage.getItem(exportReadyNudgeKey(projectId, fileName)) === '1';
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error)) return false;
     return false;
   }
 }
@@ -1460,7 +1481,8 @@ function hasSeenExportReadyNudge(projectId: string, fileName: string): boolean {
 function markExportReadyNudgeSeen(projectId: string, fileName: string) {
   try {
     window.sessionStorage.setItem(exportReadyNudgeKey(projectId, fileName), '1');
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error)) return;
     // Ignore storage-denied contexts; the in-memory state still prevents loops.
   }
 }
@@ -2636,7 +2658,12 @@ function stripInspectOverridesAndIndex(source: string): InspectSpliceScan {
     const tagText = source.slice(i, tagEnd + 1);
     const closeMatch = /^<\/([a-zA-Z][a-zA-Z0-9-]*)/.exec(tagText);
     if (closeMatch) {
-      const name = closeMatch[1]!.toLowerCase();
+      const name = closeMatch[1]?.toLowerCase();
+      if (!name) {
+        emit(tagText);
+        i = tagEnd + 1;
+        continue;
+      }
       if (name === 'head' && headCloseStart < 0) headCloseStart = outLen;
       emit(tagText);
       i = tagEnd + 1;
@@ -2648,7 +2675,12 @@ function stripInspectOverridesAndIndex(source: string): InspectSpliceScan {
       i = tagEnd + 1;
       continue;
     }
-    const name = openMatch[1]!.toLowerCase();
+    const name = openMatch[1]?.toLowerCase();
+    if (!name) {
+      emit(tagText);
+      i = tagEnd + 1;
+      continue;
+    }
     const isSelfClose = /\/\s*>$/.test(tagText);
     if (name === 'head' && headOpenEnd < 0) headOpenEnd = outLen + tagText.length;
     if (name === 'style' && styleTagIsInspectOverrideBlock(tagText)) {
@@ -3056,8 +3088,9 @@ function selectionHitsSnapshot(input: {
 
 function isClosedLoop(points: StrokePoint[]): boolean {
   if (points.length < 4) return false;
-  const first = points[0]!;
-  const last = points[points.length - 1]!;
+  const first = points[0];
+  const last = points.at(-1);
+  if (!first || !last) return false;
   return Math.hypot(first.x - last.x, first.y - last.y) <= 28;
 }
 
@@ -3083,7 +3116,8 @@ function pathIntersectsRect(
   const x2 = rect.left + rect.width;
   const y2 = rect.top + rect.height;
   for (let index = 0; index < points.length; index += 1) {
-    const point = points[index]!;
+    const point = points[index];
+    if (!point) continue;
     if (point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2) {
       return true;
     }
@@ -3104,8 +3138,9 @@ function pathIntersectsRect(
 function pointInPolygon(point: StrokePoint, polygon: StrokePoint[]): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const pi = polygon[i]!;
-    const pj = polygon[j]!;
+    const pi = polygon[i];
+    const pj = polygon[j];
+    if (!pi || !pj) continue;
     const intersects =
       pi.y > point.y !== pj.y > point.y &&
       point.x <
@@ -3493,6 +3528,7 @@ function HtmlViewer({
   onSavePreviewComment,
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
+  slideNavRequest,
   onFileSaved,
 }: {
   projectId: string;
@@ -3507,6 +3543,7 @@ function HtmlViewer({
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean) => Promise<PreviewComment | null>;
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
+  slideNavRequest?: { slideIndex: number; nonce: number } | null;
   onFileSaved?: () => Promise<void> | void;
 }) {
   const t = useT();
@@ -3795,7 +3832,9 @@ function HtmlViewer({
           canvasLeft: snapshot.canvasLeft,
           canvasTop: snapshot.canvasTop,
         }, '*');
-      } catch {}
+      } catch (error) {
+        if (!(error instanceof Error)) return;
+      }
     };
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -4388,6 +4427,19 @@ function HtmlViewer({
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [effectiveDeck, isActivePreviewIframeSource, isOurPreviewIframeSource, previewStateKey]);
+
+  useEffect(() => {
+    const nonce = slideNavRequest?.nonce;
+    if (nonce == null || !effectiveDeck) return;
+    const requested = slideNavRequest?.slideIndex;
+    if (typeof requested !== 'number' || !Number.isFinite(requested) || requested < 0) return;
+    if (!shouldConsumeSlideNav(previewStateKey, nonce)) return;
+    const active = Math.floor(requested);
+    const count = slideState?.count ?? htmlPreviewSlideState.get(previewStateKey)?.count ?? active + 1;
+    setSlideStateCached(previewStateKey, { active, count });
+    setSlideState({ active, count });
+    syncCachedSlideStateToIframe();
+  }, [slideNavRequest?.nonce, slideNavRequest?.slideIndex, effectiveDeck, previewStateKey, slideState?.count]);
 
   useEffect(() => {
     const win = iframeRef.current?.contentWindow;
@@ -5117,6 +5169,13 @@ function HtmlViewer({
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
     win.postMessage({ type: 'od:slide', action }, '*');
+  }
+
+  function syncCachedSlideStateToIframe(target: HTMLIFrameElement | null = iframeRef.current) {
+    const active = htmlPreviewSlideState.get(previewStateKey)?.active;
+    const win = target?.contentWindow;
+    if (!win || typeof active !== 'number') return;
+    win.postMessage({ type: 'od:slide', action: 'go', index: active }, '*');
   }
 
   function postInspectSet(elementId: string, selector: string, prop: string, value: string) {
@@ -6264,7 +6323,8 @@ function HtmlViewer({
                             alert(t('fileViewer.exportImageFailed'));
                           }
                         } catch (err) {
-                          console.warn('[exportAsImage] failed to convert snapshot:', err);
+                          const message = err instanceof Error ? err.message : String(err);
+                          console.warn('[exportAsImage] failed to convert snapshot:', message);
                           alert(t('fileViewer.exportImageFailed'));
                         }
                       }}
@@ -6465,6 +6525,7 @@ function HtmlViewer({
                         }, '*');
                         replayInspectOverridesToIframe(frame);
                         syncBridgeModes(frame);
+                        syncCachedSlideStateToIframe(frame);
                         if (!useUrlLoadPreview) restorePreviewScrollPosition();
                       }}
                     />
@@ -7552,7 +7613,7 @@ function formatJsonFileTextForDisplay(file: ProjectFile, text: string): string {
   if (!isJsonFile(file)) return text;
   try {
     if (hasPrecisionSensitiveJsonNumberText(text)) return text;
-    const parsed = JSON.parse(text) as unknown;
+    const parsed: unknown = JSON.parse(text);
     if (hasUnsafeJsonNumber(parsed)) return text;
     return JSON.stringify(parsed, null, 2);
   } catch {

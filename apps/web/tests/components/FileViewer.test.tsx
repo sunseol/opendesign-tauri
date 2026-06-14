@@ -37,6 +37,7 @@ import type { InspectOverrideMap } from '../../src/components/FileViewer';
 import type { LiveArtifact, LiveArtifactWorkspaceEntry, PreviewComment, ProjectFile } from '../../src/types';
 import { I18nProvider } from '../../src/i18n';
 import type { Dict } from '../../src/i18n/types';
+import { resetConsumedSlideNavForTests } from '../../src/runtime/slide-nav';
 
 afterEach(() => {
   cleanup();
@@ -1516,6 +1517,37 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('draw-overlay-toggle'));
     expect(screen.queryByPlaceholderText('Type anywhere to add a note')).toBeNull();
+  });
+
+  it('navigates deck previews to a queued comment slide', async () => {
+    resetConsumedSlideNavForTests();
+    const file = htmlPreviewFile();
+    const liveHtml = '<html><body><section class="slide">One</section></body></html>';
+
+    const { rerender } = render(
+      <FileViewer projectId="project-1" projectKind="prototype" file={file} isDeck liveHtml={liveHtml} />,
+    );
+
+    const frame = screen.getByTestId('artifact-preview-frame');
+    if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) {
+      throw new Error('artifact-preview-frame did not render as an iframe');
+    }
+    const postMessage = vi.spyOn(frame.contentWindow, 'postMessage');
+
+    rerender(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={file}
+        isDeck
+        liveHtml={liveHtml}
+        slideNavRequest={{ slideIndex: 2, nonce: 11 }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith({ type: 'od:slide', action: 'go', index: 2 }, '*');
+    });
   });
 
   it('shows an inspect notice when a clicked child resolves to an annotated ancestor', async () => {

@@ -116,6 +116,7 @@ import {
   commentsToAttachments,
   historyWithCommentAttachmentContext,
   mergeAttachedComments,
+  queuedSlideNavTarget,
   removeAttachedComment,
 } from '../comments';
 import { buildPptxExportPrompt } from '../lib/build-pptx-export-prompt';
@@ -603,6 +604,9 @@ export function ProjectView({
   // include a nonce so re-clicking the same name after the user closed the
   // tab still focuses it.
   const [openRequest, setOpenRequest] = useState<{ name: string; nonce: number } | null>(null);
+  const [slideNavRequest, setSlideNavRequest] = useState<
+    { name: string; slideIndex: number; nonce: number } | null
+  >(null);
   const abortRef = useRef<AbortController | null>(null);
   const cancelRef = useRef<AbortController | null>(null);
   // Runs explicitly superseded by a "send now" interrupt. Their abort
@@ -2848,6 +2852,12 @@ export function ProjectView({
     });
   }, [cancelSendTextBuffer, cancelReattachTextBuffers, persistMessage]);
 
+  const armSlideNavForQueuedSend = useCallback((item: QueuedChatSend) => {
+    const target = queuedSlideNavTarget(item.commentAttachments);
+    if (!target) return;
+    setSlideNavRequest({ name: target.filePath, slideIndex: target.slideIndex, nonce: Date.now() });
+  }, []);
+
   const sendQueuedChatSendNow = useCallback((id: string) => {
     const item = queuedChatSendsRef.current.find((candidate) => candidate.id === id);
     if (!item) return;
@@ -2901,6 +2911,7 @@ export function ProjectView({
       handleStop();
       return;
     }
+    armSlideNavForQueuedSend(item);
     removeQueuedChatSend(id);
     void handleSend(
       item.prompt,
@@ -2908,7 +2919,7 @@ export function ProjectView({
       item.commentAttachments,
       item.meta,
     );
-  }, [currentConversationBusy, handleSend, handleStop, prioritizeQueuedChatSend, project.id, removeQueuedChatSend]);
+  }, [armSlideNavForQueuedSend, currentConversationBusy, handleSend, handleStop, prioritizeQueuedChatSend, project.id, removeQueuedChatSend]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -2918,6 +2929,7 @@ export function ProjectView({
       (item) => item.conversationId === activeConversationId,
     );
     if (!next) return;
+    armSlideNavForQueuedSend(next);
     removeQueuedChatSend(next.id);
     void handleSend(
       next.prompt,
@@ -2929,6 +2941,7 @@ export function ProjectView({
     activeConversationId,
     currentConversationBusy,
     queuedChatSends,
+    armSlideNavForQueuedSend,
     handleSend,
     removeQueuedChatSend,
   ]);
@@ -4107,6 +4120,7 @@ export function ProjectView({
           onExportAsPptx={handleExportAsPptx}
           streaming={currentConversationActionDisabled}
           openRequest={openRequest}
+          slideNavRequest={slideNavRequest}
           liveArtifactEvents={liveArtifactEvents}
           designSystemActivityEvents={designSystemActivityEvents}
           tabsState={openTabsState}
