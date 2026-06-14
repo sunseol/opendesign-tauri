@@ -26686,7 +26686,6 @@ body.desktop-pet-shell .pet-task-item {
 .app .composer-row {
   min-height: 32px;
   padding-top: 6px;
-  border-top: 1px solid var(--border-soft);
 }
 .app .composer-row .icon-btn,
 .app .composer-import,
