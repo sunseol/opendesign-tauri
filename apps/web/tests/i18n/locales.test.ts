@@ -99,6 +99,54 @@ const ZH_TW_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'entry.navPlugins',
   'entry.navTasks',
 ];
+const ZH_TW_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'homeHero.applying',
+  'homeHero.chip.audio',
+  'homeHero.chip.createPlugin',
+  'homeHero.chip.createPluginHint',
+  'homeHero.chip.deck',
+  'homeHero.chip.figma',
+  'homeHero.chip.figmaHint',
+  'homeHero.chip.folder',
+  'homeHero.chip.folderHint',
+  'homeHero.chip.hyperframesHint',
+  'homeHero.chip.image',
+  'homeHero.chip.liveArtifact',
+  'homeHero.chip.liveArtifactHint',
+  'homeHero.chip.prototype',
+  'homeHero.chip.template',
+  'homeHero.chip.templateHint',
+  'homeHero.chip.video',
+  'homeHero.clearActivePlugin',
+  'homeHero.clearActiveSkill',
+  'homeHero.confirmReplace',
+  'homeHero.confirmReplaceBody',
+  'homeHero.confirmReplaceTitle',
+  'homeHero.contextItemsResolved',
+  'homeHero.contextSearchResults',
+  'homeHero.contextSurfaces',
+  'homeHero.details',
+  'homeHero.forNewLine',
+  'homeHero.loadingContext',
+  'homeHero.noResults',
+  'homeHero.parameters',
+  'homeHero.placeholder',
+  'homeHero.placeholderActive',
+  'homeHero.pluginPrefix',
+  'homeHero.pluginTitle',
+  'homeHero.railAria',
+  'homeHero.removeFile',
+  'homeHero.removePlugin',
+  'homeHero.removePluginAria',
+  'homeHero.run',
+  'homeHero.searchPrompt',
+  'homeHero.skillPrefix',
+  'homeHero.skills',
+  'homeHero.subtitlePrefix',
+  'homeHero.title',
+  'homeHero.toRun',
+  'homeHero.typeSomethingToRun',
+];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
   'designFiles.filterClear',
@@ -381,6 +429,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW navigation and file filters translated instead of falling back to English', () => {
     for (const key of ZH_TW_NAV_AND_FILE_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW home hero prompts and shortcuts translated instead of falling back to English', () => {
+    for (const key of ZH_TW_HOME_HERO_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
