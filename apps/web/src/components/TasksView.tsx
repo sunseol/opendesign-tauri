@@ -47,6 +47,7 @@ type Modal =
   | { kind: 'create'; template?: AutomationTemplate }
   | { kind: 'edit'; routine: Routine }
   | null;
+type AutomationClickPatch = Omit<Parameters<typeof trackAutomationsClick>[1], 'page_name' | 'area'>;
 
 interface Props {
   projects?: ProjectSummary[];
@@ -415,6 +416,17 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   const routineRowRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const [historyTick, setHistoryTick] = useState(0);
 
+  const recordAutomationClick = useCallback(
+    (props: AutomationClickPatch) => {
+      trackAutomationsClick(analytics.track, {
+        page_name: 'automations',
+        area: 'automations',
+        ...props,
+      });
+    },
+    [analytics.track],
+  );
+
   const templates = useMemo(
     () => buildAutomationTemplates(designTemplates, automationCatalog),
     [automationCatalog, designTemplates],
@@ -563,6 +575,9 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   };
 
   const reviewProposal = async (id: string, action: 'apply' | 'reject') => {
+    recordAutomationClick({
+      element: action === 'apply' ? 'proposal_apply' : 'proposal_reject',
+    });
     setProposalBusyId(id);
     setError(null);
     try {
@@ -584,6 +599,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   };
 
   const runNow = async (id: string) => {
+    recordAutomationClick({ element: 'run_now' });
     setBusyId(id);
     setError(null);
     try {
@@ -613,6 +629,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   };
 
   const crystallizeRun = async (routineId: string, runId: string) => {
+    recordAutomationClick({ element: 'crystallize' });
     setCrystallizingRunId(runId);
     setError(null);
     try {
@@ -634,6 +651,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   };
 
   const togglePaused = async (routine: Routine) => {
+    recordAutomationClick({ element: routine.enabled ? 'pause' : 'resume' });
     setBusyId(routine.id);
     try {
       const res = await fetch(`/api/routines/${routine.id}`, {
@@ -656,6 +674,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   const remove = async (id: string) => {
     if (!window.confirm('Delete this automation? Past runs and their projects are kept.'))
       return;
+    recordAutomationClick({ element: 'delete' });
     setBusyId(id);
     try {
       const res = await fetch(`/api/routines/${id}`, { method: 'DELETE' });
@@ -693,7 +712,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
           <button
             type="button"
             className="automations-view__new"
-            onClick={() => setModal({ kind: 'create' })}
+            onClick={() => {
+              recordAutomationClick({ element: 'new_automation' });
+              setModal({ kind: 'create' });
+            }}
             data-testid="automations-new"
           >
             <Icon name="plus" size={14} />
@@ -717,7 +739,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
           <button
             type="button"
             className="automation-empty"
-            onClick={() => setModal({ kind: 'create' })}
+            onClick={() => {
+              recordAutomationClick({ element: 'new' });
+              setModal({ kind: 'create' });
+            }}
           >
             <span className="automation-empty__icon">
               <Icon name="plus" size={16} />
@@ -737,6 +762,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                   ? projectsById.get(r.target.projectId) ?? r.target.projectId
                   : 'New project each run';
               const isExpanded = expandedId === r.id;
+              const lastRun = r.lastRun;
               return (
                 <li
                   key={r.id}
@@ -762,22 +788,23 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                       {r.prompt ? (
                         <span className="automation-row__prompt">{r.prompt}</span>
                       ) : null}
-                      {r.lastRun ? (
+                      {lastRun ? (
                         <span className="automation-row__last-run">
-                          <StatusPill status={r.lastRun.status} />
-                          <span>Last run {formatAutomationTimestamp(r.lastRun.startedAt)}</span>
+                          <StatusPill status={lastRun.status} />
+                          <span>Last run {formatAutomationTimestamp(lastRun.startedAt)}</span>
                           <span aria-hidden="true">·</span>
                           <button
                             type="button"
                             className="automation-inline-link"
-                            onClick={() =>
+                            onClick={() => {
+                              recordAutomationClick({ element: 'open_artifact' });
                               navigate({
                                 kind: 'project',
-                                projectId: r.lastRun!.projectId,
-                                conversationId: r.lastRun!.conversationId,
+                                projectId: lastRun.projectId,
+                                conversationId: lastRun.conversationId,
                                 fileName: null,
-                              })
-                            }
+                              });
+                            }}
                           >
                             Open result
                           </button>
@@ -800,6 +827,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                       type="button"
                       className="automation-row__btn"
                       onClick={() => {
+                        recordAutomationClick({ element: 'history' });
                         setExpandedId(isExpanded ? null : r.id);
                         if (!isExpanded) setHistoryTick((tick) => tick + 1);
                       }}
@@ -811,7 +839,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                     <button
                       type="button"
                       className="automation-row__btn"
-                      onClick={() => setModal({ kind: 'edit', routine: r })}
+                      onClick={() => {
+                        recordAutomationClick({ element: 'edit' });
+                        setModal({ kind: 'edit', routine: r });
+                      }}
                       disabled={isBusy}
                     >
                       <Icon name="edit" size={12} />
@@ -1076,7 +1107,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                 role="tab"
                 aria-selected={isActive}
                 className={`automations-template-tab${isActive ? ' is-active' : ''}`}
-                onClick={() => setTemplateFilter(filter.id)}
+                onClick={() => {
+                  recordAutomationClick({ element: 'filter_tab', filter_id: filter.id });
+                  setTemplateFilter(filter.id);
+                }}
               >
                 <span className="automations-template-tab__label">{filter.label}</span>
                 <span className="automations-template-tab__count">{count}</span>
@@ -1102,7 +1136,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
               key={template.id}
               type="button"
               className={`automation-template-card is-${template.kind}`}
-              onClick={() => setModal({ kind: 'create', template })}
+              onClick={() => {
+                recordAutomationClick({ element: 'type_card', template_kind: template.kind });
+                setModal({ kind: 'create', template });
+              }}
             >
               <span className="automation-template-card__icon" aria-hidden="true">
                 <Icon name={template.icon} size={16} />
@@ -1139,6 +1176,9 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
         connectors={connectors}
         onClose={() => setModal(null)}
         onSaved={(routine) => {
+          recordAutomationClick({
+            element: modal?.kind === 'edit' ? 'save' : 'create',
+          });
           void (async () => {
             await refresh();
             setExpandedId(routine.id);
