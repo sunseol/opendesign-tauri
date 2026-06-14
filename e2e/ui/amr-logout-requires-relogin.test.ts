@@ -1,0 +1,138 @@
+import { mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { expect, test } from '@playwright/test';
+import type { Locator } from '@playwright/test';
+
+import { writeFakeVelaBin } from '@/amr';
+import {
+  createProjectViaApi,
+  gotoProject,
+  openSettingsDialog,
+  putAppConfig,
+  seedBrowserConfig,
+  sendPrompt,
+} from '@/playwright/amr';
+
+test('[P0] after local Sign out, AMR runs require re-login and Settings keeps AMR selected', async ({ page }) => {
+  const root = join(
+    tmpdir(),
+    `open-design-amr-logout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  const successVelaBin = await writeFakeVelaBin(join(root, 'bin-success'), {
+    assistantText: 'Hello from the e2e fake vela.',
+    requireLoginConfig: false,
+  });
+  const reloginVelaBin = await writeFakeVelaBin(join(root, 'bin-relogin'), {
+    failAuthAtPrompt: true,
+  });
+  await mkdir(root, { recursive: true });
+  let loggedIn = true;
+
+  await page.route('**/api/integrations/vela/status', async (route) => {
+    await route.fulfill({
+      json: loggedIn
+        ? {
+            loggedIn: true,
+            profile: 'local',
+            configPath: '/tmp/.amr/config.json',
+            user: { id: 'logout-ui', email: 'logout-ui@example.com' },
+          }
+        : {
+            loggedIn: false,
+            profile: 'local',
+            configPath: '/tmp/.amr/config.json',
+            user: null,
+          },
+    });
+  });
+
+  await page.route('**/api/integrations/vela/logout', async (route) => {
+    loggedIn = false;
+    await route.fulfill({ json: { ok: true } });
+  });
+
+  const config = {
+    mode: 'daemon',
+    apiKey: '',
+    baseUrl: '',
+    model: '',
+    agentId: 'amr',
+    skillId: null,
+    designSystemId: null,
+    onboardingCompleted: true,
+    mediaProviders: {},
+    agentModels: {
+      amr: { model: 'default', reasoning: 'default' },
+    },
+    agentCliEnv: {
+      amr: { VELA_BIN: successVelaBin },
+    },
+  };
+
+  await seedBrowserConfig(page, config);
+  await putAppConfig(page, config);
+
+  const projectId = `amr-logout-${Date.now()}`.replace(/[^A-Za-z0-9._-]/g, '-');
+  await createProjectViaApi(page, projectId, 'AMR logout requires relogin');
+  await gotoProject(page, projectId);
+
+  const settings = await openSettingsDialog(page);
+  await expect(selectedAmrButton(settings)).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+
+  await page.evaluate(async () => {
+    const response = await fetch('/api/integrations/vela/logout', { method: 'POST' });
+    if (!response.ok) throw new Error(`logout failed: ${response.status}`);
+  });
+
+  const reopenedSettings = await openSettingsDialog(page);
+  await expect(selectedAmrButton(reopenedSettings)).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(reopenedSettings).toHaveCount(0);
+
+  const reloginConfig = {
+    ...config,
+    agentCliEnv: {
+      amr: { VELA_BIN: reloginVelaBin },
+    },
+  };
+  await seedBrowserConfig(page, reloginConfig);
+  await putAppConfig(page, reloginConfig);
+  await sendPrompt(page, 'AMR logout should require relogin');
+
+  const reloginError =
+    /authorize|sign[- ]?in is required|sign in again|login missing|expired|ACP session exited before completion/i;
+  await expect(page.locator('.msg.error')).toContainText(
+    reloginError,
+    { timeout: 15_000 },
+  );
+  await expect(
+    page
+      .getByRole('button', {
+        name: /Authorize & retry|Sign in to AMR|Sign in via terminal|Sign in again/i,
+      })
+      .first(),
+  ).toBeVisible();
+
+  const configResponse = await page.request.get('/api/app-config');
+  expect(configResponse.ok(), await configResponse.text()).toBeTruthy();
+  const body: unknown = await configResponse.json();
+  expect(configAgentId(body)).toBe('amr');
+});
+
+function configAgentId(value: unknown): unknown {
+  if (!hasConfig(value) || typeof value.config !== 'object' || value.config === null) return null;
+  if (!('agentId' in value.config)) return null;
+  return value.config.agentId;
+}
+
+function selectedAmrButton(settings: Locator): Locator {
+  return settings.getByRole('button', { name: /^AMR\b.*installed/i }).first();
+}
+
+function hasConfig(value: unknown): value is { readonly config?: unknown } {
+  return typeof value === 'object' && value !== null;
+}
