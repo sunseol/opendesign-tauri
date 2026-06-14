@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import type { Locator, Page, Route } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { fulfillAgentsRoute } from '@/playwright/mock-factory';
 
 const STORAGE_KEY = 'open-design:config';
 
@@ -266,33 +267,6 @@ async function wireOnboardingMocks(
   return config;
 }
 
-async function fulfillAgentsRoute(route: Route, agents: readonly unknown[]): Promise<void> {
-  if (route.request().method() !== 'GET') {
-    await route.continue();
-    return;
-  }
-
-  const url = new URL(route.request().url());
-  if (url.pathname !== '/api/agents') {
-    await route.fallback();
-    return;
-  }
-
-  if (url.searchParams.get('stream') !== '1') {
-    await route.fulfill({ json: { agents } });
-    return;
-  }
-
-  const agentEvents = agents
-    .map((agent) => `event: agent\ndata: ${JSON.stringify(agent)}\n\n`)
-    .join('');
-  await route.fulfill({
-    status: 200,
-    contentType: 'text/event-stream; charset=utf-8',
-    body: `${agentEvents}event: done\ndata: {}\n\n`,
-  });
-}
-
 async function gotoOnboarding(page: Page) {
   await page.goto('/onboarding', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
@@ -320,13 +294,14 @@ async function seedOnboardingConfig(page: Page, config: OnboardingConfig) {
 }
 
 async function finishOnboardingFromDesignSystemStep(page: Page) {
-  await expect(page.getByRole('heading', { name: /Design system/i })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page
-    .locator('.onboarding-view__ds-intro')
-    .getByRole('button', { name: /Skip for now/i })
-    .click();
+  const newsletterStep = page.getByRole('heading', { name: /Stay in the loop/i });
+  if (await newsletterStep.count()) {
+    await expect(newsletterStep).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /^Continue$/i }).click();
+  }
+  const designSystemStep = page.locator('.onboarding-view__ds-intro');
+  await expect(designSystemStep).toBeVisible({ timeout: 10_000 });
+  await designSystemStep.getByRole('button', { name: /Skip for now/i }).click();
   await expect(page).not.toHaveURL(/\/onboarding$/);
   await expect(page.getByText('What do you want to design?')).toBeVisible();
 }
