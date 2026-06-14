@@ -41,6 +41,20 @@ fork workflow approval policy, and Nix hash updater coverage. These are not
 temporary migration tools; keep them unless a later upstream contract replaces
 them.
 
+## Plugin Preview Baking Ownership
+
+`data/plugin-previews/manifest.json`, `scripts/bake-plugin-previews.mjs`, and
+`.github/workflows/bake-plugin-previews.yml` are active upstream-parity surfaces,
+but their behavioral ownership remains split across
+[#47](https://github.com/sunseol/opendesign-tauri/issues/47) and
+[#54](https://github.com/sunseol/opendesign-tauri/issues/54). Issue #53 only
+tracks that repository-integrity guard coverage keeps the checked-in manifest
+shape and preview references validated through `scripts/curated-data-assets.test.ts`.
+
+Changes to the bake recipe, CDN/R2 cache keys, packaged preview serving, or
+landing/daemon preview consumers should stay with #47/#54 instead of being
+treated as leftover repository-integrity script drift.
+
 ## Release/Governance Workflow Classification
 
 The release/governance parity lane for

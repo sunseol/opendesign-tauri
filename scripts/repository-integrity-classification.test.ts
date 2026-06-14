@@ -81,6 +81,22 @@ test("repository integrity classification records #36 governance workflow decisi
   assert.match(doc, /Tauri packaged-smoke requirements/);
 });
 
+test("repository integrity classification records plugin preview baking ownership", () => {
+  const doc = readText(classificationPath);
+
+  for (const token of [
+    "scripts/bake-plugin-previews.mjs",
+    ".github/workflows/bake-plugin-previews.yml",
+    "data/plugin-previews/manifest.json",
+    "#47",
+    "#54",
+  ]) {
+    assert.match(doc, new RegExp(escapeRegExp(token)), `${token} needs a plugin-preview classification entry`);
+  }
+
+  assert.match(doc, /plugin preview/i);
+});
+
 test("guard runs repository integrity classification checks", () => {
   const manifest = JSON.parse(readText("package.json")) as { scripts?: Record<string, string> };
   assert.match(manifest.scripts?.guard ?? "", /scripts\/repository-integrity-classification\.test\.ts/);
