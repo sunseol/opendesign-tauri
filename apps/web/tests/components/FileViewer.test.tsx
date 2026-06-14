@@ -1525,7 +1525,10 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    const frame = screen.getByTestId('artifact-preview-frame');
+    if (!(frame instanceof HTMLIFrameElement)) {
+      throw new Error('artifact-preview-frame did not render as an iframe');
+    }
     fireEvent.click(screen.getByTestId('inspect-mode-toggle'));
 
     window.dispatchEvent(new MessageEvent('message', {
@@ -1616,6 +1619,54 @@ describe('FileViewer tweaks toolbar', () => {
     expect(send.disabled).toBe(true);
     expect(send.getAttribute('data-tooltip') || send.getAttribute('title')).toBeTruthy();
     expect(screen.queryByText('Queues while working')).toBeNull();
+  });
+
+  it('keeps board comment queue available while a task is running', async () => {
+    const onSendBoardCommentAttachments = vi.fn();
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile()}
+        liveHtml='<html><body><main data-od-id="hero">Hero</main></body></html>'
+        streaming
+        onSendBoardCommentAttachments={onSendBoardCommentAttachments}
+      />,
+    );
+
+    const frame = screen.getByTestId('artifact-preview-frame');
+    if (!(frame instanceof HTMLIFrameElement)) {
+      throw new Error('artifact-preview-frame did not render as an iframe');
+    }
+    fireEvent.click(screen.getByTestId('board-mode-toggle'));
+
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: {
+        type: 'od:comment-target',
+        elementId: 'hero',
+        selector: '[data-od-id="hero"]',
+        label: 'Hero',
+        text: 'Hero',
+        position: { x: 8, y: 12, width: 120, height: 48 },
+        htmlHint: '<main data-od-id="hero">Hero</main>',
+      },
+    }));
+
+    const input = await screen.findByTestId('comment-popover-input');
+    if (!(input instanceof HTMLTextAreaElement)) {
+      throw new Error('comment-popover-input did not render as a textarea');
+    }
+    fireEvent.change(input, { target: { value: 'Keep this queued' } });
+    const queue = screen.getByTestId('comment-add-send');
+    if (!(queue instanceof HTMLButtonElement)) {
+      throw new Error('comment-add-send did not render as a button');
+    }
+    expect(queue.textContent).toBe('Queue');
+    expect(queue.disabled).toBe(false);
+
+    fireEvent.click(queue);
+    expect(onSendBoardCommentAttachments).toHaveBeenCalledTimes(1);
   });
 
   it('hides non-open saved comments from preview markers when the side panel is empty', () => {

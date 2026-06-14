@@ -33,6 +33,8 @@ export function BoardComposerPopover({
   onRemoveMember,
   onHoverMember,
   sending,
+  queueOnSend = false,
+  sendDisabled = false,
   t,
 }: {
   target: PreviewCommentSnapshot;
@@ -49,9 +51,17 @@ export function BoardComposerPopover({
   onRemoveMember: (elementId: string) => void;
   onHoverMember?: (elementId: string | null) => void;
   sending: boolean;
+  queueOnSend?: boolean;
+  sendDisabled?: boolean;
   t: TranslateFn;
 }) {
   const pendingCount = notes.length + (draft.trim() ? 1 : 0);
+  const sendBlocked = pendingCount === 0 || sending || sendDisabled;
+  const primaryLabel = sending
+    ? t('chat.comments.sending')
+    : queueOnSend
+      ? 'Queue'
+      : t('chat.comments.sendToChat');
   const podMembers = target.podMembers ?? [];
   const titleId = useId();
   const isFreePin = target.elementId.startsWith('pin-');
@@ -180,10 +190,10 @@ export function BoardComposerPopover({
           <Button
             variant="primary"
             data-testid="comment-add-send"
-            disabled={pendingCount === 0 || sending}
+            disabled={sendBlocked}
             onClick={() => void onSendBatch()}
           >
-            {sending ? t('chat.comments.sending') : t('chat.comments.sendToChat')}
+            {primaryLabel}
           </Button>
         </div>
       </div>

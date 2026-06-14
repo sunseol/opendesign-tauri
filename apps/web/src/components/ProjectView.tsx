@@ -2966,10 +2966,10 @@ export function ProjectView({
 
   const handleSendBoardCommentAttachments = useCallback(
     async (commentAttachments: ChatCommentAttachment[]) => {
-      if (currentConversationActionDisabled || commentAttachments.length === 0) return;
+      if (currentConversationSendDisabled || commentAttachments.length === 0) return;
       await handleSend('', [], commentAttachments);
     },
-    [handleSend, currentConversationActionDisabled],
+    [handleSend, currentConversationSendDisabled],
   );
 
   const handleContinueRemainingTasks = useCallback(

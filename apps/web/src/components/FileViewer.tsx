@@ -6549,7 +6549,8 @@ function HtmlViewer({
                   setHoveredPodMemberId((current) => (current === elementId ? null : current));
                 }}
                 onHoverMember={setHoveredPodMemberId}
-                sending={sendingBoardBatch || streaming}
+                sending={sendingBoardBatch}
+                queueOnSend={streaming}
                 t={t}
               />
             ) : null}
