@@ -94,7 +94,7 @@
   z-index: 91;
   min-width: 260px;
   max-width: min(360px, calc(100vw - 24px));
-  max-height: min(360px, calc(100vh - 24px));
+  max-height: min(360px, var(--plus-menu-flyout-max-height, calc(100vh - 24px)));
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -113,6 +113,11 @@
   right: 100%;
   margin-left: 0;
   margin-right: 4px;
+}
+
+.plus-menu__popup--flyout-y-up .plus-menu__flyout {
+  top: auto;
+  bottom: -5px;
 }
 
 .plus-menu__popup--flyout-contained .plus-menu__flyout {

@@ -116,4 +116,41 @@ describe('ComposerPlusMenu', () => {
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
     }
   });
+
+  it('aligns flyouts upward when the popup opens above the trigger', () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 720 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 420 });
+
+    try {
+      renderMenu();
+      const trigger = screen.getByTestId('plus-trigger');
+      if (!(trigger instanceof HTMLButtonElement)) {
+        throw new Error('Expected plus trigger to be a button.');
+      }
+      trigger.getBoundingClientRect = () => new DOMRect(240, 376, 28, 28);
+
+      fireEvent.click(trigger);
+      const plugins = screen.getByRole('menuitem', { name: /Plugins/i });
+      const row = plugins.closest('.plus-menu__submenu-row');
+      if (!(row instanceof HTMLDivElement)) {
+        throw new Error('Expected plugins row to be a div.');
+      }
+      row.getBoundingClientRect = () => new DOMRect(240, 300, 190, 32);
+
+      fireEvent.click(plugins);
+
+      const menu = document.body.querySelector('.plus-menu__popup');
+      if (!(menu instanceof HTMLElement)) {
+        throw new Error('Expected plus menu popup to exist.');
+      }
+      expect(menu.classList.contains('plus-menu__popup--flyout-y-up')).toBe(true);
+      expect(menu.style.getPropertyValue('--plus-menu-flyout-max-height')).toBe('325px');
+      expect(screen.getByText('Deck Maker')).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
+    }
+  });
 });

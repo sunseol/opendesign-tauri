@@ -21,12 +21,16 @@ import {
 } from './ComposerPlusMenuFlyouts';
 import { PlusSubmenuRow } from './ComposerPlusMenuRow';
 import {
+  DEFAULT_FLYOUT_GEOMETRY,
+  composerPlusFlyoutGeometry,
   composerPlusFlyoutSide,
   composerPlusMenuStyle,
   type FlyoutSide,
+  type FlyoutGeometry,
 } from './composer-plus-menu-geometry';
 
 type SubmenuId = 'connectors' | 'plugins' | 'skills' | 'mcp' | 'import';
+type PlusMenuPopupStyle = CSSProperties & Record<'--plus-menu-flyout-max-height', string>;
 
 interface RenderSlotArgs {
   readonly close: () => void;
@@ -76,6 +80,7 @@ export function ComposerPlusMenu({
   const [submenu, setSubmenu] = useState<SubmenuId | null>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
   const [flyoutSide, setFlyoutSide] = useState<FlyoutSide>('right');
+  const [flyoutGeometry, setFlyoutGeometry] = useState<FlyoutGeometry>(DEFAULT_FLYOUT_GEOMETRY);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
@@ -110,6 +115,8 @@ export function ComposerPlusMenu({
       if (!trigger) return;
       setMenuStyle(composerPlusMenuStyle(trigger));
       setFlyoutSide(composerPlusFlyoutSide(trigger));
+      const activeRow = popupRef.current?.querySelector('.plus-menu__submenu-row.is-open');
+      setFlyoutGeometry(composerPlusFlyoutGeometry(activeRow instanceof HTMLElement ? activeRow : null));
     };
     updatePosition();
     window.addEventListener('resize', updatePosition);
@@ -124,6 +131,18 @@ export function ComposerPlusMenu({
     setOpen(false);
     setSubmenu(null);
   }
+
+  function openSubmenu(id: SubmenuId | null, row: HTMLDivElement | null) {
+    setFlyoutGeometry(composerPlusFlyoutGeometry(id ? row : null));
+    setSubmenu(id);
+  }
+
+  const popupStyle = menuStyle
+    ? ({
+        ...menuStyle,
+        '--plus-menu-flyout-max-height': `${flyoutGeometry.maxHeight}px`,
+      } satisfies PlusMenuPopupStyle)
+    : undefined;
 
   return (
     <div className="plus-menu" ref={rootRef}>
@@ -152,9 +171,9 @@ export function ComposerPlusMenu({
         ? createPortal(
             <div
               ref={popupRef}
-              className={`plus-menu__popup plus-menu__popup--flyout-${flyoutSide}`}
+              className={`plus-menu__popup plus-menu__popup--flyout-${flyoutSide} plus-menu__popup--flyout-y-${flyoutGeometry.y}`}
               role="menu"
-              style={menuStyle ?? undefined}
+              style={popupStyle}
             >
               <button
                 type="button"
@@ -170,26 +189,26 @@ export function ComposerPlusMenu({
                 <Icon name={attachLoading ? 'spinner' : 'attach'} size={15} className="plus-menu__item-icon" />
                 <span>{t('chat.attachAria')}</span>
               </button>
-              <PlusSubmenuRow id="connectors" label={t('connectors.title')} icon="link" active={submenu} onOpen={setSubmenu}>
+              <PlusSubmenuRow id="connectors" label={t('connectors.title')} icon="link" active={submenu} onOpen={openSubmenu}>
                 <ConnectorFlyout connectors={connectors} onPick={onPickConnector} onAdd={onAddConnector} close={close} />
               </PlusSubmenuRow>
-              <PlusSubmenuRow id="plugins" label={t('entry.navPlugins')} icon="sparkles" active={submenu} onOpen={setSubmenu}>
+              <PlusSubmenuRow id="plugins" label={t('entry.navPlugins')} icon="sparkles" active={submenu} onOpen={openSubmenu}>
                 {renderPlugins ? renderPlugins({ close }) : (
                   <PluginFlyout plugins={plugins} onPick={onPickPlugin} onAdd={onAddPlugin} close={close} />
                 )}
               </PlusSubmenuRow>
               {renderSkills ? (
-                <PlusSubmenuRow id="skills" label="Skills" icon="file" active={submenu} onOpen={setSubmenu}>
+                <PlusSubmenuRow id="skills" label="Skills" icon="file" active={submenu} onOpen={openSubmenu}>
                   {renderSkills({ close })}
                 </PlusSubmenuRow>
               ) : null}
-              <PlusSubmenuRow id="mcp" label="MCP" icon="link" active={submenu} onOpen={setSubmenu}>
+              <PlusSubmenuRow id="mcp" label="MCP" icon="link" active={submenu} onOpen={openSubmenu}>
                 {renderMcp ? renderMcp({ close }) : (
                   <McpFlyout servers={mcpServers} onPick={onPickMcp} onAdd={onAddMcp} close={close} />
                 )}
               </PlusSubmenuRow>
               {renderImport ? (
-                <PlusSubmenuRow id="import" label={t('chat.importLabel')} icon="import" active={submenu} onOpen={setSubmenu}>
+                <PlusSubmenuRow id="import" label={t('chat.importLabel')} icon="import" active={submenu} onOpen={openSubmenu}>
                   {renderImport({ close })}
                 </PlusSubmenuRow>
               ) : null}

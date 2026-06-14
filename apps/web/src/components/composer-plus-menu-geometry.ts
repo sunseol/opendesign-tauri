@@ -5,8 +5,22 @@ const MENU_GAP = 8;
 const MENU_WIDTH = 190;
 const FLYOUT_WIDTH = 320;
 const MIN_HEIGHT = 180;
+const FLYOUT_MAX_HEIGHT = 360;
+const FLYOUT_MIN_HEIGHT = 120;
+const FLYOUT_OFFSET = 5;
 
 export type FlyoutSide = 'right' | 'left' | 'contained';
+export type FlyoutY = 'down' | 'up';
+
+export interface FlyoutGeometry {
+  readonly y: FlyoutY;
+  readonly maxHeight: number;
+}
+
+export const DEFAULT_FLYOUT_GEOMETRY: FlyoutGeometry = {
+  y: 'down',
+  maxHeight: FLYOUT_MAX_HEIGHT,
+};
 
 export function composerPlusMenuStyle(anchor: HTMLElement): CSSProperties {
   const rect = anchor.getBoundingClientRect();
@@ -53,6 +67,22 @@ export function composerPlusFlyoutSide(anchor: HTMLElement): FlyoutSide {
   if (rightSpace >= FLYOUT_WIDTH) return 'right';
   if (leftSpace >= FLYOUT_WIDTH) return 'left';
   return 'contained';
+}
+
+export function composerPlusFlyoutGeometry(row: HTMLElement | null): FlyoutGeometry {
+  if (!row) return DEFAULT_FLYOUT_GEOMETRY;
+
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 640;
+  const rowRect = row.getBoundingClientRect();
+  const downSpace = viewportHeight - (rowRect.top - FLYOUT_OFFSET) - MENU_MARGIN;
+  const upSpace = rowRect.bottom + FLYOUT_OFFSET - MENU_MARGIN;
+  const nextY = downSpace >= FLYOUT_MAX_HEIGHT || downSpace >= upSpace ? 'down' : 'up';
+  const nextSpace = nextY === 'up' ? upSpace : downSpace;
+
+  return {
+    y: nextY,
+    maxHeight: Math.max(FLYOUT_MIN_HEIGHT, Math.min(FLYOUT_MAX_HEIGHT, nextSpace)),
+  };
 }
 
 function flyoutBoundary(anchor: HTMLElement): Pick<DOMRect, 'left' | 'right'> {
