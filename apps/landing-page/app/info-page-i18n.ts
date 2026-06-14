@@ -368,7 +368,7 @@ const INFO_PAGE_COPY: Partial<Record<LandingLocaleCode, InfoPageCopy>> = {
         {
           label: 'Tier 1 — first-party tested',
           blurb:
-            'Battle-tested daily by the Open Design maintainers. Stream-JSON IPC where supported, full AskUserQuestion mid-turn, skill-aware system prompts.',
+            'Battle-tested daily by the Open Design maintainers. Stream-JSON IPC where supported, mid-turn question-form clarifications, skill-aware system prompts.',
         },
         {
           label: 'Tier 2 — supported adapters',
@@ -574,10 +574,20 @@ const INFO_PAGE_COPY: Partial<Record<LandingLocaleCode, InfoPageCopy>> = {
   },
 };
 
+function requiredInfoPageCopy(locale: LandingLocaleCode): InfoPageCopy {
+  const copy = INFO_PAGE_COPY[locale];
+  if (!copy) {
+    throw new Error(`Missing info page copy for locale ${locale}`);
+  }
+  return copy;
+}
+
+const EN_INFO_PAGE_COPY = requiredInfoPageCopy('en');
+
 INFO_PAGE_COPY.zh = {
-  ...INFO_PAGE_COPY.en!,
+  ...EN_INFO_PAGE_COPY,
   common: {
-    ...INFO_PAGE_COPY.en!.common,
+    ...EN_INFO_PAGE_COPY.common,
     breadcrumbAria: '面包屑',
     onThisPage: '本页内容：',
     starOnGithub: '在 GitHub 点 Star',
@@ -589,7 +599,7 @@ INFO_PAGE_COPY.zh = {
     localFirst: '本地优先',
   },
   official: {
-    ...INFO_PAGE_COPY.en!.official,
+    ...EN_INFO_PAGE_COPY.official,
     title: '官方 Open Design —— 来源页、GitHub、发布与别名',
     description:
       'Open Design 官方来源页：canonical 网站、GitHub 仓库、发布、Discord、许可证和维护者身份都集中在这里。',
@@ -643,7 +653,7 @@ INFO_PAGE_COPY.zh = {
     ],
   },
   quickstart: {
-    ...INFO_PAGE_COPY.en!.quickstart,
+    ...EN_INFO_PAGE_COPY.quickstart,
     title: 'Open Design 快速开始 —— 三条命令安装（Node 24、pnpm）',
     description:
       '用三条命令在本地安装 Open Design。包含 Node 24、pnpm 10.33.2 要求、命令、预期输出、排障和首次生成设计 artifact 的步骤。',
@@ -701,7 +711,7 @@ INFO_PAGE_COPY.zh = {
     ctaBody: '你已经看到安装路径。可以给仓库点 Star、下载桌面版，或在首次运行遇到问题时加入 Discord。',
   },
   agents: {
-    ...INFO_PAGE_COPY.en!.agents,
+    ...EN_INFO_PAGE_COPY.agents,
     title: 'Open Design Agent —— 17 个 BYOK 适配器',
     description: 'Open Design 内置 17 个 BYOK 适配器。直接用你写代码时已经在用的 Agent 来驱动设计，无需额外厂商登录。',
     breadcrumb: 'Agent',
@@ -713,7 +723,7 @@ INFO_PAGE_COPY.zh = {
     adaptersBody:
       '每个适配器都是很薄的一层 shim，把 Agent 原生消息格式翻译成 Open Design Skill 协议。新增适配器通常只是一个文件，不需要 fork 整个产品。',
     tiers: [
-      { label: 'Tier 1 —— 一方日常验证', blurb: 'Open Design 维护者每天使用的适配器。支持时会使用 Stream-JSON IPC、AskUserQuestion 中途交互和 Skill-aware system prompt。' },
+      { label: 'Tier 1 —— 一方日常验证', blurb: 'Open Design 维护者每天使用的适配器。支持时会使用 Stream-JSON IPC、question-form 中途澄清和 Skill-aware system prompt。' },
       { label: 'Tier 2 —— 已支持适配器', blurb: '接入同一套 Skill 协议。日常覆盖略少于 Tier 1，但仍在仓库内维护。' },
       { label: 'Tier 3 —— 社区 / 实验', blurb: '较新的适配器，覆盖面更窄，适合特定厂商提供了 Tier 1 没有的工作流时使用。' },
     ],
@@ -738,7 +748,7 @@ INFO_PAGE_COPY.zh = {
     ctaBody: '选择你电脑上已有的 Agent，把 Open Design 指向它，然后开始渲染。',
   },
   compare: {
-    ...INFO_PAGE_COPY.en!.compare,
+    ...EN_INFO_PAGE_COPY.compare,
     title: 'Open Design vs Claude Design、Figma Make、v0、Lovable —— 诚实对比',
     description:
       '比较 Open Design 与主流 AI 设计工具：云端托管 vs 本地优先、BYOK vs 厂商锁定、一次性生成 vs 可移植 DESIGN.md 系统。',
@@ -765,7 +775,7 @@ INFO_PAGE_COPY.zh = {
     ],
   },
   claudeAlternative: {
-    ...INFO_PAGE_COPY.en!.claudeAlternative,
+    ...EN_INFO_PAGE_COPY.claudeAlternative,
     title: 'Claude Design 开源替代方案 —— Open Design（BYOK、本地优先）',
     description:
       'Open Design 是 Claude Design 的开源、本地优先替代方案。支持 Claude Code、Codex、Cursor、Gemini、OpenCode 或 Qwen 的 BYOK 工作流。',
@@ -827,10 +837,12 @@ INFO_PAGE_COPY.zh = {
   },
 };
 
+const ZH_INFO_PAGE_COPY = requiredInfoPageCopy('zh');
+
 INFO_PAGE_COPY['zh-tw'] = {
-  ...INFO_PAGE_COPY.zh!,
+  ...ZH_INFO_PAGE_COPY,
   common: {
-    ...INFO_PAGE_COPY.zh!.common,
+    ...ZH_INFO_PAGE_COPY.common,
     breadcrumbAria: '麵包屑',
     onThisPage: '本頁內容：',
     starOnGithub: '在 GitHub 按 Star',
@@ -840,7 +852,7 @@ INFO_PAGE_COPY['zh-tw'] = {
     localFirst: '本地優先',
   },
   official: {
-    ...INFO_PAGE_COPY.zh!.official,
+    ...ZH_INFO_PAGE_COPY.official,
     title: '官方 Open Design —— 來源頁、GitHub、發布與別名',
     description:
       'Open Design 官方來源頁：canonical 網站、GitHub repo、發布、Discord、授權與維護者身份都集中在這裡。',
@@ -878,7 +890,7 @@ INFO_PAGE_COPY['zh-tw'] = {
     ],
   },
   quickstart: {
-    ...INFO_PAGE_COPY.zh!.quickstart,
+    ...ZH_INFO_PAGE_COPY.quickstart,
     title: 'Open Design 快速開始 —— 三條命令安裝（Node 24、pnpm）',
     description:
       '用三條命令在本地安裝 Open Design。包含 Node 24、pnpm 10.33.2 要求、命令、預期輸出、排障與首次生成設計 artifact 的步驟。',
@@ -928,7 +940,7 @@ INFO_PAGE_COPY['zh-tw'] = {
     ctaBody: '你已經看到安裝路徑。可以給 repo 按 Star、下載桌面版，或在首次執行遇到問題時加入 Discord。',
   },
   agents: {
-    ...INFO_PAGE_COPY.zh!.agents,
+    ...ZH_INFO_PAGE_COPY.agents,
     title: 'Open Design Agent —— 17 個 BYOK adapter',
     description: 'Open Design 內建 17 個 BYOK adapter。直接用你寫程式時已經在用的 Agent 來驅動設計，無需額外供應商登入。',
     breadcrumb: 'Agent',
@@ -952,7 +964,7 @@ INFO_PAGE_COPY['zh-tw'] = {
     ctaBody: '選擇你電腦上已有的 Agent，把 Open Design 指向它，然後開始渲染。',
   },
   compare: {
-    ...INFO_PAGE_COPY.zh!.compare,
+    ...ZH_INFO_PAGE_COPY.compare,
     title: 'Open Design vs Claude Design、Figma Make、v0、Lovable —— 誠實比較',
     breadcrumb: '比較',
     label: '評估 · Nº 02',
@@ -962,7 +974,7 @@ INFO_PAGE_COPY['zh-tw'] = {
     limitsBody: 'Open Design 不試圖成為所有雲端 AI 設計工具。下面的問題說明實際取捨，而不是把限制包裝掉。',
   },
   claudeAlternative: {
-    ...INFO_PAGE_COPY.zh!.claudeAlternative,
+    ...ZH_INFO_PAGE_COPY.claudeAlternative,
     title: 'Claude Design 開源替代方案 —— Open Design（BYOK、本地優先）',
     description:
       'Open Design 是 Claude Design 的開源、本地優先替代方案。支援 Claude Code、Codex、Cursor、Gemini、OpenCode 或 Qwen 的 BYOK 工作流。',
@@ -1339,7 +1351,7 @@ function compactInfoPageCopy(
       ],
       ctaBody: text.reusable.ctaBody,
     },
-    download: INFO_PAGE_COPY.en!.download,
+    download: EN_INFO_PAGE_COPY.download,
   };
 }
 
@@ -1792,7 +1804,7 @@ export function getInfoPageCopy(locale: LandingLocaleCode): InfoPageCopy {
   return (
     INFO_PAGE_COPY[locale] ??
     compactInfoPageCopy(locale, compactInfoTextFromHome(locale)) ??
-    INFO_PAGE_COPY[DEFAULT_LOCALE]!
+    requiredInfoPageCopy(DEFAULT_LOCALE)
   );
 }
 
