@@ -8,6 +8,7 @@ import {
   settingsSectionToTracking,
 } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
+import { AmrLoginPill } from './AmrLoginPill';
 import {
   trackSettingsAppearanceClick,
   trackSettingsByokTestResult,
@@ -896,7 +897,8 @@ export function SettingsDialog({
           return;
         }
       }
-    } catch {
+    } catch (err) {
+      if (!(err instanceof TypeError)) throw err;
       // network error — fall through to open releases page
     } finally {
       setVersionChecking(false);
@@ -2401,6 +2403,12 @@ export function SettingsDialog({
                                   </div>
                                 </div>
                               </button>
+                              {a.id === 'amr' ? (
+                                <AmrLoginPill
+                                  className="agent-card-amr-login"
+                                  signInLabel="Authorize"
+                                />
+                              ) : null}
                               {active ? (
                                 <button
                                   type="button"
@@ -2530,11 +2538,10 @@ export function SettingsDialog({
                   (a) => a.id === cfg.agentId && a.available,
                 );
                 if (!selected) return null;
-                const hasModels =
-                  Array.isArray(selected.models) && selected.models.length > 0;
-                const hasReasoning =
-                  Array.isArray(selected.reasoningOptions) &&
-                  selected.reasoningOptions.length > 0;
+                const modelOptions = selected.models ?? [];
+                const reasoningOptions = selected.reasoningOptions ?? [];
+                const hasModels = modelOptions.length > 0;
+                const hasReasoning = reasoningOptions.length > 0;
                 if (!hasModels && !hasReasoning) return null;
                 const choice = cfg.agentModels?.[selected.id] ?? {};
                 const setChoice = (
@@ -2562,7 +2569,7 @@ export function SettingsDialog({
                   hasModels &&
                   shouldShowCustomModelInput(
                     modelValue,
-                    selected.models!.map((m) => m.id),
+                    modelOptions.map((m) => m.id),
                     agentCustomModelIds.has(selected.id),
                   );
                 const selectValue = customActive
@@ -2615,7 +2622,7 @@ export function SettingsDialog({
                                 }
                               }}
                             >
-                              {renderModelOptions(selected.models!)}
+                              {renderModelOptions(modelOptions)}
                               {supportsCustomModel ? (
                                 <option value={CUSTOM_MODEL_SENTINEL}>
                                   {t('settings.modelCustom')}
@@ -2661,7 +2668,7 @@ export function SettingsDialog({
                               setChoice({ reasoning: e.target.value })
                             }
                           >
-                            {selected.reasoningOptions!.map((r) => (
+                            {reasoningOptions.map((r) => (
                               <option key={r.id} value={r.id}>
                                 {r.label}
                               </option>
@@ -2779,8 +2786,8 @@ export function SettingsDialog({
                   (a) => a.id === cfg.agentId && a.available,
                 );
                 if (!selected) return null;
-                const hasModels =
-                  Array.isArray(selected.models) && selected.models.length > 0;
+                const modelOptions = selected.models ?? [];
+                const hasModels = modelOptions.length > 0;
                 const choice = cfg.agentModels?.[selected.id] ?? {};
                 const modelValue =
                   choice.model ?? selected.models?.[0]?.id ?? '';
@@ -2801,7 +2808,7 @@ export function SettingsDialog({
                         chatModel={modelValue}
                         cliAgentId={selected.id}
                         cliModelOptions={
-                          hasModels ? selected.models!.map((m) => m.id) : []
+                          hasModels ? modelOptions.map((m) => m.id) : []
                         }
                       />
                     </div>
@@ -2937,8 +2944,8 @@ export function SettingsDialog({
                         return;
                       }
                       const idx = Number(e.target.value);
-                      if (!isNaN(idx) && protocolProviders[idx]) {
-                        const p = protocolProviders[idx]!;
+                      const p = protocolProviders[idx];
+                      if (!Number.isNaN(idx) && p) {
                         setApiModelCustomEditing(false);
                         updateApiConfig({
                           baseUrl: p.baseUrl,
@@ -4073,7 +4080,8 @@ function OrbitSection({
       if (!response.ok) return;
       if (!isMountedRef.current) return;
       setStatus(await response.json() as OrbitStatusResponse);
-    } catch {
+    } catch (err) {
+      if (!(err instanceof TypeError)) throw err;
       // Daemon may be offline in API-only development; keep local controls usable.
     }
   };
@@ -4228,7 +4236,8 @@ function OrbitSection({
       await navigator.clipboard.writeText(lastRun.markdown);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
-    } catch {
+    } catch (err) {
+      if (!(err instanceof DOMException)) throw err;
       // Clipboard access may be denied in some browsing contexts; silently skip.
     }
   };
@@ -5274,7 +5283,7 @@ function settingsShortcut(platform: McpInstallInfo['platform']): string {
 function utf8Btoa(s: string): string {
   const bytes = new TextEncoder().encode(s);
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  for (const byte of bytes) bin += String.fromCharCode(byte);
   return btoa(bin);
 }
 
@@ -5312,7 +5321,7 @@ function buildSharedMcpJson(info: McpInstallInfo): string {
 function IntegrationsSection() {
   const { t } = useI18n();
 
-  const MCP_CLIENTS: McpClient[] = [
+  const MCP_CLIENTS: readonly [McpClient, ...McpClient[]] = [
     {
       id: 'claude',
       label: 'Claude Code',
@@ -5459,11 +5468,14 @@ function IntegrationsSection() {
     };
   }, []);
 
-  const client = MCP_CLIENTS.find((c) => c.id === clientId) ?? MCP_CLIENTS[0]!;
+  const client = MCP_CLIENTS.find((c) => c.id === clientId) ?? MCP_CLIENTS[0];
   const snippet = info ? client.buildSnippet(info) : '';
   const snippetLang: 'bash' | 'json' | 'toml' = info
     ? client.buildSnippetLang(info)
     : 'json';
+  const deeplinkAction = client.buildDeeplink && info
+    ? { buildDeeplink: client.buildDeeplink, info }
+    : null;
 
   // Reset the "Copied" badge when the user flips to a different
   // client; otherwise the green check sits there next to a snippet
@@ -5483,10 +5495,11 @@ function IntegrationsSection() {
       setCopied(true);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
       copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } catch (err) {
       // Clipboard API can fail under non-secure contexts; the snippet
       // is selectable so the user can still copy manually.
       setCopied(false);
+      if (!(err instanceof DOMException)) throw err;
     }
   };
 
@@ -5498,7 +5511,7 @@ function IntegrationsSection() {
             className="empty-card"
             style={{ marginBottom: 14, color: 'var(--danger-fg, #f88)' }}
           >
-            {t('settings.mcpDaemonError', { error: infoError! })}
+            {t('settings.mcpDaemonError', { error: infoError })}
           </div>
         ) : null}
 
@@ -5580,7 +5593,7 @@ function IntegrationsSection() {
           <p style={{ margin: 0 }}>{client.buildInstruction(info)}</p>
         ) : null}
 
-        {client.buildDeeplink && info ? (
+        {deeplinkAction ? (
           <div style={{ marginBottom: 12 }}>
             <button
               type="button"
@@ -5590,13 +5603,13 @@ function IntegrationsSection() {
                 // handled the same way as a normal link click; some
                 // browsers block window.location assignments to
                 // unknown schemes from button handlers.
-                const url = client.buildDeeplink!(info);
+                const url = deeplinkAction.buildDeeplink(deeplinkAction.info);
                 const a = document.createElement('a');
                 a.href = url;
                 a.rel = 'noopener noreferrer';
                 a.click();
               }}
-              disabled={!info.cliExists || !info.nodeExists}
+              disabled={!deeplinkAction.info.cliExists || !deeplinkAction.info.nodeExists}
               style={{ padding: '6px 14px', fontSize: 13 }}
             >
               <Icon name="link" size={14} />
