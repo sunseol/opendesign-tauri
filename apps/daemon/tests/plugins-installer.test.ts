@@ -94,6 +94,42 @@ describe('installFromLocalFolder', () => {
     expect(errored).toBe(true);
   });
 
+  it('rejects unsafe component paths before persisting the plugin', async () => {
+    await writeFile(
+      path.join(sourceFolder, 'open-design.json'),
+      JSON.stringify({
+        name: 'sample-plugin',
+        version: '1.0.0',
+        title: 'Sample Plugin',
+        od: {
+          kind: 'skill',
+          capabilities: ['prompt:inject', 'genui:custom-component'],
+          genui: {
+            surfaces: [
+              {
+                id: 'escape-panel',
+                kind: 'choice',
+                persist: 'run',
+                component: { path: '../escape/panel.tsx' },
+              },
+            ],
+          },
+        },
+      }, null, 2),
+    );
+
+    const events: string[] = [];
+    for await (const ev of installFromLocalFolder(db, {
+      source: sourceFolder,
+      roots: { userPluginsRoot: pluginsRoot },
+    })) {
+      events.push(ev.kind);
+    }
+
+    expect(events).toContain('error');
+    expect(listInstalledPlugins(db)).toHaveLength(0);
+  });
+
   it('uninstall removes the row and on-disk staged folder', async () => {
     for await (const _ev of installFromLocalFolder(db, {
       source: sourceFolder,

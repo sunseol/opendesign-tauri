@@ -44,4 +44,65 @@ describe('validateManifest', () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it('rejects plugin-local manifest paths that escape the plugin folder', () => {
+    const result = validateManifest({
+      name: 'x',
+      version: '1.0.0',
+      od: {
+        preview: { type: 'html', entry: '/tmp/preview.html' },
+        context: { assets: ['./safe.csv', '../secret.csv'] },
+        useCase: {
+          exampleOutputs: [{ path: 'examples/demo' }, { path: '..\\secret' }],
+        },
+        genui: {
+          surfaces: [
+            {
+              id: 'panel',
+              kind: 'choice',
+              persist: 'run',
+              component: { path: '../panel.tsx' },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toContain('preview.entry');
+    expect(result.errors.join('\n')).toContain('context.assets[1]');
+    expect(result.errors.join('\n')).toContain('useCase.exampleOutputs[1].path');
+    expect(result.errors.join('\n')).toContain('genui.surfaces[panel].component.path');
+  });
+
+  it('allows remote preview media while keeping entry paths local', () => {
+    const result = validateManifest({
+      name: 'x',
+      version: '1.0.0',
+      icon: 'https://cdn.example.com/icon.svg',
+      od: {
+        preview: {
+          type: 'html',
+          entry: './preview/index.html',
+          poster: 'https://cdn.example.com/poster.png',
+          video: 'https://cdn.example.com/demo.mp4',
+          gif: './preview/demo.gif',
+        },
+        context: { assets: ['./assets/sample.csv'] },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects unsafe compat paths even without an od block', () => {
+    const result = validateManifest({
+      name: 'x',
+      version: '1.0.0',
+      compat: { agentSkills: [{ path: '../SKILL.md' }] },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toContain('compat.agentSkills[0].path');
+  });
 });
