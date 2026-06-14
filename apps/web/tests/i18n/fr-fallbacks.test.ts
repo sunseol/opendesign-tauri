@@ -95,6 +95,75 @@ const FR_PLUGIN_AVAILABLE_DETAILS_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
   'plugins.availableDetails.capabilitySummary',
 ];
 
+const FR_PLUGINS_HOME_KEYS: ReadonlyArray<keyof Dict> = [
+  'pluginsHome.subtitle',
+  'pluginsHome.browseRegistry',
+  'pluginsHome.count',
+  'pluginsHome.loadingCatalog',
+  'pluginsHome.emptyCatalog',
+  'pluginsHome.emptyFiltered',
+  'pluginsHome.clearFilters',
+  'pluginsHome.modeAria',
+  'pluginsHome.totalInCatalog',
+  'pluginsHome.categoryFilterAria',
+  'pluginsHome.subcategoryFilterAria',
+  'pluginsHome.allCategory',
+  'pluginsHome.searchPlaceholder',
+  'pluginsHome.searchAria',
+  'pluginsHome.clearSearch',
+  'pluginsHome.facet.import',
+  'pluginsHome.facet.create',
+  'pluginsHome.facet.export',
+  'pluginsHome.facet.share',
+  'pluginsHome.facet.deploy',
+  'pluginsHome.facet.refine',
+  'pluginsHome.facet.extend',
+  'pluginsHome.facet.figma',
+  'pluginsHome.facet.github',
+  'pluginsHome.facet.codeFolder',
+  'pluginsHome.facet.url',
+  'pluginsHome.facet.screenshot',
+  'pluginsHome.facet.pdf',
+  'pluginsHome.facet.pptx',
+  'pluginsHome.facet.framer',
+  'pluginsHome.facet.webflow',
+  'pluginsHome.facet.slides',
+  'pluginsHome.facet.publicLink',
+  'pluginsHome.facet.githubPr',
+  'pluginsHome.facet.githubGist',
+];
+
+const FR_PLUGINS_HOME_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
+  'pluginsHome.subtitle',
+  'pluginsHome.browseRegistry',
+  'pluginsHome.count',
+  'pluginsHome.loadingCatalog',
+  'pluginsHome.emptyCatalog',
+  'pluginsHome.emptyFiltered',
+  'pluginsHome.clearFilters',
+  'pluginsHome.modeAria',
+  'pluginsHome.totalInCatalog',
+  'pluginsHome.categoryFilterAria',
+  'pluginsHome.subcategoryFilterAria',
+  'pluginsHome.allCategory',
+  'pluginsHome.searchPlaceholder',
+  'pluginsHome.searchAria',
+  'pluginsHome.clearSearch',
+  'pluginsHome.facet.import',
+  'pluginsHome.facet.create',
+  'pluginsHome.facet.export',
+  'pluginsHome.facet.share',
+  'pluginsHome.facet.deploy',
+  'pluginsHome.facet.refine',
+  'pluginsHome.facet.extend',
+  'pluginsHome.facet.codeFolder',
+  'pluginsHome.facet.screenshot',
+  'pluginsHome.facet.slides',
+  'pluginsHome.facet.publicLink',
+  'pluginsHome.facet.githubPr',
+  'pluginsHome.facet.githubGist',
+];
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -156,6 +225,21 @@ describe('fr fallback parity', () => {
 
   it('keeps French available plugin detail copy translated instead of falling back to English', () => {
     for (const key of FR_PLUGIN_AVAILABLE_DETAILS_TRANSLATED_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('declares French plugins home catalog labels explicitly instead of relying on fallback', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_PLUGINS_HOME_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
+      expect(fr[key], `fr.${key}`).not.toHaveLength(0);
+    }
+  });
+
+  it('keeps French plugins home catalog copy translated instead of falling back to English', () => {
+    for (const key of FR_PLUGINS_HOME_TRANSLATED_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
