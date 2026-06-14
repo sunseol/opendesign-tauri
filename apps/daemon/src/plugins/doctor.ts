@@ -110,7 +110,7 @@ export function doctorPlugin(
   if (options?.connectorProbe) {
     for (const issue of validateConnectorRefs(manifest, options.connectorProbe)) {
       issues.push({
-        severity: issue.code === 'unknown-connector' ? 'error' : 'warning',
+        severity: issue.code === 'unknown-tool' ? 'warning' : 'error',
         code:     `connector.${issue.code}`,
         message:  issue.message,
         field:    'od.connectors',

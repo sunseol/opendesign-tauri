@@ -112,4 +112,57 @@ describe('POST /api/plugins/:id/doctor', () => {
       ]),
     );
   });
+
+  it('fails plugins that require a known connector without declaring its capability', async () => {
+    const pluginId = `missing-connector-capability-${randomUUID()}`;
+    const folder = path.join(pluginRoot, pluginId);
+    await mkdir(folder, { recursive: true });
+    await writeFile(
+      path.join(folder, 'open-design.json'),
+      JSON.stringify({
+        $schema: 'https://open-design.ai/schemas/plugin.v1.json',
+        name: pluginId,
+        title: 'Missing Connector Capability Fixture',
+        version: '1.0.0',
+        description: 'requires a known connector but omits connector capability',
+        license: 'MIT',
+        od: {
+          kind: 'skill',
+          taskKind: 'new-generation',
+          useCase: { query: 'Check connector capabilities.' },
+          connectors: {
+            required: [
+              { id: 'github', tools: ['github.github_search_repositories'] },
+            ],
+          },
+          capabilities: ['prompt:inject'],
+        },
+      }),
+    );
+    await writeFile(
+      path.join(folder, 'SKILL.md'),
+      `---\nname: ${pluginId}\ndescription: missing connector capability fixture\n---\n# Fixture\n`,
+    );
+    await installPlugin(folder);
+
+    const resp = await fetch(`${baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/doctor`, {
+      method: 'POST',
+    });
+
+    expect(resp.status).toBe(200);
+    const report = await resp.json() as {
+      ok: boolean;
+      issues: Array<{ severity: string; code: string; message: string; field?: string }>;
+    };
+    expect(report.ok).toBe(false);
+    expect(report.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 'error',
+          code: 'connector.missing-capability',
+          field: 'od.connectors',
+        }),
+      ]),
+    );
+  });
 });
