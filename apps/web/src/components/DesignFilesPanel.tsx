@@ -1483,10 +1483,38 @@ async function filesFromFileSystemEntry(entry: FileSystemEntry): Promise<File[]>
 
 function fileFromEntry(entry: FileSystemFileEntryWithFile): Promise<File> {
   return new Promise((resolve, reject) => {
-    entry.file(resolve, (error) => {
+    entry.file((file) => {
+      resolve(fileWithEntryRelativePath(file, entry.fullPath));
+    }, (error) => {
       reject(createFileSystemReadError('Could not read dropped file', error));
     });
   });
+}
+
+function fileWithEntryRelativePath(file: File, fullPath: string): File {
+  const relativePath = safeDataTransferRelativePath(fullPath);
+  if (!relativePath || relativePath === file.name) return file;
+  const fileWithPath = new File([file], file.name, {
+    type: file.type,
+    lastModified: file.lastModified,
+  });
+  Object.defineProperty(fileWithPath, 'webkitRelativePath', {
+    configurable: true,
+    value: relativePath,
+  });
+  return fileWithPath;
+}
+
+function safeDataTransferRelativePath(input: string): string | null {
+  const value = input.replace(/\\/g, '/').replace(/^\/+/, '').trim();
+  if (!value || value.includes('\0') || /^[A-Za-z]:\//.test(value)) {
+    return null;
+  }
+  const parts = value.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..')) {
+    return null;
+  }
+  return parts.join('/');
 }
 
 function readEntryBatch(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {

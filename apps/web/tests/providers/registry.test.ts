@@ -560,6 +560,36 @@ describe('uploadProjectFiles', () => {
     vi.unstubAllGlobals();
   });
 
+  it('passes browser relative file paths as multipart filenames', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      files: [
+        {
+          name: 'assets/icons/mxk7-icon.png',
+          path: 'assets/icons/mxk7-icon.png',
+          size: 4,
+          originalName: 'assets/icons/icon.png',
+        },
+      ],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const icon = new File(['icon'], 'icon.png', { type: 'image/png' });
+    Object.defineProperty(icon, 'webkitRelativePath', {
+      configurable: true,
+      value: 'assets/icons/icon.png',
+    });
+
+    await uploadProjectFiles('project-1', [icon]);
+
+    const firstCall = fetchMock.mock.calls[0];
+    if (!firstCall) throw new Error('missing upload request');
+    const requestInit = firstCall[1];
+    if (!(requestInit?.body instanceof FormData)) throw new Error('missing multipart form');
+    const uploaded = requestInit.body.get('files');
+    if (!(uploaded instanceof File)) throw new Error('missing uploaded file');
+    expect(uploaded.name).toBe('assets/icons/icon.png');
+  });
+
   it('treats every response entry as a success regardless of originalName drift', async () => {
     // Simulates an encoding edge case: the browser File.name carries a
     // composed CJK name (NFC) but multer round-trips it through latin1 and

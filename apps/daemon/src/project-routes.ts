@@ -1224,6 +1224,33 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
 
 export interface RegisterProjectUploadRoutesDeps extends RouteDeps<'http' | 'uploads' | 'node'> {}
 
+type ProjectUploadFile = {
+  readonly filename: string;
+  readonly originalname: string;
+  readonly path: string;
+  readonly odProjectUploadPath?: string;
+};
+
+type ProjectUploadStatError = Error & {
+  readonly code?: string;
+};
+
+function isProjectUploadFileArray(files: unknown): files is ProjectUploadFile[] {
+  return Array.isArray(files);
+}
+
+function isMissingProjectUploadFile(error: unknown): error is ProjectUploadStatError {
+  return error instanceof Error
+    && 'code' in error
+    && error.code === 'ENOENT';
+}
+
+function projectUploadRelativePath(file: ProjectUploadFile): string {
+  return typeof file.odProjectUploadPath === 'string'
+    ? file.odProjectUploadPath
+    : file.filename;
+}
+
 export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUploadRoutesDeps) {
   const { sendApiError } = ctx.http;
   const { handleProjectUpload } = ctx.uploads;
@@ -1234,26 +1261,27 @@ export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUp
     handleProjectUpload,
     async (req, res) => {
       try {
-        const incoming = Array.isArray(req.files) ? req.files : [];
+        const incoming = isProjectUploadFileArray(req.files) ? req.files : [];
         const out = [];
         for (const f of incoming) {
           try {
             const stat = await fs.promises.stat(f.path);
+            const relativePath = projectUploadRelativePath(f);
             out.push({
-              name: f.filename,
-              path: f.filename,
+              name: relativePath,
+              path: relativePath,
               size: stat.size,
               mtime: stat.mtimeMs,
               originalName: f.originalname,
             });
-          } catch {
-            // skip files that vanished mid-flight
+          } catch (err) {
+            if (!isMissingProjectUploadFile(err)) throw err;
           }
         }
         /** @type {import('@open-design/contracts').UploadProjectFilesResponse} */
         const body = { files: out };
         res.json(body);
-      } catch (err: any) {
+      } catch {
         sendApiError(res, 500, 'INTERNAL_ERROR', 'upload failed');
       }
     },

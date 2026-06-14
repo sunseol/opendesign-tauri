@@ -2936,10 +2936,36 @@ const pluginUpload = multer({
   },
 });
 
-// Project-scoped multi-file upload. Lands files directly in the project
-// folder (flat — same shape FileWorkspace expects), so the composer's
-// pasted/dropped/picked images become referenceable filenames the agent
-// can Read or @-mention without any cross-folder gymnastics.
+class ProjectUploadPathError extends Error {}
+
+function projectUploadTargetFromOriginalName(originalname) {
+  const decoded = decodeMultipartFilename(originalname);
+  const value = String(decoded ?? '').replace(/\\/g, '/').trim();
+  if (!value || value.includes('\0') || value.startsWith('/') || /^[A-Za-z]:\//.test(value)) {
+    throw new ProjectUploadPathError('invalid upload path');
+  }
+  const parts = value.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..')) {
+    throw new ProjectUploadPathError('unsafe upload path');
+  }
+  const safeParts = parts.map((part) => sanitizeName(part));
+  const fileName = safeParts.pop();
+  if (!fileName) throw new ProjectUploadPathError('invalid upload path');
+  const storedFileName = `${Date.now().toString(36)}-${fileName}`;
+  return {
+    dirParts: safeParts,
+    fileName: storedFileName,
+    originalName: parts.join('/'),
+    relativePath: [...safeParts, storedFileName].join('/'),
+  };
+}
+
+function isMissingProjectUploadFile(error) {
+  return error instanceof Error
+    && 'code' in error
+    && error.code === 'ENOENT';
+}
+
 // Bridge between the multer upload-storage destination (built at module
 // init) and the per-process project DB (instantiated inside startServer).
 // startServer() sets this so the upload destination can route attachments
@@ -2949,32 +2975,29 @@ let projectMetadataLookup: ((id: string) => Record<string, unknown> | null) | nu
 
 const projectUpload = multer({
   storage: multer.diskStorage({
-    destination: async (req, _file, cb) => {
+    destination: async (req, file, cb) => {
       try {
-        // Route uploads into the project's actual root: for folder-imported
-        // projects (metadata.baseDir set) attachments need to land alongside
-        // the user's files so the agent can read them via the same path
-        // it sees. projectMetadataLookup is populated at startServer() boot
-        // and keyed by project id; null fallback gives the standard
-        // .od/projects/<id>/ behavior for non-imported projects.
         const meta = projectMetadataLookup?.(req.params.id) ?? null;
         const dir = await ensureProject(PROJECTS_DIR, req.params.id, meta);
-        cb(null, dir);
+        const target = projectUploadTargetFromOriginalName(file.originalname);
+        file.originalname = target.originalName;
+        file.odProjectUploadFileName = target.fileName;
+        file.odProjectUploadPath = target.relativePath;
+        const destination = path.join(dir, ...target.dirParts);
+        await fs.promises.mkdir(destination, { recursive: true });
+        cb(null, destination);
       } catch (err) {
         cb(err, '');
       }
     },
     filename: (_req, file, cb) => {
-      // multer@1 hands us latin1-decoded multipart filenames; restore the
-      // original UTF-8 so the response (and the on-disk name) preserves
-      // non-ASCII characters instead of mangling them. Then run the
-      // shared sanitiser and prepend a base36 timestamp so multiple
-      // uploads with the same original name don't clobber each other.
-      file.originalname = decodeMultipartFilename(file.originalname);
-      const safe = sanitizeName(file.originalname);
-      cb(null, `${Date.now().toString(36)}-${safe}`);
+      const storedName = typeof file.odProjectUploadFileName === 'string'
+        ? file.odProjectUploadFileName
+        : `${Date.now().toString(36)}-${sanitizeName(decodeMultipartFilename(file.originalname))}`;
+      cb(null, storedName);
     },
   }),
+  preservePath: true,
   limits: { fileSize: 200 * 1024 * 1024 },  // 200MB — covers the largest design assets we expect (PPTX/PDF/raw images)
 });
 
@@ -3019,6 +3042,10 @@ function sendMulterError(res, err) {
       message,
       { details: { legacyCode: code } },
     );
+  }
+
+  if (err instanceof ProjectUploadPathError) {
+    return sendApiError(res, 400, 'BAD_REQUEST', 'invalid upload path');
   }
 
   if (err) {
@@ -9109,10 +9136,6 @@ export async function startServer({
     res.json({ tasks });
   });
 
-  // Multi-file upload that the chat composer uses for paste/drop/picker.
-  // Files land flat in the project folder; the response carries the same
-  // metadata as listFiles so the client can stage them as ChatAttachments
-  // without a separate refetch.
   app.post(
     '/api/projects/:id/upload',
     handleProjectUpload,
@@ -9123,15 +9146,18 @@ export async function startServer({
         for (const f of incoming) {
           try {
             const stat = await fs.promises.stat(f.path);
+            const relativePath = typeof f.odProjectUploadPath === 'string'
+              ? f.odProjectUploadPath
+              : f.filename;
             out.push({
-              name: f.filename,
-              path: f.filename,
+              name: relativePath,
+              path: relativePath,
               size: stat.size,
               mtime: stat.mtimeMs,
               originalName: f.originalname,
             });
-          } catch {
-            // skip files that vanished mid-flight
+          } catch (err) {
+            if (!isMissingProjectUploadFile(err)) throw err;
           }
         }
         /** @type {import('@open-design/contracts').UploadProjectFilesResponse} */

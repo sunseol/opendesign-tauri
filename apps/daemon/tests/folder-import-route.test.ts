@@ -296,6 +296,39 @@ describe('POST /api/import/folder', () => {
     });
   });
 
+  it('preserves relative paths for uploaded project folders inside metadata.baseDir', async () => {
+    const real = makeFolder();
+    await writeFile(path.join(real, 'index.html'), '<!doctype html>');
+    const importResp = await importFolder({ baseDir: real });
+    expect(importResp.status).toBe(200);
+    const { project } = (await importResp.json()) as {
+      project: { id: string; metadata: { baseDir: string } };
+    };
+
+    const form = new FormData();
+    form.append(
+      'files',
+      new File(['icon'], 'icon.png', { type: 'image/png' }),
+      'assets/icons/icon.png',
+    );
+    const uploadResp = await fetch(`${baseUrl}/api/projects/${project.id}/upload`, {
+      method: 'POST',
+      body: form,
+    });
+
+    expect(uploadResp.status).toBe(200);
+    const body = (await uploadResp.json()) as {
+      files: Array<{ path: string; name: string; originalName: string }>;
+    };
+    expect(body.files).toHaveLength(1);
+    const uploaded = body.files[0];
+    if (!uploaded) throw new Error('missing uploaded file');
+    expect(uploaded.originalName).toBe('assets/icons/icon.png');
+    expect(uploaded.path).toMatch(/^assets\/icons\/[a-z0-9]+-icon\.png$/);
+    expect(uploaded.name).toBe(uploaded.path);
+    await expect(readFile(path.join(project.metadata.baseDir, uploaded.path), 'utf8')).resolves.toBe('icon');
+  });
+
   it('refuses raw reads through a descendant symlink that escapes the folder', async () => {
     const real = makeFolder();
     await mkdir(path.join(real, 'assets'));

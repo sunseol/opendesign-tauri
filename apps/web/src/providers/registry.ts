@@ -1603,10 +1603,6 @@ export async function uploadProjectFile(
   }
 }
 
-// Multi-file project upload used by the chat composer's paste / drop /
-// picker. Each file lands flat in the project folder; the response is
-// reshaped into ChatAttachments so the composer can stage them without a
-// follow-up listFiles round-trip.
 const PROJECT_UPLOAD_BATCH_SIZE = 12;
 
 export interface ProjectUploadFailure {
@@ -1619,6 +1615,27 @@ export interface UploadProjectFilesResult {
   uploaded: ChatAttachment[];
   failed: ProjectUploadFailure[];
   error?: string;
+}
+
+type ProjectUploadFile = File & {
+  readonly webkitRelativePath?: string;
+};
+
+function uploadProjectFileFormName(file: ProjectUploadFile): string {
+  return safeClientUploadRelativePath(file.webkitRelativePath) ?? file.name;
+}
+
+function safeClientUploadRelativePath(input: string | undefined): string | null {
+  if (typeof input !== 'string') return null;
+  const value = input.replace(/\\/g, '/').trim();
+  if (!value || value.includes('\0') || value.startsWith('/') || /^[A-Za-z]:\//.test(value)) {
+    return null;
+  }
+  const parts = value.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..')) {
+    return null;
+  }
+  return parts.join('/');
 }
 
 export async function uploadProjectFiles(
@@ -1635,7 +1652,7 @@ export async function uploadProjectFiles(
     const batch = files.slice(i, i + PROJECT_UPLOAD_BATCH_SIZE);
     const remaining = files.slice(i + PROJECT_UPLOAD_BATCH_SIZE);
     const form = new FormData();
-    for (const f of batch) form.append('files', f);
+    for (const f of batch) form.append('files', f, uploadProjectFileFormName(f));
 
     try {
       const resp = await fetch(
@@ -1649,10 +1666,10 @@ export async function uploadProjectFiles(
           | null;
         error = payload?.error ?? `upload failed (${resp.status})`;
         for (const f of batch) {
-          failed.push({ name: f.name, code: payload?.code, error: error });
+          failed.push({ name: uploadProjectFileFormName(f), code: payload?.code, error: error });
         }
         for (const f of remaining) {
-          failed.push({ name: f.name, code: payload?.code, error: error });
+          failed.push({ name: uploadProjectFileFormName(f), code: payload?.code, error: error });
         }
         break;
       }
@@ -1674,7 +1691,7 @@ export async function uploadProjectFiles(
         error ??= 'some files could not be stored';
         for (const f of batch.slice(responseFiles.length)) {
           failed.push({
-            name: f.name,
+            name: uploadProjectFileFormName(f),
             error: error ?? 'some files could not be stored',
           });
         }
@@ -1682,10 +1699,10 @@ export async function uploadProjectFiles(
     } catch {
       error = 'upload request failed';
       for (const f of batch) {
-        failed.push({ name: f.name, error });
+        failed.push({ name: uploadProjectFileFormName(f), error });
       }
       for (const f of remaining) {
-        failed.push({ name: f.name, error });
+        failed.push({ name: uploadProjectFileFormName(f), error });
       }
       break;
     }
