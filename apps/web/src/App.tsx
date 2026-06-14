@@ -15,6 +15,7 @@ import { MarketplaceView } from './components/MarketplaceView';
 import { PluginDetailView } from './components/PluginDetailView';
 import type { CreateInput, ImportClaudeDesignOutcome } from './components/NewProjectPanel';
 import { MemoryToast } from './components/MemoryToast';
+import { Toast } from './components/Toast';
 import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
 import { buildPetTaskCenter } from './components/pet/taskCenter';
 import { migrateCustomPetAtlas } from './components/pet/pets';
@@ -40,6 +41,7 @@ import {
   fetchDesignTemplates,
   fetchPromptTemplates,
   fetchSkills,
+  replaceProjectWorkingDir,
   uploadProjectFiles,
 } from './providers/registry';
 import {
@@ -245,6 +247,7 @@ export function App() {
   const [dsLoading, setDsLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [promptTemplatesLoading, setPromptTemplatesLoading] = useState(true);
+  const [workingDirError, setWorkingDirError] = useState<string | null>(null);
   // Goes true once the daemon-persisted config (agentId/designSystemId/etc.)
   // has merged into local state. Auto-selection effects below wait on this
   // so they don't race ahead of the daemon-stored choice and overwrite it
@@ -879,6 +882,7 @@ export function App() {
         autoSendFirstMessage?: boolean;
         requestId?: string;
         pendingFiles?: File[];
+        userWorkingDirToken?: string;
       },
     ): Promise<boolean> => {
       // Honor an explicit `null` design system — the create panel defaults
@@ -948,8 +952,27 @@ export function App() {
       const pendingFiles = Array.isArray(input.pendingFiles)
         ? input.pendingFiles.filter((file): file is File => file instanceof File)
         : [];
+      const userWorkingDir = input.metadata?.userWorkingDir;
+      let workingDirHandoffFailed = false;
+      let projectForList = result.project;
+      if (userWorkingDir) {
+        try {
+          const handoff = await replaceProjectWorkingDir(
+            result.project.id,
+            userWorkingDir,
+            input.userWorkingDirToken,
+          );
+          projectForList = handoff.project;
+        } catch (err) {
+          console.warn('Failed to set working directory for new project', userWorkingDir, err);
+          workingDirHandoffFailed = true;
+          setWorkingDirError(
+            `Couldn't apply the chosen folder "${userWorkingDir}". The project was created in the default location — re-pick the working directory from the project before uploading files or sending a message.`,
+          );
+        }
+      }
       let firstMessageAttachments: ChatAttachment[] = [];
-      if (pendingFiles.length > 0) {
+      if (!workingDirHandoffFailed && pendingFiles.length > 0) {
         const uploadResult = await uploadProjectFiles(result.project.id, pendingFiles);
         firstMessageAttachments = uploadResult.uploaded;
         if (uploadResult.failed.length > 0) {
@@ -975,6 +998,7 @@ export function App() {
       // pre-filling the composer. Scoped to sessionStorage so a page
       // reload after the run has started does not refire.
       if (
+        !workingDirHandoffFailed &&
         input.autoSendFirstMessage &&
         (derivedPendingPrompt !== undefined || firstMessageAttachments.length > 0)
       ) {
@@ -1000,10 +1024,10 @@ export function App() {
       }
       const project = result.appliedPluginSnapshotId
         ? {
-            ...result.project,
+            ...projectForList,
             appliedPluginSnapshotId: result.appliedPluginSnapshotId,
           }
-        : result.project;
+        : projectForList;
       flushSync(() => {
         setProjects((curr) => [
           project,
@@ -1590,6 +1614,13 @@ export function App() {
         />
       ) : null}
       <MemoryToast onOpenMemory={() => openSettings('memory')} />
+      {workingDirError ? (
+        <Toast
+          message={workingDirError}
+          role="alert"
+          onDismiss={() => setWorkingDirError(null)}
+        />
+      ) : null}
       {/* First-run privacy consent banner. It waits for daemon config
           hydration because privacyDecisionAt is daemon-owned and stripped
           from localStorage. It also yields while Settings is open so the

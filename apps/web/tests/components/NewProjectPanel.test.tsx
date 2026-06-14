@@ -4,12 +4,37 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { isOpenDesignHostAvailable, pickHostWorkingDir } from '@open-design/host';
 import {
   buildDesignSystemCreateSelection,
   defaultDesignSystemSelection,
   NewProjectPanel,
 } from '../../src/components/NewProjectPanel';
+import { openFolderDialog } from '../../src/providers/registry';
 import type { DesignSystemSummary, ProjectTemplate, SkillSummary } from '../../src/types';
+
+vi.mock('@open-design/host', async () => {
+  const actual = await vi.importActual<typeof import('@open-design/host')>('@open-design/host');
+  return {
+    ...actual,
+    isOpenDesignHostAvailable: vi.fn(),
+    pickHostWorkingDir: vi.fn(),
+  };
+});
+
+vi.mock('../../src/providers/registry', async () => {
+  const actual = await vi.importActual<typeof import('../../src/providers/registry')>(
+    '../../src/providers/registry',
+  );
+  return {
+    ...actual,
+    openFolderDialog: vi.fn(),
+  };
+});
+
+const mockedIsHostAvailable = vi.mocked(isOpenDesignHostAvailable);
+const mockedPickHostWorkingDir = vi.mocked(pickHostWorkingDir);
+const mockedOpenFolderDialog = vi.mocked(openFolderDialog);
 
 const skills: SkillSummary[] = [
   {
@@ -79,15 +104,20 @@ afterEach(() => {
 const originalResizeObserver = globalThis.ResizeObserver;
 const originalScrollIntoView = Element.prototype.scrollIntoView;
 
-class ResizeObserverMock {
-  observe() {}
-  disconnect() {}
-  unobserve() {}
+class ResizeObserverMock implements ResizeObserver {
+  disconnect(): void {}
+
+  observe(_target: Element, _options?: ResizeObserverOptions): void {}
+
+  unobserve(_target: Element): void {}
 }
 
 beforeEach(() => {
-  globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
+  globalThis.ResizeObserver = ResizeObserverMock;
   Element.prototype.scrollIntoView = vi.fn();
+  vi.clearAllMocks();
+  mockedIsHostAvailable.mockReturnValue(false);
+  mockedOpenFolderDialog.mockResolvedValue(null);
 });
 
 describe('NewProjectPanel design system defaults', () => {
@@ -669,6 +699,113 @@ describe('NewProjectPanel design system defaults', () => {
   });
 });
 
+describe('NewProjectPanel working directory picker', () => {
+  it('includes a browser-picked working directory in the create payload', async () => {
+    const onCreate = vi.fn();
+    mockedIsHostAvailable.mockReturnValue(false);
+    mockedOpenFolderDialog.mockResolvedValue('/Users/me/product-designs');
+
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId="clay"
+        templates={[]}
+        onDeleteTemplate={vi.fn()}
+        promptTemplates={[]}
+        onCreate={onCreate}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('new-project-name'), {
+      target: { value: 'Local storage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /choose folder/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /product-designs/i })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('create-project'));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          userWorkingDir: '/Users/me/product-designs',
+        }),
+      }),
+    );
+    expect(mockedPickHostWorkingDir).not.toHaveBeenCalled();
+  });
+
+  it('threads the desktop host working-dir token into the create payload', async () => {
+    const onCreate = vi.fn();
+    mockedIsHostAvailable.mockReturnValue(true);
+    mockedPickHostWorkingDir.mockResolvedValue({
+      ok: true,
+      baseDir: '/Users/me/host-designs',
+      token: 'host-token',
+    });
+
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId="clay"
+        templates={[]}
+        onDeleteTemplate={vi.fn()}
+        promptTemplates={[]}
+        onCreate={onCreate}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('new-project-name'), {
+      target: { value: 'Host storage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /choose folder/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /host-designs/i })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('create-project'));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userWorkingDirToken: 'host-token',
+        metadata: expect.objectContaining({
+          userWorkingDir: '/Users/me/host-designs',
+        }),
+      }),
+    );
+    expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
+  });
+
+  it('surfaces host picker failures without falling back to an untokened browser path', async () => {
+    mockedIsHostAvailable.mockReturnValue(true);
+    mockedPickHostWorkingDir.mockResolvedValue({
+      ok: false,
+      reason: 'missing desktop permission',
+    });
+    mockedOpenFolderDialog.mockResolvedValue('/Users/me/browser-fallback');
+
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId="clay"
+        templates={[]}
+        onDeleteTemplate={vi.fn()}
+        promptTemplates={[]}
+        onCreate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /choose folder/i }));
+
+    expect(await screen.findByText(/Couldn't open the folder picker/i)).toBeTruthy();
+    expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
+  });
+});
+
 describe('NewProjectPanel folder import feedback', () => {
   it('shows an error when Claude Design zip import resolves as failed', async () => {
     const onImportClaudeDesign = vi.fn().mockResolvedValue({
@@ -689,11 +826,13 @@ describe('NewProjectPanel folder import feedback', () => {
       />,
     );
 
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
+    const input = container.querySelector('input[type="file"]');
     const file = new File(['zip'], 'relume.zip', { type: 'application/zip' });
-    expect(input).toBeTruthy();
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Expected the Claude Design import input to render');
+    }
 
-    fireEvent.change(input!, { target: { files: [file] } });
+    fireEvent.change(input, { target: { files: [file] } });
 
     expect(onImportClaudeDesign).toHaveBeenCalledWith(file);
     expect(await screen.findByText('Import failed: unsupported zip contents')).toBeTruthy();
@@ -727,7 +866,7 @@ describe('NewProjectPanel folder import feedback', () => {
 
 describe('NewProjectPanel template deletion', () => {
   beforeEach(() => {
-    globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = ResizeObserverMock;
     Element.prototype.scrollIntoView = () => {};
   });
 
@@ -825,7 +964,10 @@ describe('NewProjectPanel template deletion', () => {
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(screen.getByRole('button', { name: 'Delete template' }));
 
-    const backdrop = dialog.parentElement!;
+    const backdrop = dialog.parentElement;
+    if (!backdrop) {
+      throw new Error('Expected the delete dialog backdrop to render');
+    }
     fireEvent.click(backdrop);
 
     expect(screen.queryByRole('alertdialog')).not.toBeNull();
