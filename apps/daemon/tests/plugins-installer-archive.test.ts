@@ -57,7 +57,7 @@ async function buildFixtureTarball(args: {
   const stream = tarCreate(
     { cwd: tmp, gzip: true },
     [args.rootPrefix],
-  ) as unknown as NodeJS.ReadableStream;
+  ) as AsyncIterable<Buffer | string>;
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk as Buffer));
   await rm(tmp, { recursive: true, force: true });
@@ -167,6 +167,43 @@ describe('archive installer', () => {
     expect(urlsSeen).not.toContain('https://codeload.github.com/nexu-io/open-design/tar.gz/garnet-hemisphere');
     const row = db.prepare(`SELECT source_kind, source FROM installed_plugins WHERE id = 'sample-plugin'`).get();
     expect(row).toEqual({ source_kind: 'github', source });
+  });
+
+  it('rejects GitHub contents subpaths that include symlink entries', async () => {
+    const urlsSeen: string[] = [];
+    const contentsUrl =
+      'https://api.github.com/repos/nexu-io/open-design/contents/plugins/community/unsafe-plugin?ref=main';
+    const fetcher: ArchiveFetcher = async (u) => {
+      urlsSeen.push(u);
+      if (u === contentsUrl) {
+        return makeResponse(JSON.stringify([
+          {
+            type: 'symlink',
+            name: 'linked-secret',
+            path: 'plugins/community/unsafe-plugin/linked-secret',
+            download_url: 'https://raw.example.test/plugins/community/unsafe-plugin/linked-secret',
+          },
+        ]));
+      }
+      return makeResponse('not found', 404, 'Not Found');
+    };
+
+    let success = false;
+    let error: string | undefined;
+    for await (const ev of installPlugin(db, {
+      source: 'github:nexu-io/open-design@main/plugins/community/unsafe-plugin',
+      roots: { userPluginsRoot: pluginsRoot },
+      fetcher,
+    })) {
+      if (ev.kind === 'success') success = true;
+      if (ev.kind === 'error') error = ev.message;
+    }
+
+    expect(success).toBe(false);
+    expect(error).toMatch(/symbolic link/i);
+    expect(urlsSeen).toEqual([contentsUrl]);
+    const row = db.prepare(`SELECT COUNT(*) AS count FROM installed_plugins`).get() as { count: number };
+    expect(row.count).toBe(0);
   });
 
   it.each([

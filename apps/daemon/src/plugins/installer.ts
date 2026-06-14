@@ -316,9 +316,10 @@ async function* installFromGithubContents(
         budget,
       );
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       yield {
         kind: 'error',
-        message: (err as Error).message,
+        message,
         warnings: [],
       };
       return;
@@ -367,6 +368,9 @@ async function copyGithubContentsPath(
       await fsp.mkdir(path.dirname(childDest), { recursive: true });
       await copyGithubFile(fetcher, entry.download_url, childDest, budget);
       continue;
+    }
+    if (entry.type === 'symlink') {
+      throw new Error(`GitHub entry ${entry.path ?? name} is a symbolic link — refusing to stage non-local pointers`);
     }
     throw new Error(`GitHub entry ${entry.path ?? name} has unsupported type ${entry.type ?? 'unknown'}`);
   }
@@ -475,9 +479,10 @@ async function* installFromArchiveUrl(
     try {
       computedIntegrity = await writeArchiveAndDigest(resp.body, archivePath, maxBytes);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       yield {
         kind: 'error',
-        message: `Archive download failed: ${(err as Error).message}`,
+        message: `Archive download failed: ${message}`,
         warnings: [],
       };
       return;
@@ -520,9 +525,10 @@ async function* installFromArchiveUrl(
         }) as NodeJS.WritableStream,
       );
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       yield {
         kind: 'error',
-        message: `Archive extraction failed: ${(err as Error).message}`,
+        message: `Archive extraction failed: ${message}`,
         warnings: [],
       };
       return;
@@ -631,7 +637,8 @@ async function measureTreeSize(root: string): Promise<number> {
   let total = 0;
   const queue: string[] = [root];
   while (queue.length > 0) {
-    const next = queue.pop()!;
+    const next = queue.pop();
+    if (!next) continue;
     const stat = await fsp.lstat(next);
     if (stat.isDirectory()) {
       const entries = await fsp.readdir(next);
@@ -671,7 +678,8 @@ export async function* installFromLocalFolder(
   try {
     stats = await fsp.stat(sourceFolder);
   } catch (err) {
-    yield { kind: 'error', message: `Source folder not found: ${sourceFolder} (${(err as Error).message})`, warnings };
+    const message = err instanceof Error ? err.message : String(err);
+    yield { kind: 'error', message: `Source folder not found: ${sourceFolder} (${message})`, warnings };
     return;
   }
   if (!stats.isDirectory()) {
@@ -719,7 +727,8 @@ export async function* installFromLocalFolder(
   try {
     await safeCopyTree(sourceFolder, destFolder, maxBytes);
   } catch (err) {
-    yield { kind: 'error', message: `Copy failed: ${(err as Error).message}`, warnings };
+    const message = err instanceof Error ? err.message : String(err);
+    yield { kind: 'error', message: `Copy failed: ${message}`, warnings };
     await fsp.rm(destFolder, { recursive: true, force: true }).catch(() => undefined);
     return;
   }
@@ -792,7 +801,8 @@ export async function uninstallPlugin(
     }
     removedFolder = folder;
   } catch (err) {
-    return { ok: removed, warning: `Folder ${folder} removal failed: ${(err as Error).message}` };
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: removed, warning: `Folder ${folder} removal failed: ${message}` };
   }
   // Plan §3.II1 — emit a 'plugin.uninstalled' event when the
   // registry row was actually removed. We skip the event when
@@ -813,7 +823,9 @@ async function safeCopyTree(src: string, dest: string, maxBytes: number): Promis
   let bytesCopied = 0;
   const queue: Array<{ src: string; dest: string }> = [{ src, dest }];
   while (queue.length > 0) {
-    const { src: from, dest: to } = queue.pop()!;
+    const next = queue.pop();
+    if (!next) continue;
+    const { src: from, dest: to } = next;
     const stat = await fsp.lstat(from);
     if (stat.isSymbolicLink()) {
       throw new Error(`Symbolic link rejected: ${from}`);
