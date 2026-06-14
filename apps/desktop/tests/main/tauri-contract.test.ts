@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -23,6 +23,8 @@ const tauriConfig = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.
     withGlobalTauri?: boolean;
   };
 };
+const pendingHtml = readFileSync(new URL("../../src-tauri/static/pending.html", import.meta.url), "utf8");
+const splashVideoUrl = new URL("../../src-tauri/static/splash.mp4", import.meta.url);
 
 describe("Tauri sidecar contract constants", () => {
   it("keeps app keys and message names aligned with sidecar-proto", () => {
@@ -99,5 +101,23 @@ describe("Tauri sidecar contract constants", () => {
       ]),
     );
     expect(tauriConfig.app?.withGlobalTauri).toBe(true);
+  });
+
+  it("shows the packaged startup splash video on a white background", () => {
+    expect(pendingHtml).toContain("background: #f2f4f5");
+    expect(pendingHtml).toContain("<video");
+    expect(pendingHtml).toContain('id="splash"');
+    expect(pendingHtml).toContain("autoplay");
+    expect(pendingHtml).toContain("muted");
+    expect(pendingHtml).toContain("playsinline");
+    expect(pendingHtml).toContain("disablepictureinpicture");
+    expect(pendingHtml).toContain('src="splash.mp4"');
+    expect(pendingHtml).toContain("loadedmetadata");
+    expect(pendingHtml).toContain("loadeddata");
+    expect(existsSync(splashVideoUrl)).toBe(true);
+
+    const splashVideo = readFileSync(splashVideoUrl);
+    expect(splashVideo.subarray(4, 8).toString("ascii")).toBe("ftyp");
+    expect(splashVideo.byteLength).toBeGreaterThan(100_000);
   });
 });
