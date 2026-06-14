@@ -51,7 +51,13 @@ describe('preview comment persistence', () => {
       .get() as { name?: string } | undefined;
 
     expect(tableColumnNames(previewColumns)).toEqual(
-      expect.arrayContaining(['selection_kind', 'member_count', 'pod_members_json']),
+      expect.arrayContaining([
+        'selection_kind',
+        'member_count',
+        'pod_members_json',
+        'slide_index',
+        'attachments_json',
+      ]),
     );
     expect(critiqueTable?.name).toBe('critique_runs');
   });
@@ -74,6 +80,31 @@ describe('preview comment persistence', () => {
     expect(second.note).toBe('Make it more specific');
     expect(second.text).toBe('New title');
     expect(listPreviewComments(db, 'project-1', 'conversation-1')).toHaveLength(1);
+  });
+
+  it('persists deck slide markers and image attachments on saved comments', () => {
+    const db = seededDb();
+    const attachments = [{ path: 'uploads/mark.png', name: 'mark.png' }];
+
+    const saved = upsertPreviewComment(db, 'project-1', 'conversation-1', {
+      target: target({
+        elementId: 'slide-cta',
+        selector: '[data-od-id="slide-cta"]',
+        slideIndex: 2,
+      }),
+      note: 'Make this CTA stronger',
+      attachments,
+    });
+
+    expect(saved).not.toBeNull();
+    if (!saved) throw new Error('comment upsert failed');
+    expect(saved.slideIndex).toBe(2);
+    expect(saved.attachments).toEqual(attachments);
+    expect(listPreviewComments(db, 'project-1', 'conversation-1')[0]).toMatchObject({
+      elementId: 'slide-cta',
+      slideIndex: 2,
+      attachments,
+    });
   });
 
   it('patches status and deletes comments', () => {

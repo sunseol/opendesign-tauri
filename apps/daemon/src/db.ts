@@ -19,12 +19,12 @@ type JsonObject = Record<string, unknown>;
 let dbInstance: SqliteDb | null = null;
 let dbFile: string | null = null;
 
-function row(value: unknown): DbRow | null {
+function dbRow(value: unknown): DbRow | null {
   return value && typeof value === 'object' ? value as DbRow : null;
 }
 
 function rows(value: unknown[]): DbRow[] {
-  return value.map((item) => row(item) ?? {});
+  return value.map((item) => dbRow(item) ?? {});
 }
 
 export function openDatabase(projectRoot: string, { dataDir }: { dataDir?: string } = {}): SqliteDb {
@@ -260,6 +260,12 @@ function migrate(db: SqliteDb): void {
   if (!previewCommentCols.some((c: DbRow) => c.name === 'pod_members_json')) {
     db.exec(`ALTER TABLE preview_comments ADD COLUMN pod_members_json TEXT`);
   }
+  if (!previewCommentCols.some((c: DbRow) => c.name === 'slide_index')) {
+    db.exec(`ALTER TABLE preview_comments ADD COLUMN slide_index INTEGER`);
+  }
+  if (!previewCommentCols.some((c: DbRow) => c.name === 'attachments_json')) {
+    db.exec(`ALTER TABLE preview_comments ADD COLUMN attachments_json TEXT`);
+  }
   const deploymentCols = db.prepare(`PRAGMA table_info(deployments)`).all() as DbRow[];
   if (!deploymentCols.some((c: DbRow) => c.name === 'status')) {
     db.exec(`ALTER TABLE deployments ADD COLUMN status TEXT NOT NULL DEFAULT 'ready'`);
@@ -471,10 +477,7 @@ export function upsertDeployment(db: SqliteDb, deployment: DbRow) {
 
 function normalizeDeployment(row: DbRow) {
   const providerMetadata = parseJsonOrUndef(row.providerMetadataJson);
-  const normalizedProviderMetadata =
-    providerMetadata && typeof providerMetadata === 'object' && !Array.isArray(providerMetadata)
-      ? providerMetadata
-      : undefined;
+  const normalizedProviderMetadata = dbRow(providerMetadata) ?? undefined;
   return {
     id: row.id,
     projectId: row.projectId,
@@ -1154,7 +1157,8 @@ export function listPreviewComments(db: SqliteDb, projectId: string, conversatio
               file_path AS filePath, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
-              pod_members_json AS podMembersJson,
+              pod_members_json AS podMembersJson, slide_index AS slideIndex,
+              attachments_json AS attachmentsJson,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
         WHERE project_id = ? AND conversation_id = ?
@@ -1177,6 +1181,8 @@ export function upsertPreviewComment(db: SqliteDb, projectId: string, conversati
   const position = normalizePosition(target.position);
   const selectionKind = target.selectionKind === 'pod' ? 'pod' : 'element';
   const podMembers = selectionKind === 'pod' ? normalizePodMembers(target.podMembers) : [];
+  const slideIndex = normalizeSlideIndex(target.slideIndex);
+  const attachments = normalizePreviewCommentAttachments(input.attachments);
   const memberCount = selectionKind === 'pod'
     ? (podMembers.length > 0
         ? podMembers.length
@@ -1198,8 +1204,8 @@ export function upsertPreviewComment(db: SqliteDb, projectId: string, conversati
     `INSERT INTO preview_comments
        (id, project_id, conversation_id, file_path, element_id, selector, label,
         text, position_json, html_hint, selection_kind, member_count, pod_members_json,
-        note, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        slide_index, attachments_json, note, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(project_id, conversation_id, file_path, element_id) DO UPDATE SET
        selector = excluded.selector,
        label = excluded.label,
@@ -1209,6 +1215,8 @@ export function upsertPreviewComment(db: SqliteDb, projectId: string, conversati
        selection_kind = excluded.selection_kind,
        member_count = excluded.member_count,
        pod_members_json = excluded.pod_members_json,
+       slide_index = excluded.slide_index,
+       attachments_json = excluded.attachments_json,
        note = excluded.note,
        status = 'open',
        updated_at = excluded.updated_at`,
@@ -1226,6 +1234,8 @@ export function upsertPreviewComment(db: SqliteDb, projectId: string, conversati
     selectionKind,
     selectionKind === 'pod' ? memberCount : null,
     selectionKind === 'pod' ? JSON.stringify(podMembers) : null,
+    slideIndex ?? null,
+    attachments.length > 0 ? JSON.stringify(attachments) : null,
     note,
     'open',
     createdAt,
@@ -1262,7 +1272,8 @@ function getPreviewComment(db: SqliteDb, projectId: string, conversationId: stri
               file_path AS filePath, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
-              pod_members_json AS podMembersJson,
+              pod_members_json AS podMembersJson, slide_index AS slideIndex,
+              attachments_json AS attachmentsJson,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
         WHERE id = ? AND project_id = ? AND conversation_id = ?`,
@@ -1274,6 +1285,9 @@ function getPreviewComment(db: SqliteDb, projectId: string, conversationId: stri
 function normalizePreviewComment(row: DbRow) {
   const podMembers = parseJsonOrUndef(row.podMembersJson);
   const normalizedPodMembers = Array.isArray(podMembers) ? podMembers : undefined;
+  const attachments = parseJsonOrUndef(row.attachmentsJson);
+  const normalizedAttachments = normalizePreviewCommentAttachments(attachments);
+  const slideIndex = normalizeSlideIndex(row.slideIndex);
   return {
     id: row.id,
     projectId: row.projectId,
@@ -1293,6 +1307,8 @@ function normalizePreviewComment(row: DbRow) {
           ? row.memberCount
           : undefined,
     podMembers: normalizedPodMembers,
+    slideIndex,
+    attachments: normalizedAttachments.length > 0 ? normalizedAttachments : undefined,
     note: row.note,
     status: row.status,
     createdAt: row.createdAt,
@@ -1329,6 +1345,29 @@ function normalizePodMembers(input: unknown) {
       };
     })
     .filter(Boolean);
+}
+
+function normalizeSlideIndex(input: unknown): number | undefined {
+  if (typeof input !== 'number' || !Number.isFinite(input) || input < 0) return undefined;
+  return Math.floor(input);
+}
+
+function normalizePreviewCommentAttachments(input: unknown) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((attachment) => {
+      if (!attachment || typeof attachment !== 'object') return null;
+      const candidate = dbRow(attachment);
+      if (!candidate) return null;
+      const pathValue = typeof candidate.path === 'string' ? candidate.path.trim() : '';
+      if (!pathValue) return null;
+      const nameValue = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+      return {
+        path: pathValue.slice(0, 260),
+        name: (nameValue || path.basename(pathValue)).slice(0, 120),
+      };
+    })
+    .filter((attachment): attachment is { path: string; name: string } => attachment !== null);
 }
 
 function compactWhitespace(value: string): string {
@@ -1375,7 +1414,7 @@ function normalizeMessage(row: DbRow) {
   };
 }
 
-function parseJsonOrUndef(s: unknown): any {
+function parseJsonOrUndef(s: unknown): unknown | undefined {
   if (typeof s !== 'string' || !s) return undefined;
   try {
     return JSON.parse(s);
