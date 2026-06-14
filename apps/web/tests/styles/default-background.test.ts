@@ -24,4 +24,18 @@ describe('default app background colors', () => {
     expect(dark).toContain('--bg: #1a1917;');
     expect(dark).toContain('--bg-app: #1a1917;');
   });
+
+  it('switches to a CJK comfort stack for Chinese, Japanese, and Korean locales', () => {
+    expect(indexCss).toContain(':lang(zh), :lang(zh-CN), :lang(zh-TW), :lang(ja), :lang(ko)');
+    expect(indexCss).toContain('"PingFang SC"');
+    expect(indexCss).toContain('"Noto Sans SC"');
+    expect(indexCss).toContain('"Source Han Sans SC"');
+  });
+
+  it('switches to Arabic-capable fonts for RTL locales', () => {
+    const rtl = cssBlock('[dir="rtl"]');
+
+    expect(rtl).toContain('"Cairo"');
+    expect(rtl).toContain('"Noto Sans Arabic"');
+  });
 });
