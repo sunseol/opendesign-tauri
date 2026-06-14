@@ -15,7 +15,10 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::Sha256;
-use tauri::{Manager, WebviewWindow};
+use tauri::{
+    menu::{MenuBuilder, SubmenuBuilder},
+    Manager, WebviewWindow,
+};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     sync::oneshot,
@@ -61,6 +64,16 @@ const IMPORT_TOKEN_FIELD_SEP: &str = "~";
 const IMPORT_TOKEN_TTL_SECONDS: i64 = 60;
 const TAURI_OPEN_PATH_DRY_RUN_ENV: &str = "OD_TAURI_OPEN_PATH_DRY_RUN";
 const TAURI_PICK_FOLDER_PATH_ENV: &str = "OD_TAURI_PICK_FOLDER_PATH";
+const MENU_APP_SHOW_ID: &str = "app-show";
+const MENU_APP_QUIT_ID: &str = "app-quit";
+const MENU_HELP_DOCUMENTATION_ID: &str = "help-documentation";
+const MENU_HELP_CONTACT_ID: &str = "help-contact";
+const MENU_HELP_REPORT_ISSUE_ID: &str = "help-report-issue";
+const MENU_HELP_DISCORD_ID: &str = "help-discord";
+const HELP_DOCUMENTATION_URL: &str = "https://github.com/sunseol/opendesign-tauri#readme";
+const HELP_CONTACT_URL: &str = "https://x.com/nexudotio";
+const HELP_REPORT_ISSUE_URL: &str = "https://github.com/sunseol/opendesign-tauri/issues/new";
+const HELP_DISCORD_URL: &str = "https://discord.gg/mHAjSMV6gz";
 const WEB_DISCOVERY_PENDING_MS: u64 = 120;
 const WEB_DISCOVERY_RUNNING_MS: u64 = 2_000;
 const DESKTOP_AUTH_RETRY_DELAYS_MS: [u64; 5] = [120, 240, 480, 960, 1_500];
@@ -464,6 +477,62 @@ fn stop_packaged_sidecars(state: &AppState) {
     if let Some(mut child) = child {
         terminate_child_process(&mut child);
     }
+}
+
+fn show_main_window(app_handle: &tauri::AppHandle) {
+    let Some(window) = app_handle.get_webview_window("main") else {
+        return;
+    };
+    if let Err(error) = window.show() {
+        eprintln!("[open-design tauri] menu show failed: {error}");
+    }
+    if let Err(error) = window.set_focus() {
+        eprintln!("[open-design tauri] menu focus failed: {error}");
+    }
+}
+
+fn quit_from_menu(app_handle: &tauri::AppHandle) {
+    let state = app_handle.state::<AppState>();
+    stop_packaged_sidecars(&state);
+    app_handle.exit(0);
+}
+
+fn open_menu_url(label: &str, url: &str) {
+    if let Err(error) = open::that(url) {
+        eprintln!("[open-design tauri] Help menu item {label} failed to open {url}: {error}");
+    }
+}
+
+fn install_desktop_menu(app: &tauri::App) -> Result<(), String> {
+    let app_menu = SubmenuBuilder::new(app, "Open Design")
+        .text(MENU_APP_SHOW_ID, "Show Open Design")
+        .separator()
+        .text(MENU_APP_QUIT_ID, "Quit Open Design")
+        .build()
+        .map_err(|error| error.to_string())?;
+    let help_menu = SubmenuBuilder::new(app, "Help")
+        .text(MENU_HELP_DOCUMENTATION_ID, "Documentation")
+        .separator()
+        .text(MENU_HELP_CONTACT_ID, "Contact Us")
+        .text(MENU_HELP_REPORT_ISSUE_ID, "Report Issue")
+        .text(MENU_HELP_DISCORD_ID, "Join Discord")
+        .build()
+        .map_err(|error| error.to_string())?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&app_menu, &help_menu])
+        .build()
+        .map_err(|error| error.to_string())?;
+    app.set_menu(menu).map_err(|error| error.to_string())?;
+    app.on_menu_event(|app_handle, event| match event.id().0.as_str() {
+        MENU_APP_SHOW_ID => show_main_window(app_handle),
+        MENU_APP_QUIT_ID => quit_from_menu(app_handle),
+        MENU_HELP_DOCUMENTATION_ID => open_menu_url("Documentation", HELP_DOCUMENTATION_URL),
+        MENU_HELP_CONTACT_ID => open_menu_url("Contact Us", HELP_CONTACT_URL),
+        MENU_HELP_REPORT_ISSUE_ID => open_menu_url("Report Issue", HELP_REPORT_ISSUE_URL),
+        MENU_HELP_DISCORD_ID => open_menu_url("Join Discord", HELP_DISCORD_URL),
+        _ => {}
+    });
+    Ok(())
 }
 
 fn is_http_url(url: &str) -> bool {
@@ -1542,6 +1611,7 @@ fn main() {
             let window = app
                 .get_webview_window("main")
                 .ok_or_else(|| "missing main Tauri window".to_string())?;
+            install_desktop_menu(app)?;
             write_packaged_desktop_identity_marker(app, &state)?;
             if let Some(child) = start_packaged_sidecars(app, &state)? {
                 *state

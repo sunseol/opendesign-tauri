@@ -66,6 +66,21 @@ describe("Tauri sidecar contract constants", () => {
     expect(rustSource).toContain("open_validated_directory(&resolved)");
   });
 
+  it("installs native desktop Help menu links", () => {
+    expect(rustSource).toContain("MenuBuilder");
+    expect(rustSource).toContain("SubmenuBuilder");
+    expect(rustSource).toContain('SubmenuBuilder::new(app, "Help")');
+    expect(rustSource).toContain('"Documentation"');
+    expect(rustSource).toContain('"Contact Us"');
+    expect(rustSource).toContain('"Report Issue"');
+    expect(rustSource).toContain('"Join Discord"');
+    expect(rustSource).toContain('"https://github.com/sunseol/opendesign-tauri#readme"');
+    expect(rustSource).toContain('"https://github.com/sunseol/opendesign-tauri/issues/new"');
+    expect(rustSource).toContain('"https://x.com/nexudotio"');
+    expect(rustSource).toContain('"https://discord.gg/mHAjSMV6gz"');
+    expect(rustSource).toContain("app.on_menu_event");
+  });
+
   it("keeps JSON IPC response envelopes aligned with sidecar runtime framing", () => {
     expect(rustSource).toContain('json!({ "ok": true, "result": result })');
     expect(rustSource).toContain('json!({ "ok": false, "error": { "message": message.into() } })');
