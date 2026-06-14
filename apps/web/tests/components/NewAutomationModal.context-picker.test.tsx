@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ConnectorDetail, InstalledPluginRecord } from '@open-design/contracts';
+import type { ConnectorDetail, InstalledPluginRecord, Routine } from '@open-design/contracts';
 
 import { NewAutomationModal } from '../../src/components/NewAutomationModal';
 import type { SkillSummary } from '../../src/types';
@@ -159,5 +159,43 @@ describe('NewAutomationModal context picker', () => {
 
     const fixedRows = screen.getAllByRole('button', { name: /New project each run/i });
     expect(fixedRows.at(-1)?.getAttribute('title')).toBeNull();
+  });
+
+  it('renders schedule summary as structured pill segments', () => {
+    vi.mocked(listPlugins).mockResolvedValue([]);
+    vi.mocked(fetchMcpServers).mockResolvedValue({ servers: [], templates: [] });
+    const routine: Routine = {
+      id: 'routine-1',
+      name: 'Daily digest',
+      prompt: 'Summarize project work.',
+      schedule: { kind: 'daily', time: '09:00', timezone: 'UTC' },
+      target: { mode: 'create_each_run' },
+      skillId: null,
+      agentId: null,
+      enabled: true,
+      nextRunAt: null,
+      lastRun: null,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    render(
+      <NewAutomationModal
+        open
+        initial={{ routine }}
+        templates={[]}
+        projects={[]}
+        skills={[]}
+        connectors={[]}
+        onClose={() => undefined}
+        onSaved={() => undefined}
+      />,
+    );
+
+    const scheduleButton = screen.getByRole('button', { name: 'Daily at 9:00 AM · UTC' });
+    expect(scheduleButton.querySelector('.automation-pill__segments')).toBeTruthy();
+    expect(scheduleButton.querySelector('.automation-pill__freq')?.textContent).toBe('Daily');
+    expect(scheduleButton.querySelector('.automation-pill__time')?.textContent).toBe('9:00 AM');
+    expect(scheduleButton.querySelector('.automation-pill__tz')?.textContent).toBe('UTC');
   });
 });
