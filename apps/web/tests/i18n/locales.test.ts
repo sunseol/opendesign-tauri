@@ -59,7 +59,7 @@ const ZH_CN_ALLOWED_ENGLISH_KEYS: ReadonlySet<keyof Dict> = new Set([
   'useEverywhere.section.cli.tab',
   'useEverywhere.section.http.tab',
 ]);
-const ZH_TW_REQUIRED_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
+const HIGH_VISIBILITY_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'agentPicker.byok',
   'chat.amrError.authMessage',
   'chat.amrError.authorizeCta',
@@ -292,8 +292,16 @@ describe('i18n locales', () => {
   });
 
   it('keeps zh-TW AMR, settings, plugin, and chat copy translated instead of falling back to English', () => {
-    for (const key of ZH_TW_REQUIRED_TRANSLATED_KEYS) {
+    for (const key of HIGH_VISIBILITY_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French AMR, settings, plugin, and chat copy translated instead of falling back to English', async () => {
+    const { fr } = await import('../../src/i18n/locales/fr');
+
+    for (const key of HIGH_VISIBILITY_FALLBACK_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
 });
