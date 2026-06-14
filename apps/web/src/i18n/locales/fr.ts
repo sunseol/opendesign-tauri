@@ -588,6 +588,138 @@ export const fr: Dict = {
   'mcpClient.daemonError':
     'Impossible de joindre le daemon local. Vérifiez qu’Open Design est lancé, puis rouvrez ce panneau.',
   'mcpClient.saveFailed': 'Échec de l’enregistrement. Vérifiez que le daemon est lancé, puis réessayez.',
+  'useEverywhere.modalAria': 'Utiliser Open Design partout',
+  'useEverywhere.modalTitle': 'Utiliser Open Design partout',
+  'useEverywhere.modalSubtitle':
+    'Ajoutez Open Design à n’importe quel IDE, agent ou script — CLI, HTTP, MCP et Compétences. Utilisez « Copier le guide pour un agent » puis collez-le dans Claude Code, Codex, Cursor, openclaw ou hermes pour tout configurer.',
+  'useEverywhere.closeAria': 'Fermer Utiliser partout',
+  'useEverywhere.closeTitle': 'Fermer (Esc)',
+  'useEverywhere.tabsAria': 'Surfaces d’intégration',
+  'useEverywhere.footStrong': 'Passage de relais en un clic.',
+  'useEverywhere.footBody':
+    'Copie un guide Markdown structuré que votre agent peut appliquer immédiatement — installer, vérifier et utiliser.',
+  'useEverywhere.configureMcp': 'Configurer le serveur MCP',
+  'useEverywhere.copyGuide': 'Copier le guide pour un agent',
+  'useEverywhere.copy': 'Copier',
+  'useEverywhere.copied': 'Copié',
+  'useEverywhere.copyFailed': 'Échec de la copie',
+  'useEverywhere.copySnippetAria': 'Copier l’extrait : {label}',
+  'useEverywhere.section.overview.tab': 'Vue d’ensemble',
+  'useEverywhere.section.overview.heading':
+    'Open Design fonctionne partout où votre agent travaille',
+  'useEverywhere.section.overview.intro':
+    'Open Design est plus qu’une fenêtre : c’est un daemon local privilégié (`od`) plus un registre de Compétences, de Systèmes de design et d’Atoms. Une fois lancé sur votre machine, tout agent de code (Claude Code, Codex, Cursor, OpenCode/openclaw, Hermes ou votre propre script) peut piloter des générations, inspecter des projets et produire des artefacts de design via quatre surfaces interchangeables.',
+  'useEverywhere.section.overview.bullet1':
+    'CLI — `od <command>` pour les scripts headless, la CI et l’automatisation shell.',
+  'useEverywhere.section.overview.bullet2':
+    'Serveur MCP — connecte Open Design comme serveur Model Context Protocol afin que tout agent compatible MCP puisse lister les compétences, exécuter des scénarios et lire des artefacts.',
+  'useEverywhere.section.overview.bullet3':
+    'API HTTP — endpoints REST + SSE `http://127.0.0.1:7456/api/*` ; la même surface que celle utilisée par l’UI web.',
+  'useEverywhere.section.overview.bullet4':
+    'Compétences — packs `SKILL.md` prêts à déposer (compatibles Claude) que tout agent déjà présent dans votre PATH peut invoquer sans Open Design.',
+  'useEverywhere.section.overview.bullet5':
+    'Artefacts standard — générez de vrais projets HTML à partir des Compétences, des plugins par défaut intégrés et des exemples de plugins communautaires avant le démarrage du daemon.',
+  'useEverywhere.section.overview.snippet1': 'Démarrer le daemon (et l’UI web) localement',
+  'useEverywhere.section.overview.snippet2': 'Confirmer qu’il est joignable',
+  'useEverywhere.section.overview.snippet3':
+    'Importer les artefacts standard avant le démarrage',
+  'useEverywhere.section.overview.footer':
+    'Par défaut, le daemon écrit dans `./.od/` (local au projet). Définissez `OD_DATA_DIR=~/.open-design` pour partager les données entre projets.',
+  'useEverywhere.section.cli.tab': 'CLI · commande od',
+  'useEverywhere.section.cli.heading': 'Piloter Open Design depuis n’importe quel shell',
+  'useEverywhere.section.cli.intro':
+    'Le binaire `od` est fourni avec le daemon et c’est le même binaire qu’utilisent Claude Code / Codex lorsqu’ils lancent une génération. La plupart des sous-commandes sont des clients légers qui POSTent vers le daemon local ; elles fonctionnent donc de la même façon que vous l’ayez lancé via `pnpm tools-dev` ou comme application empaquetée.',
+  'useEverywhere.section.cli.bullet1':
+    '`od` (sans argument) — démarre le daemon et ouvre l’UI web.',
+  'useEverywhere.section.cli.bullet2':
+    '`od media generate ...` — produit des octets image / vidéo / audio via le protocole média unifié.',
+  'useEverywhere.section.cli.bullet3':
+    '`od run ...` — lance une exécution de projet à partir d’un prompt + compétence.',
+  'useEverywhere.section.cli.bullet4':
+    '`od plugin install <source>` / `od plugin apply <id>` — installe et applique des plugins communautaires.',
+  'useEverywhere.section.cli.bullet5':
+    '`od skills list` / `od design-systems list` — inspecte ce qui est disponible localement.',
+  'useEverywhere.section.cli.bullet6':
+    '`od status` / `od doctor` — vérifie la santé du daemon et détecte les CLI d’agents dans votre PATH.',
+  'useEverywhere.section.cli.snippet1':
+    'Générer une image (délégué au fournisseur média configuré)',
+  'useEverywhere.section.cli.snippet2':
+    'Exécuter un plugin de scénario en mode headless et diffuser les événements en lignes JSON',
+  'useEverywhere.section.cli.snippet3':
+    'Inventorier les compétences et systèmes de design disponibles localement',
+  'useEverywhere.section.cli.snippet4': 'Vérifier les artefacts seedés via la CLI',
+  'useEverywhere.section.cli.snippet5':
+    'Vérifier l’environnement et les agents détectés (Claude, Codex, Cursor, …)',
+  'useEverywhere.section.cli.footer':
+    'Toutes les sous-commandes acceptent `--daemon-url http://127.0.0.1:<port>` pour cibler un daemon précis déjà en cours d’exécution — pratique pour lancer une deuxième instance isolée dans les tests.',
+  'useEverywhere.section.mcp.tab': 'Serveur MCP',
+  'useEverywhere.section.mcp.heading':
+    'Exposer Open Design comme serveur MCP à tout agent de code',
+  'useEverywhere.section.mcp.intro':
+    'Open Design fournit un serveur Model Context Protocol (`od mcp`) qui permet à tout client compatible MCP — Cursor, Claude Code, Antigravity, VS Code Copilot Chat, openclaw, hermes — de découvrir les outils Open Design (lister les compétences, rendre des aperçus, générer des médias, exécuter des plugins) sans appels shell manuels. Le daemon publie un extrait d’installation prêt à coller via `GET /api/mcp/install-info` pour chaque client majeur.',
+  'useEverywhere.section.mcp.bullet1':
+    'Transport stdio — aucun port supplémentaire ; le client lance directement `od mcp`.',
+  'useEverywhere.section.mcp.bullet2':
+    'Découvre automatiquement l’URL du daemon actif via le socket de statut IPC local lorsqu’il est lancé comme sidecar.',
+  'useEverywhere.section.mcp.bullet3':
+    'Se replie sur `--daemon-url http://127.0.0.1:<port>` pour les installations simples afin que le processus MCP trouve toujours un daemon actif.',
+  'useEverywhere.section.mcp.bullet4':
+    'Fixe `OD_DATA_DIR` afin que le processus MCP lancé écrive au même endroit que le daemon (évite EPERM dans les bundles d’app macOS empaquetés).',
+  'useEverywhere.section.mcp.snippet1':
+    'Configuration générique de client MCP (fonctionne dans Cursor, Claude Code, Codex, …)',
+  'useEverywhere.section.mcp.snippet2':
+    'Ou : demander au daemon l’extrait adapté à votre installation',
+  'useEverywhere.section.mcp.snippet3':
+    'Variante MCP pour live-artifacts (lire et rafraîchir les tableaux de bord)',
+  'useEverywhere.section.mcp.footer':
+    'Dans l’application Open Design, ouvrez Paramètres → Intégrations pour copier une commande d’installation propre au client (Cursor, Claude Code, Antigravity, VS Code) au lieu de modifier JSON à la main.',
+  'useEverywhere.section.http.tab': 'API HTTP',
+  'useEverywhere.section.http.heading': 'La même surface REST + SSE que l’UI web',
+  'useEverywhere.section.http.intro':
+    'Le daemon local sert une API HTTP sur `http://127.0.0.1:7456` (port configurable). Chaque endpoint appelé par l’UI web peut aussi être utilisé par vos scripts. Les endpoints de streaming (tours de chat, exécutions de projet) émettent des Server-Sent Events avec les types de contrat dans `@open-design/contracts`.',
+  'useEverywhere.section.http.bullet1': '`GET /api/health` — disponibilité du daemon.',
+  'useEverywhere.section.http.bullet2':
+    '`GET /api/skills` et `GET /api/design-systems` — registres disponibles.',
+  'useEverywhere.section.http.bullet3':
+    '`GET /api/projects` et `POST /api/projects` — lister et créer des projets (POST renvoie le projet + la première conversation).',
+  'useEverywhere.section.http.bullet4':
+    '`GET /api/projects/:id/chat` — flux SSE des événements d’agent pour une conversation.',
+  'useEverywhere.section.http.bullet5':
+    '`POST /api/plugins/:id/apply` — lier un plugin installé et obtenir sa requête d’exemple rendue + ses entrées.',
+  'useEverywhere.section.http.bullet6':
+    '`GET /api/agents` — CLI d’agents de code détectées dans votre PATH.',
+  'useEverywhere.section.http.snippet1':
+    'Lister les compétences installées (l’agent les utilisera comme modèles)',
+  'useEverywhere.section.http.snippet2':
+    'Créer un projet à partir d’un prompt (flux complet côté serveur)',
+  'useEverywhere.section.http.snippet3':
+    'Diffuser un tour de chat (SSE — chaque ligne est compatible JSON Lines)',
+  'useEverywhere.section.http.footer':
+    'Les types TypeScript purs de chaque requête/réponse vivent dans `@open-design/contracts` — importez-les dans votre script pour bénéficier de l’autocomplétion sans brancher de générateur.',
+  'useEverywhere.section.skills.tab': 'Compétences et headless',
+  'useEverywhere.section.skills.heading':
+    'Compétences prêtes à déposer pour tout agent, même sans Open Design lancé',
+  'useEverywhere.section.skills.intro':
+    'Une Compétence est un dossier avec un `SKILL.md` compatible Claude (front matter YAML + corps). Open Design étend ce format avec l’espace de noms `od:` (`mode`, `preview`, `design_system`, `inputs`, …) afin que le même artefact fonctionne à la fois dans Open Design et avec un agent standard comme Claude Code, Codex, openclaw ou hermes. La découverte suit une chaîne de précédence pour permettre aux projets de remplacer leurs propres compétences.',
+  'useEverywhere.section.skills.bullet1':
+    'Découverte : `./.claude/skills/` → `./skills/` → `~/.claude/skills/` (le projet gagne).',
+  'useEverywhere.section.skills.bullet2':
+    'Créez un symlink vers une compétence depuis plusieurs projets pour la partager sans copie.',
+  'useEverywhere.section.skills.bullet3':
+    'Chaque compétence peut déclarer connecteurs, atoms, exigences de système de design et un exemple de sortie `preview` pour la galerie.',
+  'useEverywhere.section.skills.bullet4':
+    'Headless : un agent ayant `od` dans son PATH peut appeler `od skills list` puis exécuter n’importe quelle compétence ; le daemon est optionnel pour les flux en lecture seule.',
+  'useEverywhere.section.skills.bullet5':
+    '`pnpm seed:test-projects` exerce la même forme d’artefact avec les exemples de plugins par défaut et communautaires, puis stocke les projets `index.html` obtenus comme données de test réutilisables.',
+  'useEverywhere.section.skills.snippet1':
+    'SKILL.md minimal (front matter compatible Claude + extensions Open Design)',
+  'useEverywhere.section.skills.snippet2':
+    'Créer un symlink d’une compétence partagée dans un projet (style cc-switch)',
+  'useEverywhere.section.skills.snippet3':
+    'Headless : lister les compétences actuellement visibles par le daemon',
+  'useEverywhere.section.skills.snippet4': 'Bundle de fixtures d’artefacts headless',
+  'useEverywhere.section.skills.footer':
+    'Spécification : `docs/skills-protocol.md` et `docs/agent-adapters.md` couvrent toute la surface d’adaptation (Claude Code, Codex, Cursor, agents compatibles MCP, fallback API BYOK) et les stratégies d’injection de compétences propres à chaque adaptateur.',
   'designSystemPicker.select': 'Choisir un design system',
   'designSystemPicker.loading': 'Chargement des design systems…',
   'designSystemPicker.searchPlaceholder': 'Rechercher des design systems (titre / catégorie / résumé)',

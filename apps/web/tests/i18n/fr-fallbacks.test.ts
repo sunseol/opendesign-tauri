@@ -14,6 +14,10 @@ const FR_INTEGRATIONS_SURFACE_KEYS: ReadonlyArray<keyof Dict> = [
   'integrations.tabHint.useEverywhere',
 ];
 
+const FR_USE_EVERYWHERE_KEYS: ReadonlyArray<keyof Dict> = Object.keys(en).filter(
+  (key): key is keyof Dict => key.startsWith('useEverywhere.'),
+);
+
 const FR_MANUAL_EDIT_ACTION_KEYS: ReadonlyArray<keyof Dict> = [
   'manualEdit.deleteElement',
   'manualEdit.deleteElementConfirm',
@@ -263,6 +267,15 @@ describe('fr fallback parity', () => {
 
   it('keeps French integration surface hints translated instead of falling back to English', () => {
     for (const key of FR_INTEGRATIONS_SURFACE_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French use-everywhere guide copy translated instead of falling back to English', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_USE_EVERYWHERE_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
