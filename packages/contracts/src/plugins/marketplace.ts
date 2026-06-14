@@ -12,6 +12,12 @@ const MarketplaceEntryDistSchema = z.object({
   manifestDigest: z.string().optional(),
 }).passthrough();
 
+const MARKETPLACE_NAME_SEGMENT_RE = /^[a-z0-9][a-z0-9._-]*$/;
+const MarketplacePluginNameSchema = z.string().min(1).refine(
+  (name) => name.split('/').every((segment) => MARKETPLACE_NAME_SEGMENT_RE.test(segment)),
+  { message: 'name must use safe slash-separated lowercase path segments' },
+);
+
 const MarketplacePluginVersionSchema = z.object({
   version:        z.string().min(1),
   source:         z.string().min(1).optional(),
@@ -32,7 +38,7 @@ export type MarketplacePluginVersion = z.infer<typeof MarketplacePluginVersionSc
 // format is intentionally permissive — community catalogs can carry extra
 // fields (e.g. clawhub category tags) without breaking OD installs.
 export const MarketplacePluginEntrySchema = z.object({
-  name:        z.string().min(1),
+  name:        MarketplacePluginNameSchema,
   source:      z.string().min(1),
   version:     z.string().min(1),
   ref:         z.string().optional(),

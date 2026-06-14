@@ -104,6 +104,24 @@ describe('plugin manifest localized text', () => {
     expect(resolveLocalizedText(entry.description_i18n, 'zh-CN')).toBe('中文描述。');
   });
 
+  it('rejects unsafe marketplace entry names while allowing namespace segments', () => {
+    expect(MarketplacePluginEntrySchema.parse({
+      name: 'open-design/example-sample',
+      source: 'github:open-design/plugins/examples/sample',
+      version: '1.0.0',
+    }).name).toBe('open-design/example-sample');
+
+    for (const name of ['../escape', 'vendor/../escape', 'vendor//plugin', '.hidden/plugin', 'vendor\\plugin']) {
+      expect(() =>
+        MarketplacePluginEntrySchema.parse({
+          name,
+          source: 'github:open-design/plugins/examples/sample',
+          version: '1.0.0',
+        }),
+      ).toThrow();
+    }
+  });
+
   it('falls back from exact locale to base language, English, then first value', () => {
     expect(resolveLocalizedText({ en: 'English', zh: '中文' }, 'zh-CN')).toBe('中文');
     expect(resolveLocalizedText({ 'zh-CN': '中文' }, 'fr')).toBe('中文');
