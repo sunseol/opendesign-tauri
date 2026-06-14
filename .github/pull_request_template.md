@@ -30,6 +30,7 @@ Fixes #
 <!-- Check every box that applies. Reviewers use this to scope the review. -->
 
 - [ ] **UI** — new page / dialog / panel / menu item / setting / empty state in `apps/web` or `apps/desktop` (including Tauri desktop menu bar)
+- [ ] **Tauri shell / packaging** — desktop host, sidecar startup, updater, installer, packaged runtime paths, platform packaging, or `tools-pack`
 - [ ] **Keyboard shortcut** — new or changed
 - [ ] **CLI / env var** — new `od` subcommand or flag, new `tools-dev` / `tools-pack` / `tools-pr` flag, or new `OD_*` env var
 - [ ] **API / contract** — new `/api/*` endpoint, new SSE event, or changed shape in `packages/contracts`
@@ -65,6 +66,13 @@ Fixes #
 
 <!-- What you actually ran. Default minimum: `pnpm guard` + `pnpm typecheck`,
      plus the package-scoped tests/build for the files you changed
-     (e.g. `pnpm --filter @open-design/web test`). -->
+     (e.g. `pnpm --filter @open-design/web test`).
+
+     If you checked "Tauri shell / packaging" or touched packaged/runtime
+     paths, include Tauri runtime or packaged-app evidence such as:
+       - `pnpm tools-dev inspect desktop status --json`
+       - `pnpm tools-dev inspect desktop screenshot --path /tmp/open-design.png`
+       - the relevant `pnpm tools-pack <platform> ...` smoke command, or a
+         platform note when local hardware/OS support is unavailable. -->
 
 -

@@ -73,12 +73,38 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: runtime_distribution
+    attributes:
+      label: Runtime / distribution
+      description: Where did you see the bug?
+      options:
+        - Local web via pnpm tools-dev
+        - Local Tauri desktop via pnpm tools-dev
+        - Packaged Tauri desktop app
+        - od CLI / daemon only
+        - CI / release workflow
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: logs
     attributes:
       label: Logs (optional)
       description: Paste any error output or console logs. For daemon logs, run `pnpm tools-dev logs --json`.
       render: shell
+
+  - type: textarea
+    id: tauri_evidence
+    attributes:
+      label: Tauri or packaging evidence (optional)
+      description: If this affects the desktop shell, packaged app, updater, sidecars, installer, or platform-specific behavior, include tools-dev/tools-pack output, screenshots, and relevant logs.
+      placeholder: |
+        Runtime / distribution:
+        Command or app version:
+        Relevant tools-dev/tools-pack output:
+        Screenshot or log excerpt:
 
   - type: textarea
     id: screenshots

@@ -48,6 +48,20 @@ test("governance entrypoints identify the Tauri fork", async () => {
   assert.match(tutorialTemplate, /Open Design Tauri/);
 });
 
+test("governance templates request Tauri runtime and packaging evidence", async () => {
+  const pullRequestTemplate = await readText(".github/pull_request_template.md");
+  const bugTemplate = await readText(".github/ISSUE_TEMPLATE/bug-report.yml");
+  const featureTemplate = await readText(".github/ISSUE_TEMPLATE/feature-request.yml");
+
+  assert.match(pullRequestTemplate, /Tauri shell \/ packaging/);
+  assert.match(pullRequestTemplate, /Tauri runtime or packaged-app evidence/);
+  assert.match(pullRequestTemplate, /pnpm tools-dev inspect desktop status/);
+  assert.match(bugTemplate, /Runtime \/ distribution/);
+  assert.match(bugTemplate, /Packaged Tauri desktop app/);
+  assert.match(bugTemplate, /Tauri or packaging evidence/);
+  assert.match(featureTemplate, /Tauri desktop or packaged-app behavior/);
+});
+
 test("governance entrypoints avoid upstream contributor-action links", async () => {
   const issueTemplatePaths = await collectIssueTemplatePaths();
   const scannedPaths = [...fixedGovernancePaths, ...issueTemplatePaths];

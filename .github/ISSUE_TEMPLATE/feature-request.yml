@@ -45,6 +45,18 @@ body:
     validations:
       required: false
 
+  - type: textarea
+    id: tauri_runtime
+    attributes:
+      label: Tauri desktop or packaged-app behavior
+      description: If this feature changes desktop shell behavior, packaged runtime, sidecars, updater, installers, or platform-specific flows, describe the expected Tauri behavior and any packaging constraints.
+      placeholder: |
+        Tauri/packaged impact:
+        Platforms affected:
+        Expected tools-dev/tools-pack validation:
+    validations:
+      required: false
+
   - type: dropdown
     id: contribution
     attributes:
