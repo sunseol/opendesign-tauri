@@ -23,6 +23,7 @@ import type { RouteDeps } from './server-context.js';
 import { readAnalyticsContext } from './analytics.js';
 import { listSkills } from './skills.js';
 import { auditDesignSystemPackage } from './tools-connectors-cli.js';
+import { requestBodyObject, seedConversationForkMessages } from './conversation-fork-seed.js';
 
 export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'validation'> {}
 
@@ -509,7 +510,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     if (!getProject(db, req.params.id)) {
       return res.status(404).json({ error: 'project not found' });
     }
-    const { title } = req.body || {};
+    const body = requestBodyObject(req.body);
+    const { title } = body;
     const now = Date.now();
     const conv = insertConversation(db, {
       id: randomId(),
@@ -518,7 +520,18 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       createdAt: now,
       updatedAt: now,
     });
-    res.json({ conversation: conv });
+    if (!conv) return res.status(500).json({ error: 'conversation was not created' });
+    seedConversationForkMessages({
+      body,
+      db,
+      getConversation,
+      listMessages,
+      projectId: req.params.id,
+      randomId,
+      targetConversationId: conv.id,
+      upsertMessage,
+    });
+    res.json({ conversation: getConversation(db, conv.id) ?? conv });
   });
 
   app.patch('/api/projects/:id/conversations/:cid', (req, res) => {

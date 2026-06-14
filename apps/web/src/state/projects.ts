@@ -9,6 +9,7 @@ import type {
   ApiError,
   AppliedPluginSnapshot,
   ApplyResult,
+  CreateConversationRequest,
   CreatePluginShareProjectResponse,
   HandoffRequest,
   HandoffResponse,
@@ -260,15 +261,16 @@ export async function listConversations(
 
 export async function createConversation(
   projectId: string,
-  title?: string,
+  input?: string | CreateConversationRequest,
 ): Promise<Conversation | null> {
+  const body = typeof input === 'string' || input === undefined ? { title: input } : input;
   try {
     const resp = await fetch(
       `/api/projects/${encodeURIComponent(projectId)}/conversations`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       },
     );
     if (!resp.ok) return null;
