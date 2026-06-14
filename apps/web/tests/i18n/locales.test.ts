@@ -147,6 +147,9 @@ const ZH_TW_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.toRun',
   'homeHero.typeSomethingToRun',
 ];
+const ZH_TW_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
+  'homeHero.chip.hyperframes',
+];
 const ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'liveArtifact.refresh.button',
   'liveArtifact.refresh.buttonTitle',
@@ -202,6 +205,56 @@ const ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'liveArtifact.refresh.docSourceConnector',
   'liveArtifact.refresh.debugSummary',
   'liveArtifact.refresh.debugNote',
+];
+const ZH_TW_MANUAL_EDIT_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'manualEdit.layers',
+  'manualEdit.editableCount',
+  'manualEdit.title',
+  'manualEdit.selectLayer',
+  'manualEdit.empty',
+  'manualEdit.noClass',
+  'manualEdit.tabsAria',
+  'manualEdit.tabContent',
+  'manualEdit.tabStyle',
+  'manualEdit.tabAttributes',
+  'manualEdit.tabHtml',
+  'manualEdit.tabSource',
+  'manualEdit.attributesJson',
+  'manualEdit.selectedHtml',
+  'manualEdit.fullSource',
+  'manualEdit.applyContent',
+  'manualEdit.applyStyle',
+  'manualEdit.applyAttributes',
+  'manualEdit.applyHtml',
+  'manualEdit.applySource',
+  'manualEdit.invalidAttributes',
+  'manualEdit.changes',
+  'manualEdit.undo',
+  'manualEdit.redo',
+  'manualEdit.noChanges',
+  'manualEdit.imageUrl',
+  'manualEdit.altText',
+  'manualEdit.label',
+  'manualEdit.text',
+  'manualEdit.href',
+  'manualEdit.textColor',
+  'manualEdit.background',
+  'manualEdit.fontSize',
+  'manualEdit.weight',
+  'manualEdit.align',
+  'manualEdit.padding',
+  'manualEdit.margin',
+  'manualEdit.radius',
+  'manualEdit.border',
+  'manualEdit.width',
+  'manualEdit.minHeight',
+  'manualEdit.deleteElement',
+  'manualEdit.deleteElementConfirm',
+  'manualEdit.uploadImage',
+  'manualEdit.uploadingImage',
+  'manualEdit.uploadImageFailed',
+  'manualEdit.focusSlides',
+  'manualEdit.showPanels',
 ];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
@@ -495,8 +548,23 @@ describe('i18n locales', () => {
     }
   });
 
+  it('declares zh-TW stable product names explicitly instead of relying on English fallback', () => {
+    const explicitKeys = new Set(explicitLocaleKeys('zh-TW'));
+
+    for (const key of ZH_TW_STABLE_PRODUCT_NAME_KEYS) {
+      expect(explicitKeys.has(key), `zh-TW.${key}`).toBe(true);
+      expect(zhTW[key], `zh-TW.${key}`).toBe(en[key]);
+    }
+  });
+
   it('keeps zh-TW live artifact refresh copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW manual edit copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_MANUAL_EDIT_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
