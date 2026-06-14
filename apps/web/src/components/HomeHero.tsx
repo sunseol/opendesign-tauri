@@ -33,12 +33,18 @@ import type {
 } from '@open-design/contracts';
 import type { SkillSummary } from '../types';
 import { Icon, type IconName } from './Icon';
+import { HomeHeroSubTypeRail } from './HomeHeroSubTypeRail';
 import { PluginInputsForm } from './PluginInputsForm';
 import {
   chipsForGroup,
   type ChipGroup,
   type HomeHeroChip,
 } from './home-hero/chips';
+import {
+  filterPluginsBySubChip,
+  isSubChipParent,
+  subChipsForChip,
+} from './home-hero/sub-chips';
 import {
   buildInlineMentionParts,
   inlineMentionToken,
@@ -209,6 +215,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
   const [dragActive, setDragActive] = useState(false);
   const [openInlineInputName, setOpenInlineInputName] = useState<string | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const composingRef = useRef(false);
   const inputElementRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -458,6 +465,18 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         : [],
     [activeChipId, locale, pluginOptions],
   );
+  const activeSubChips = useMemo(
+    () => subChipsForChip(activeChipId, pluginOptions),
+    [activeChipId, pluginOptions],
+  );
+  const filteredExamplePlugins = useMemo(() => {
+    if (!selectedSubcategory || !isSubChipParent(activeChipId)) return activeExamplePlugins;
+    return filterPluginsBySubChip(
+      activeExamplePlugins,
+      activeChipId,
+      selectedSubcategory,
+    );
+  }, [activeChipId, activeExamplePlugins, selectedSubcategory]);
   const activePromptExamples = useMemo(
     () => activeChipId && activeExamplePlugins.length === 0
       ? homeHeroChipPromptExamples(activeChipId, locale)
@@ -480,6 +499,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
 
   useEffect(() => {
     setOpenInlineInputName(null);
+    setSelectedSubcategory(null);
   }, [activeChipId]);
 
   useEffect(() => {
@@ -1156,10 +1176,24 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         </RailGroup>
       )}
 
-      {activeExamplePlugins.length > 0 && activeChipId ? (
+      {activeSubChips.length > 0 && isSubChipParent(activeChipId) ? (
+        <HomeHeroSubTypeRail
+          subChips={activeSubChips}
+          selectedSlug={selectedSubcategory}
+          pluginsLoading={pluginsLoading}
+          onPickSubChip={(subChip) => {
+            setSelectedSubcategory((current) => (
+              current === subChip.slug ? null : subChip.slug
+            ));
+          }}
+          onSelectAll={() => setSelectedSubcategory(null)}
+        />
+      ) : null}
+
+      {filteredExamplePlugins.length > 0 && activeChipId ? (
         <PluginPromptPresets
           chipId={activeChipId}
-          plugins={activeExamplePlugins}
+          plugins={filteredExamplePlugins}
           activePluginId={activePluginRecord?.id ?? null}
           pendingPluginId={pendingPluginId}
           locale={locale}
