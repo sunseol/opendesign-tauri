@@ -198,6 +198,26 @@ describe('artifact stub guard via /api/projects/:id/files', () => {
     expect(resp.status).toBe(200);
   });
 
+  it('rejects artifact writes into ignored project folders with ARTIFACT_PATH_BLOCKED', async () => {
+    const projectId = await createProject('artifact-path-blocked');
+
+    const resp = await postFile(projectId, {
+      name: 'node_modules/preview.html',
+      content: htmlBody(2_000),
+      artifactManifest: manifestFor('preview'),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as {
+      error: { code: string; details?: { path?: string; reason?: string } };
+    };
+    expect(body.error.code).toBe('ARTIFACT_PATH_BLOCKED');
+    expect(body.error.details).toEqual({
+      path: 'node_modules/preview.html',
+      reason: 'ignored project directory',
+    });
+  });
+
   it('rejects a stub rewrite of a deck artifact (kind: deck)', async () => {
     const projectId = await createProject('deck');
 

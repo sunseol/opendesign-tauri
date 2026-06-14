@@ -22,6 +22,7 @@ import {
   readArtifactStubGuardConfigFromEnv,
 } from './artifact-stub-guard.js';
 import {
+  ArtifactPathBlockedError,
   assertArtifactPublicationAllowed,
   isPublicationGuardedArtifactKind,
 } from './artifact-publication-guard.js';
@@ -658,7 +659,9 @@ export async function writeProjectFile(
   metadata?,
 ) {
   const dir = await ensureProject(projectsRoot, projectId, metadata);
-  const safeName = sanitizePath(name);
+  const hasArtifactManifest = artifactManifest && typeof artifactManifest === 'object';
+  const normalizedName = validateArtifactWritePath(name, hasArtifactManifest);
+  const safeName = sanitizePath(normalizedName);
   const target = await resolveSafeReal(dir, safeName);
   body = normalizeArtifactRuntimeImports(safeName, body);
   if (!overwrite) {
@@ -750,6 +753,39 @@ export async function writeProjectFile(
 
 function artifactManifestNameFor(name) {
   return `${name}.artifact.json`;
+}
+
+function validateArtifactWritePath(name, hasArtifactManifest) {
+  try {
+    const normalizedName = validateProjectPath(name);
+    if (hasArtifactManifest) assertArtifactTargetPathAllowed(normalizedName);
+    return normalizedName;
+  } catch (err) {
+    if (
+      hasArtifactManifest &&
+      err instanceof Error &&
+      err.message === 'reserved project path'
+    ) {
+      throw new ArtifactPathBlockedError(String(name), 'reserved project path');
+    }
+    throw err;
+  }
+}
+
+function assertArtifactTargetPathAllowed(normalizedName) {
+  const parts = normalizedName.split('/').filter(Boolean);
+  const fileName = parts[parts.length - 1] || '';
+  if (fileName.endsWith('.artifact.json')) {
+    throw new ArtifactPathBlockedError(normalizedName, 'artifact sidecar');
+  }
+  const hiddenSegment = parts.find((part) => part.startsWith('.'));
+  if (hiddenSegment) {
+    throw new ArtifactPathBlockedError(normalizedName, 'hidden project directory');
+  }
+  const ignoredSegment = parts.find((part) => isIgnoredProjectDirName(part));
+  if (ignoredSegment) {
+    throw new ArtifactPathBlockedError(normalizedName, 'ignored project directory');
+  }
 }
 
 export async function reconcileHtmlArtifactManifest(projectsRoot, projectId, name, metadata?) {

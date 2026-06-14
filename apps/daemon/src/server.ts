@@ -345,7 +345,10 @@ import {
   writeProjectFile,
 } from './projects.js';
 import { validateArtifactManifestInput } from './artifact-manifest.js';
-import { ArtifactPublicationBlockedError } from './artifact-publication-guard.js';
+import {
+  ArtifactPathBlockedError,
+  ArtifactPublicationBlockedError,
+} from './artifact-publication-guard.js';
 import { readCurrentAppVersionInfo } from './app-version.js';
 import {
   appendMessageAgentEvent,
@@ -8840,6 +8843,16 @@ export async function startServer({
         if (err instanceof ArtifactPublicationBlockedError) {
           return sendApiError(res, 422, 'ARTIFACT_PUBLICATION_BLOCKED', err.message, {
             details: { placeholders: err.placeholders },
+          });
+        }
+        if (
+          err instanceof ArtifactPathBlockedError ||
+          (err && typeof err === 'object' && err.code === 'ARTIFACT_PATH_BLOCKED') ||
+          (err && typeof err === 'object' && err.name === 'ArtifactPathBlockedError') ||
+          String(err?.message || '').startsWith('Artifact target path is not allowed:')
+        ) {
+          return sendApiError(res, 400, 'ARTIFACT_PATH_BLOCKED', String(err.message || err), {
+            details: { path: err.artifactPath, reason: err.reason },
           });
         }
         sendApiError(res, 500, 'INTERNAL_ERROR', 'upload failed');

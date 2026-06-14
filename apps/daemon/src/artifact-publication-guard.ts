@@ -24,6 +24,7 @@
 import { Buffer } from 'node:buffer';
 
 export const ARTIFACT_PUBLICATION_BLOCKED_CODE = 'ARTIFACT_PUBLICATION_BLOCKED' as const;
+export const ARTIFACT_PATH_BLOCKED_CODE = 'ARTIFACT_PATH_BLOCKED' as const;
 
 // HTML and deck are the artifact kinds whose bodies are user-facing
 // rendered documents. Other kinds (markdown drafts, code snippets, raw
@@ -50,6 +51,19 @@ export class ArtifactPublicationBlockedError extends Error {
     super(buildArtifactPublicationBlockedMessage(placeholders));
     this.name = 'ArtifactPublicationBlockedError';
     this.placeholders = [...placeholders];
+  }
+}
+
+export class ArtifactPathBlockedError extends Error {
+  readonly code = ARTIFACT_PATH_BLOCKED_CODE;
+  readonly artifactPath: string;
+  readonly reason: string;
+
+  constructor(artifactPath: string, reason: string) {
+    super(`Artifact target path is not allowed: ${artifactPath} (${reason}).`);
+    this.name = 'ArtifactPathBlockedError';
+    this.artifactPath = artifactPath;
+    this.reason = reason;
   }
 }
 

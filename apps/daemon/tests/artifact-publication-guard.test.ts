@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  ArtifactPathBlockedError,
   ArtifactPublicationBlockedError,
   findUnresolvedArtifactPlaceholders,
   isPublicationGuardedArtifactKind,
@@ -33,6 +34,10 @@ const markdownManifest = {
   exports: ['md'],
   metadata: { identifier: 'pitch-notes' },
 };
+
+function artifactOptions(artifactManifest: unknown): Parameters<typeof writeProjectFile>[4] {
+  return { artifactManifest } as never;
+}
 
 describe('artifact publication guard — placeholder detection', () => {
   it('finds every shipped placeholder when present in generated HTML', () => {
@@ -100,6 +105,58 @@ describe('artifact publication guard — placeholder detection', () => {
 });
 
 describe('artifact publication guard — wired into writeProjectFile', () => {
+  it.each([
+    ['node_modules/preview.html', 'ignored project directory'],
+    ['dist/preview.html', 'ignored project directory'],
+    ['.git/preview.html', 'hidden project directory'],
+    ['index.html.artifact.json', 'artifact sidecar'],
+    ['.live-artifacts/preview.html', 'reserved project path'],
+  ])('rejects unsafe artifact target path %s', async (name, reason) => {
+    const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-publication-guard-path-'));
+    try {
+      await expect(
+        writeProjectFile(
+          projectsRoot,
+          'project-1',
+          name,
+          Buffer.from('<html><body>artifact</body></html>'),
+          artifactOptions(htmlManifest),
+        ),
+      ).rejects.toMatchObject({
+        code: 'ARTIFACT_PATH_BLOCKED',
+        reason,
+      });
+      await expect(
+        writeProjectFile(
+          projectsRoot,
+          'project-1',
+          'safe-preview.html',
+          Buffer.from('<html><body>artifact</body></html>'),
+          artifactOptions(htmlManifest),
+        ),
+      ).resolves.toMatchObject({ name: 'safe-preview.html' });
+    } finally {
+      await rm(projectsRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('uses a dedicated error type for blocked artifact paths', async () => {
+    const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-publication-guard-path-type-'));
+    try {
+      await expect(
+        writeProjectFile(
+          projectsRoot,
+          'project-1',
+          'node_modules/preview.html',
+          Buffer.from('<html><body>artifact</body></html>'),
+          artifactOptions(htmlManifest),
+        ),
+      ).rejects.toBeInstanceOf(ArtifactPathBlockedError);
+    } finally {
+      await rm(projectsRoot, { recursive: true, force: true });
+    }
+  });
+
   it('rejects html artifacts that still contain pitch-deck placeholders', async () => {
     const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-publication-guard-html-'));
     try {

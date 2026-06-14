@@ -5,7 +5,10 @@ import {
   type PluginManifest,
 } from '@open-design/contracts';
 import { createProjectArtifactFile } from './artifact-create.js';
-import { ArtifactPublicationBlockedError } from './artifact-publication-guard.js';
+import {
+  ArtifactPathBlockedError,
+  ArtifactPublicationBlockedError,
+} from './artifact-publication-guard.js';
 import { ArtifactRegressionError } from './artifact-stub-guard.js';
 import { listDesignSystems } from './design-systems.js';
 import {
@@ -1144,6 +1147,16 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         if (err instanceof ArtifactPublicationBlockedError) {
           return sendApiError(res, 422, 'ARTIFACT_PUBLICATION_BLOCKED', err.message, {
             details: { placeholders: err.placeholders },
+          });
+        }
+        if (
+          err instanceof ArtifactPathBlockedError ||
+          err?.code === 'ARTIFACT_PATH_BLOCKED' ||
+          err?.name === 'ArtifactPathBlockedError' ||
+          String(err?.message || '').startsWith('Artifact target path is not allowed:')
+        ) {
+          return sendApiError(res, 400, 'ARTIFACT_PATH_BLOCKED', String(err.message || err), {
+            details: { path: err.artifactPath, reason: err.reason },
           });
         }
         if (err?.code === 'EEXIST') {
