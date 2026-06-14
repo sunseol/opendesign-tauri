@@ -245,9 +245,19 @@ without first installing the workspace.
 `.github/workflows/nix-check.yml` runs `nix flake check` on pushes to
 `main` and can also be started manually with `workflow_dispatch`.
 
-Pull requests that touch Nix or dependency inputs are validated earlier in
-`.github/workflows/ci.yml` via the required `Validate workspace` gate.
-That PR path runs `nix flake check` when `pnpm-lock.yaml`, package
-manifests, `flake.*`, `nix/**`, or the Nix workflows change, so fixed-
-output hash drift is caught before merge while keeping unrelated PRs off
-the slower Nix path.
+Pull requests that touch Nix inputs, root or workspace dependency
+manifests, the Nix packaging files, or the Nix workflows are validated
+earlier in `.github/workflows/ci.yml` via the required `Validate Nix
+flake` gate. That PR path runs `nix flake check`, so fixed-output hash
+drift is caught before merge while unrelated PRs stay off the slower
+Nix path.
+
+When a PR run fails because `nix/pnpm-deps.nix` is stale, CI tries to
+regenerate a hash-only patch:
+
+- same-repo PRs get a bot-authored commit pushed back to the PR branch
+  when the generated patch only touches `nix/pnpm-deps.nix`;
+- fork PRs get a PR comment plus a workflow artifact containing the
+  patch;
+- the failing run still stays red until the generated patch lands and a
+  fresh validation run passes.
