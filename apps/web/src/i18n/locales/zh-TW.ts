@@ -405,15 +405,32 @@ export const zhTW: Dict = {
   'settings.agentInstallGroup': '可安裝（{count}）',
   'settings.agentAuthRequired': '需要認證',
   'settings.agentAuthUnknown': '認證狀態未知',
+  'settings.advanced': '進階設定',
   'settings.apiSection': 'API 設定',
   'settings.quickFillProvider': '快速填入提供方',
   'settings.customProvider': '自訂提供方',
   'settings.apiKey': 'API Key',
+  'settings.apiKeyGetLink': '前往 {host} 取得 key ↗',
   'settings.showKey': '顯示 Key',
   'settings.hideKey': '隱藏 Key',
   'settings.show': '顯示',
   'settings.hide': '隱藏',
   'settings.model': '模型',
+  'settings.apiKeyInvalid': 'API key 無效。',
+  'settings.modelsLoadedFromAccount': '✓ 已從你的帳號載入 {count} 個模型。',
+  'settings.fetchModels': '取得模型',
+  'settings.fetchModelsTitle': '從目前提供方取得可用模型',
+  'settings.fetchModelsRunning': '正在取得模型…',
+  'settings.fetchModelsMissingFields': '請先填寫 {fields}，再取得模型。',
+  'settings.fetchModelsInvalidBaseUrl': '請輸入有效的 Base URL 後再取得模型。',
+  'settings.fetchModelsUnsupportedAzure':
+    'Azure OpenAI 使用部署名稱，因此此處無法自動探索模型。',
+  'settings.fetchModelsUnsupportedOllama':
+    'Ollama Cloud 尚不支援自動探索模型。請選擇或輸入模型。',
+  'settings.fetchModelsSuccess': '已取得 {count} 個模型。',
+  'settings.fetchModelsEmpty': '未傳回相容的文字模型。',
+  'settings.fetchModelsUnsupported': '此協定不支援模型探索。',
+  'settings.fetchModelsFailed': '無法取得模型：{detail}',
   'settings.suggestedModelsHint':
     '這些是此協定的建議模型。你的提供方可能支援不同的模型。',
   'settings.baseUrl': '基礎 URL',
@@ -421,10 +438,12 @@ export const zhTW: Dict = {
   'settings.baseUrlCustomize': '自訂',
   'settings.baseUrlDefaultHint': '預設端點，通常不需要修改。',
   'settings.azureBaseUrlPlaceholder': 'https://my-resource.openai.azure.com',
-  'settings.azureBaseUrlHint': 'Find this in Azure portal → your resource → Endpoint.',
+  'settings.azureBaseUrlHint': '可在 Azure 入口網站 → 你的資源 → Endpoint 中找到。',
   'settings.azureDeploymentModel': '部署名稱',
   'settings.azureDeploymentModelHint':
     '對於 Azure OpenAI，此欄位會作為 /openai/deployments/<model> 中的部署名稱使用。請填入你在 Azure 中建立的部署名稱。',
+  'settings.azureModelFetchHint':
+    '對於 Azure OpenAI，請輸入你在 Azure 中建立的部署名稱。此 BYOK 端點無法自動探索部署。',
   'settings.apiVersion': 'API 版本',
   'settings.byokImageModel': '圖片生成模型',
   'settings.maxTokens': '最大 tokens（可選）',
@@ -1915,6 +1934,11 @@ export const zhTW: Dict = {
   // Memory (auto-extracted personalization saved as on-disk markdown)
   'settings.memory': '記憶',
   'settings.memoryHint': '從對話中自動沉澱的個人化資訊',
+  'settings.customInstructionsTitle': '全域規則',
+  'settings.customInstructionsHint':
+    'OpenDesign 在每次對話中都應遵守的固定指示。請將事實、偏好和專案上下文儲存為記憶。',
+  'settings.customInstructionsPlaceholder':
+    '例如：「一律使用 TypeScript。優先使用函式元件。回覆保持簡潔。」',
   'settings.memoryDescription': '自動從聊天中提取出的關於你的偏好和上下文的事實，以 Markdown 檔案形式保存，並自動注入到每次對話中。',
   'settings.memoryEnabled': '已啟用',
   'settings.memoryDisabled': '已關閉',
