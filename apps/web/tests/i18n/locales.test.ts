@@ -8,6 +8,57 @@ import { zhTW } from '../../src/i18n/locales/zh-TW';
 import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/types';
 
 const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+const ZH_CN_ALLOWED_ENGLISH_KEYS: ReadonlySet<keyof Dict> = new Set([
+  'app.brand',
+  'avatar.anthropicApi',
+  'connectors.category.cms',
+  'connectors.category.crm',
+  'connectors.category.erp',
+  'connectors.category.itsm',
+  'designFiles.kindPdf',
+  'ds.specToggle',
+  'examples.modeOrbit',
+  'fileViewer.cloudflareDomainPrefixPlaceholder',
+  'fileViewer.cloudflarePagesDevLinkLabel',
+  'fileViewer.cloudflarePagesProvider',
+  'fileViewer.deploySuccessToastDetails',
+  'fileViewer.pdfMeta',
+  'fileViewer.vercelProvider',
+  'homeHero.chip.hyperframes',
+  'newsletter.placeholder',
+  'pasteDialog.namePlaceholder',
+  'pluginsHome.facet.figma',
+  'pluginsHome.facet.framer',
+  'pluginsHome.facet.github',
+  'pluginsHome.facet.githubGist',
+  'pluginsHome.facet.githubPr',
+  'pluginsHome.facet.pdf',
+  'pluginsHome.facet.pptx',
+  'pluginsHome.facet.url',
+  'pluginsHome.facet.webflow',
+  'settings.amrCloud',
+  'settings.anthropicApi',
+  'settings.apiSection',
+  'settings.azureBaseUrlPlaceholder',
+  'settings.designSystemsSourceGithub',
+  'settings.libraryInstallGithub',
+  'settings.libraryInstallPath',
+  'settings.libraryInstallUrl',
+  'settings.memoryEmptyHintEn',
+  'settings.memoryEmptyHintZh',
+  'settings.memoryExtractionKindLlm',
+  'settings.modeApiMeta',
+  'settings.onboardingSourceGithub',
+  'settings.onboardingSourceProductHunt',
+  'settings.onboardingSourceYoutube',
+  'settings.orbit.title',
+  'tasks.primitive.orbit.title',
+  'tool.bash',
+  'tool.glob',
+  'tool.grep',
+  'useEverywhere.section.cli.tab',
+  'useEverywhere.section.http.tab',
+]);
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -189,5 +240,21 @@ describe('i18n locales', () => {
       source,
       'zh-CN.ts must not use `...en`; add Chinese values directly when new keys are introduced.',
     ).not.toMatch(/\.\.\.en\b/);
+  });
+
+  it('keeps zh-CN user-facing copy translated outside brand, acronym, and placeholder tokens', () => {
+    const untranslated: string[] = [];
+
+    for (const key of Object.keys(en) as Array<keyof Dict>) {
+      if (
+        en[key].length > 0 &&
+        zhCN[key] === en[key] &&
+        !ZH_CN_ALLOWED_ENGLISH_KEYS.has(key)
+      ) {
+        untranslated.push(key);
+      }
+    }
+
+    expect(untranslated).toEqual([]);
   });
 });
