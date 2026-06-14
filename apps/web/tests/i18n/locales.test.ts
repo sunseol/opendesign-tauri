@@ -147,6 +147,26 @@ const FR_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.toRun',
   'homeHero.typeSomethingToRun',
 ];
+const FR_INTEGRATIONS_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'integrations.agentReady',
+  'integrations.areasAria',
+  'integrations.kicker',
+  'integrations.lede',
+  'integrations.skillsBody',
+  'integrations.skillsTitle',
+  'integrations.tabHint.connectors',
+  'integrations.tabHint.mcp',
+  'integrations.tabLabel.skills',
+  'mcpClient.addServer',
+  'mcpClient.daemonError',
+  'mcpClient.emptyBody',
+  'mcpClient.emptyTitle',
+  'mcpClient.saveChanges',
+  'mcpClient.saveFailed',
+  'mcpClient.storedAt',
+  'mcpClient.subtitle',
+  'mcpClient.title',
+];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -372,6 +392,14 @@ describe('i18n locales', () => {
     const { fr } = await import('../../src/i18n/locales/fr');
 
     for (const key of FR_HOME_HERO_FALLBACK_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French integrations and MCP setup copy translated instead of falling back to English', async () => {
+    const { fr } = await import('../../src/i18n/locales/fr');
+
+    for (const key of FR_INTEGRATIONS_FALLBACK_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });

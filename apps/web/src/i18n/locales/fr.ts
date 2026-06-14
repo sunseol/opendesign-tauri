@@ -437,6 +437,28 @@ export const fr: Dict = {
   'entry.navTasks': 'Automatisations',
   'entry.navPlugins': 'Extensions',
   'entry.navIntegrations': 'Intégrations',
+  'integrations.kicker': 'Intégration',
+  'integrations.lede':
+    'Connectez des systèmes externes, ajoutez des outils MCP à la boucle de votre agent et utilisez Open Design depuis d’autres IDE, scripts et automatisations.',
+  'integrations.agentReady': 'Prêt pour l’agent',
+  'integrations.areasAria': 'Zones d’intégration',
+  'integrations.tabLabel.skills': 'Compétences',
+  'integrations.tabHint.mcp': 'Outils externes',
+  'integrations.tabHint.connectors': 'Comptes et API',
+  'integrations.skillsTitle': 'Intégrations de compétences',
+  'integrations.skillsBody':
+    'La gestion des intégrations au niveau des compétences est reprise depuis une autre branche. Cet onglet est réservé afin que MCP, Connecteurs et futures Compétences vivent dans la même route Intégration.',
+  'mcpClient.title': 'Serveurs MCP externes',
+  'mcpClient.subtitle': 'Outils tiers pour votre agent de code.',
+  'mcpClient.addServer': 'Ajouter un serveur',
+  'mcpClient.emptyTitle': 'Aucun serveur MCP configuré.',
+  'mcpClient.emptyBody':
+    'Cliquez sur « Ajouter un serveur » pour commencer — choisissez un modèle (Higgsfield OpenClaw, Pollinations, Allyson, Imagician, EdgeOne Pages, GitHub, Filesystem…) ou configurez un serveur stdio / HTTP personnalisé.',
+  'mcpClient.saveChanges': 'Enregistrer les modifications',
+  'mcpClient.storedAt': 'Enregistré dans',
+  'mcpClient.daemonError':
+    'Impossible de joindre le daemon local. Vérifiez qu’Open Design est lancé, puis rouvrez ce panneau.',
+  'mcpClient.saveFailed': 'Échec de l’enregistrement. Vérifiez que le daemon est lancé, puis réessayez.',
   'designSystemPicker.select': 'Choisir un design system',
   'designSystemPicker.loading': 'Chargement des design systems…',
   'designSystemPicker.searchPlaceholder': 'Rechercher des design systems (titre / catégorie / résumé)',
