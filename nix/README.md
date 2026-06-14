@@ -256,7 +256,8 @@ When a PR run fails because `nix/pnpm-deps.nix` is stale, CI tries to
 regenerate a hash-only patch:
 
 - same-repo PRs get a bot-authored commit pushed back to the PR branch
-  when the generated patch only touches `nix/pnpm-deps.nix`;
+  by `.github/workflows/nix-hash-autofix.yml` when the generated patch
+  only touches `nix/pnpm-deps.nix`;
 - fork PRs get a PR comment plus a workflow artifact containing the
   patch;
 - the failing run still stays red until the generated patch lands and a

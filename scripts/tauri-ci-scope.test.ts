@@ -5,6 +5,8 @@ import test from "node:test";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const ciWorkflowPath = join(repoRoot, ".github", "workflows", "ci.yml");
+const nixAutofixWorkflowPath = join(repoRoot, ".github", "workflows", "nix-hash-autofix.yml");
+const nixReadmePath = join(repoRoot, "nix", "README.md");
 const agentExploreWorkflowPath = join(repoRoot, ".github", "workflows", "agent-pr-explore-sandbox.yml");
 const agentExploreScriptPath = join(repoRoot, ".github", "scripts", "agent-pr-explore-sandbox.sh");
 
@@ -84,6 +86,26 @@ test("main CI reuses cached setup actions for Ubuntu validation jobs", async () 
   assert.doesNotMatch(ubuntuValidationRegion, /Restore pnpm store cache/);
   assert.doesNotMatch(ubuntuValidationRegion, /Resolve Playwright version/);
   assert.doesNotMatch(ubuntuValidationRegion, /Restore Playwright browser cache/);
+});
+
+test("Nix hash refresh remains CI-generated and hash-only", async () => {
+  const ciWorkflow = await readFile(ciWorkflowPath, "utf8");
+  const autofixWorkflow = await readFile(nixAutofixWorkflowPath, "utf8");
+  const nixReadme = await readFile(nixReadmePath, "utf8");
+
+  assert.match(ciWorkflow, /name: nix-hash-refresh/);
+  assert.match(ciWorkflow, /node --experimental-strip-types \.\/scripts\/update-nix-pnpm-deps-hash\.ts/);
+  assert.match(ciWorkflow, /git diff -- nix\/pnpm-deps\.nix >"\$out_dir\/nix-pnpm-deps\.patch"/);
+  assert.match(ciWorkflow, /retention-days: 14/);
+
+  assert.match(autofixWorkflow, /workflow_run:\n\s+workflows: \[ci\]\n\s+types: \[completed\]/);
+  assert.match(autofixWorkflow, /marker='<!-- nix-hash-refresh -->'/);
+  assert.match(autofixWorkflow, /if \[ "\$changed_files" != "nix\/pnpm-deps\.nix" \]; then/);
+  assert.match(autofixWorkflow, /git apply --check "\$patch_path"/);
+  assert.match(autofixWorkflow, /artifact_head_sha.*head_sha/);
+
+  assert.match(nixReadme, /\.github\/workflows\/ci\.yml/);
+  assert.match(nixReadme, /\.github\/workflows\/nix-hash-autofix\.yml/);
 });
 
 test("agent PR exploration remains gated with slim artifacts and mirror transport", async () => {
