@@ -77,12 +77,17 @@ function workspaceDependencyNames(manifest: unknown, includeDevDependencies = fa
 }
 
 function postinstallBuildTargets(): Set<string> {
-  const source = readFileSync(join(repoRoot, "scripts/postinstall.mjs"), "utf8");
-  const targets = [...source.matchAll(/"([^"]+)"/g)]
-    .map((match) => match[1])
-    .filter((value): value is string => value != null && /^(?:apps|packages|tools)\//.test(value));
-  return new Set(targets);
+  const manifest = readJson("scripts/postinstall-build-targets.json");
+  assert(typeof manifest === "object" && manifest !== null);
+  const buildTargets = (manifest as { buildTargets?: unknown }).buildTargets;
+  assert(Array.isArray(buildTargets));
+  assert(buildTargets.every((target): target is string => typeof target === "string"));
+  return new Set(buildTargets);
 }
+
+test("postinstall build target list ignores non-directory paths quoted by postinstall", () => {
+  assert.equal(postinstallBuildTargets().has("apps/daemon/package.json"), false);
+});
 
 function workspacePackageDirectories(): string[] {
   const scopedPackageDirectories = ["apps", "packages", "tools"].flatMap((scope) =>
@@ -184,6 +189,10 @@ test("postinstall skips build targets whose tsconfig.json is absent from the ins
     writeFileSync(
       join(sandbox, "scripts", "postinstall.mjs"),
       readFileSync(join(repoRoot, "scripts/postinstall.mjs")),
+    );
+    writeFileSync(
+      join(sandbox, "scripts", "postinstall-build-targets.json"),
+      readFileSync(join(repoRoot, "scripts/postinstall-build-targets.json")),
     );
 
     mkdirSync(join(sandbox, "packages/contracts"), { recursive: true });

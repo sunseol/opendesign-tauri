@@ -1,32 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
-
-const buildTargets = [
-  "packages/contracts",
-  "packages/components",
-  "packages/platform",
-  "packages/download",
-  "packages/host",
-  "packages/registry-protocol",
-  "packages/agui-adapter",
-  "packages/plugin-runtime",
-  "packages/sidecar-proto",
-  "packages/launcher-proto",
-  "packages/sidecar",
-  "packages/diagnostics",
-  "packages/metatool",
-  "apps/daemon",
-  "tools/dev",
-  "tools/pack",
-  "tools/pr",
-  "tools/serve",
-];
 
 const jsExtensions = new Set([".js", ".cjs", ".mjs"]);
 
@@ -42,11 +21,27 @@ function resolvePackageManagerInvocation() {
   return { argsPrefix: [], command: process.platform === "win32" ? "pnpm.cmd" : "pnpm" };
 }
 
+function readBuildTargets() {
+  const manifestPath = resolve(scriptDir, "postinstall-build-targets.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  if (
+    typeof manifest !== "object" ||
+    manifest === null ||
+    !Array.isArray(manifest.buildTargets) ||
+    !manifest.buildTargets.every((target) => typeof target === "string")
+  ) {
+    throw new TypeError("postinstall-build-targets.json must define a string buildTargets array");
+  }
+  return manifest.buildTargets;
+}
+
 const packageManager = resolvePackageManagerInvocation();
 
-for (const target of buildTargets) {
-  // Partial install contexts can copy only package manifests before sources.
-  // They run the real build later, once each target's tsconfig is present.
+for (const target of readBuildTargets()) {
+  // Partial install contexts (e.g. deploy/Dockerfile copies only
+  // apps/daemon/package.json before `pnpm install`) lack the target's sources;
+  // building there fails `tsc -p tsconfig.json` with TS5058. Skip instead:
+  // such contexts run the real build later, once sources are in place.
   if (!existsSync(resolve(repoRoot, target, "tsconfig.json"))) {
     process.stdout.write(`postinstall: skipping ${target} (no tsconfig.json in this context)\n`);
     continue;
