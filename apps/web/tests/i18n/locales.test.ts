@@ -147,6 +147,62 @@ const ZH_TW_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.toRun',
   'homeHero.typeSomethingToRun',
 ];
+const ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'liveArtifact.refresh.button',
+  'liveArtifact.refresh.buttonTitle',
+  'liveArtifact.refresh.loadingTitle',
+  'liveArtifact.refresh.noSourceTitle',
+  'liveArtifact.refresh.running',
+  'liveArtifact.refresh.runningMessage',
+  'liveArtifact.refresh.runningAction',
+  'liveArtifact.refresh.successOne',
+  'liveArtifact.refresh.successMany',
+  'liveArtifact.refresh.successAction',
+  'liveArtifact.refresh.previousFailure',
+  'liveArtifact.refresh.failureAction',
+  'liveArtifact.refresh.networkFailure',
+  'liveArtifact.refresh.genericFailure',
+  'liveArtifact.refresh.statusNever',
+  'liveArtifact.refresh.statusReady',
+  'liveArtifact.refresh.statusSucceeded',
+  'liveArtifact.refresh.statusFailed',
+  'liveArtifact.refresh.statusRunning',
+  'liveArtifact.refresh.statusRunningDescription',
+  'liveArtifact.refresh.statusSucceededDescription',
+  'liveArtifact.refresh.statusFailedDescription',
+  'liveArtifact.refresh.statusReadyDescription',
+  'liveArtifact.refresh.statusNeverDescription',
+  'liveArtifact.refresh.eventStarted',
+  'liveArtifact.refresh.eventSucceeded',
+  'liveArtifact.refresh.eventFailed',
+  'liveArtifact.refresh.eventStartedDetail',
+  'liveArtifact.refresh.sourcesUpdatedOne',
+  'liveArtifact.refresh.sourcesUpdatedMany',
+  'liveArtifact.refresh.timelineEmpty',
+  'liveArtifact.refresh.heroLastRefreshedLabel',
+  'liveArtifact.refresh.heroLastRefreshedNever',
+  'liveArtifact.refresh.justNow',
+  'liveArtifact.refresh.factCreated',
+  'liveArtifact.refresh.factLastUpdated',
+  'liveArtifact.refresh.factUnknown',
+  'liveArtifact.refresh.persistedTitle',
+  'liveArtifact.refresh.persistedHint',
+  'liveArtifact.refresh.persistedEmpty',
+  'liveArtifact.refresh.persistedStatusSucceeded',
+  'liveArtifact.refresh.persistedStatusRunning',
+  'liveArtifact.refresh.persistedStatusFailed',
+  'liveArtifact.refresh.persistedStatusCancelled',
+  'liveArtifact.refresh.persistedStatusSkipped',
+  'liveArtifact.refresh.sessionTitle',
+  'liveArtifact.refresh.sessionHint',
+  'liveArtifact.refresh.docSourceTitle',
+  'liveArtifact.refresh.docSourceHint',
+  'liveArtifact.refresh.docSourceType',
+  'liveArtifact.refresh.docSourceTool',
+  'liveArtifact.refresh.docSourceConnector',
+  'liveArtifact.refresh.debugSummary',
+  'liveArtifact.refresh.debugNote',
+];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
   'designFiles.filterClear',
@@ -435,6 +491,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW home hero prompts and shortcuts translated instead of falling back to English', () => {
     for (const key of ZH_TW_HOME_HERO_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW live artifact refresh copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
