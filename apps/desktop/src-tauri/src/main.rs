@@ -32,9 +32,12 @@ const SIDECAR_MESSAGE_CLICK: &str = "click";
 const SIDECAR_MESSAGE_CONSOLE: &str = "console";
 const SIDECAR_MESSAGE_EVAL: &str = "eval";
 const SIDECAR_MESSAGE_EXPORT_PDF: &str = "export-pdf";
+#[allow(dead_code)]
+const SIDECAR_MESSAGE_MINT_IMPORT_TOKEN: &str = "mint-import-token";
 const SIDECAR_MESSAGE_REGISTER_DESKTOP_AUTH: &str = "register-desktop-auth";
 const SIDECAR_MESSAGE_SCREENSHOT: &str = "screenshot";
 const SIDECAR_MESSAGE_SHUTDOWN: &str = "shutdown";
+const SIDECAR_MESSAGE_SHOW: &str = "show";
 const SIDECAR_MESSAGE_STATUS: &str = "status";
 const SIDECAR_MESSAGE_UPDATE: &str = "update";
 const STAMP_APP_FLAG: &str = "--od-stamp-app";
@@ -933,6 +936,83 @@ fn is_open_path_allowed(project_body: &Value) -> Result<(), String> {
     Ok(())
 }
 
+fn is_wsl_release(release: &str) -> bool {
+    release.to_ascii_lowercase().contains("microsoft")
+}
+
+fn current_kernel_release() -> Option<String> {
+    #[cfg(unix)]
+    {
+        let output = Command::new("uname").arg("-r").output().ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let release = String::from_utf8(output.stdout).ok()?;
+        let trimmed = release.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        None
+    }
+}
+
+fn open_with_default_file_manager(path: &Path) -> String {
+    open::that(path)
+        .map(|_| String::new())
+        .unwrap_or_else(|error| error.to_string())
+}
+
+fn explorer_spawn_failed(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied
+    )
+}
+
+fn open_validated_directory(path: &Path) -> String {
+    if current_kernel_release()
+        .as_deref()
+        .map(is_wsl_release)
+        .unwrap_or(false)
+    {
+        let windows_path = Command::new("wslpath")
+            .arg("-w")
+            .arg(path)
+            .output()
+            .ok()
+            .and_then(|output| {
+                if !output.status.success() {
+                    return None;
+                }
+                let path = String::from_utf8(output.stdout).ok()?;
+                let trimmed = path.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            });
+
+        if let Some(windows_path) = windows_path {
+            match Command::new("explorer.exe").arg(&windows_path).spawn() {
+                Ok(_) => return String::new(),
+                Err(error) if explorer_spawn_failed(&error) => {
+                    return open_with_default_file_manager(path)
+                }
+                Err(_) => return String::new(),
+            }
+        }
+    }
+
+    open_with_default_file_manager(path)
+}
+
 fn sign_import_token(secret: &[u8], base_dir: &str) -> Result<String, String> {
     let mut nonce = [0_u8; 16];
     OsRng.fill_bytes(&mut nonce);
@@ -1026,6 +1106,11 @@ async fn handle_ipc_message(
     match message_type {
         SIDECAR_MESSAGE_STATUS => {
             serde_json::to_value(state.snapshot()).map_err(|error| error.to_string())
+        }
+        SIDECAR_MESSAGE_SHOW => {
+            window.show().map_err(|error| error.to_string())?;
+            window.set_focus().map_err(|error| error.to_string())?;
+            Ok(json!({ "shown": true }))
         }
         SIDECAR_MESSAGE_EVAL => {
             let expression = message
@@ -1341,9 +1426,7 @@ async fn desktop_open_project_path(
     if env::var(TAURI_OPEN_PATH_DRY_RUN_ENV).ok().as_deref() == Some("1") {
         return Ok(String::new());
     }
-    Ok(open::that(resolved)
-        .map(|_| String::new())
-        .unwrap_or_else(|error| error.to_string()))
+    Ok(open_validated_directory(&resolved))
 }
 
 async fn pick_folder_for_window(window: &WebviewWindow) -> Result<Option<PathBuf>, String> {

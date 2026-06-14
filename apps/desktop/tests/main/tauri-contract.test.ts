@@ -57,6 +57,15 @@ describe("Tauri sidecar contract constants", () => {
     expect(rustSource).toContain(".env(TAURI_RESOURCE_DIR_ENV, resource_dir_for_node)");
   });
 
+  it("routes WSL open-path requests through Windows Explorer", () => {
+    expect(rustSource).toContain("fn is_wsl_release");
+    expect(rustSource).toContain("fn open_validated_directory(path: &Path) -> String");
+    expect(rustSource).toContain('Command::new("wslpath")');
+    expect(rustSource).toContain('.arg("-w")');
+    expect(rustSource).toContain('Command::new("explorer.exe")');
+    expect(rustSource).toContain("open_validated_directory(&resolved)");
+  });
+
   it("keeps JSON IPC response envelopes aligned with sidecar runtime framing", () => {
     expect(rustSource).toContain('json!({ "ok": true, "result": result })');
     expect(rustSource).toContain('json!({ "ok": false, "error": { "message": message.into() } })');
