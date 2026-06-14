@@ -5,6 +5,11 @@ import { openSettingsDialog } from '@/playwright/amr';
 
 const STORAGE_KEY = 'open-design:config';
 
+type MediaConfigRouteOptions = {
+  readonly mediaConfigGet?: (route: Route) => Promise<void>;
+  readonly mediaConfigPut?: (route: Route) => Promise<void>;
+};
+
 function baseConfig(): Record<string, unknown> {
   return {
     mode: 'daemon',
@@ -55,6 +60,47 @@ test('[P1] media provider edits autosave and restore after reopening settings', 
   await expect(dialog.getByLabel('FishAudio Base URL')).toHaveValue('https://fish.example.com');
 });
 
+test('[P1] media provider settings reload from daemon after an initial load failure', async ({ page }) => {
+  let daemonMediaStatus: 'error' | 'ok' = 'error';
+  await seedSettingsBase(page);
+  await routeBootstrapApis(page, [], {
+    mediaConfigGet: async (route) => {
+      if (daemonMediaStatus === 'error') {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"error":"daemon unavailable"}',
+        });
+        return;
+      }
+      await fulfillJson(route, {
+        providers: {
+          openai: {
+            configured: true,
+            apiKeyTail: '9876',
+            baseUrl: 'https://daemon.example/v1',
+          },
+        },
+      });
+    },
+  });
+
+  const dialog = await openMediaSettings(page);
+
+  await expect(
+    dialog.getByText(
+      'Could not load media provider settings from the local daemon. Using browser-saved settings for now.',
+    ),
+  ).toBeVisible();
+
+  daemonMediaStatus = 'ok';
+  await dialog.getByRole('button', { name: 'Reload from daemon' }).click();
+
+  await expect(dialog.getByRole('button', { name: /Reloaded/i })).toBeVisible();
+  await expect(dialog.getByText('Saved · ••••9876')).toBeVisible();
+  await expect(dialog.getByLabel('OpenAI Base URL')).toHaveValue('https://daemon.example/v1');
+});
+
 async function seedSettingsBase(page: Page): Promise<void> {
   await page.addInitScript(
     ({ key, value }: { readonly key: string; readonly value: Record<string, unknown> }) => {
@@ -64,7 +110,11 @@ async function seedSettingsBase(page: Page): Promise<void> {
   );
 }
 
-async function routeBootstrapApis(page: Page, mediaConfigWrites: unknown[]): Promise<void> {
+async function routeBootstrapApis(
+  page: Page,
+  mediaConfigWrites: unknown[],
+  options: MediaConfigRouteOptions = {},
+): Promise<void> {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -98,6 +148,14 @@ async function routeBootstrapApis(page: Page, mediaConfigWrites: unknown[]): Pro
       return;
     }
     if (path === '/api/media/config') {
+      if (method === 'GET' && options.mediaConfigGet) {
+        await options.mediaConfigGet(route);
+        return;
+      }
+      if (method === 'PUT' && options.mediaConfigPut) {
+        await options.mediaConfigPut(route);
+        return;
+      }
       if (method === 'PUT') mediaConfigWrites.push(route.request().postDataJSON());
       await fulfillJson(route, method === 'GET' ? { providers: {} } : { ok: true });
       return;
