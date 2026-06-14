@@ -31,6 +31,13 @@ function messageWithText(text: string): ChatMessage {
   };
 }
 
+function onlyAnchor(container: HTMLElement): HTMLAnchorElement {
+  const anchor = container.querySelector<HTMLAnchorElement>('a.md-link');
+  expect(anchor).not.toBeNull();
+  if (!anchor) throw new Error('missing assistant link');
+  return anchor;
+}
+
 describe('AssistantMessage — chat file-link routing (#1239)', () => {
   it('routes a relative file-link click through onRequestOpenFile and suppresses the default new-window behavior', () => {
     const onRequestOpenFile = vi.fn();
@@ -43,14 +50,13 @@ describe('AssistantMessage — chat file-link routing (#1239)', () => {
       />,
     );
 
-    const anchor = container.querySelector('a.md-link');
-    expect(anchor).not.toBeNull();
-    expect(anchor?.getAttribute('href')).toBe('template.html');
+    const anchor = onlyAnchor(container);
+    expect(anchor.getAttribute('href')).toBe('template.html');
 
     // Dispatch a real DOM MouseEvent so defaultPrevented reflects what
     // the shell/default browser behavior actually reads.
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
-    anchor!.dispatchEvent(clickEvent);
+    anchor.dispatchEvent(clickEvent);
 
     expect(onRequestOpenFile).toHaveBeenCalledTimes(1);
     expect(onRequestOpenFile).toHaveBeenCalledWith('template.html');
@@ -68,11 +74,28 @@ describe('AssistantMessage — chat file-link routing (#1239)', () => {
       />,
     );
 
-    const anchor = container.querySelector('a.md-link');
-    expect(anchor).not.toBeNull();
-    fireEvent.click(anchor!);
+    fireEvent.click(onlyAnchor(container));
     expect(onRequestOpenFile).toHaveBeenCalledTimes(1);
     expect(onRequestOpenFile).toHaveBeenCalledWith('subdir/hero.html');
+  });
+
+  it('routes absolute assistant file links when they match a known project file', () => {
+    const onRequestOpenFile = vi.fn();
+    const { container } = render(
+      <AssistantMessage
+        message={messageWithText(
+          'Open [index.html](/Users/mac/open-design/open-design-preview-0.10.0/projects/Web%20Prototype/index.html).',
+        )}
+        streaming={false}
+        projectId="project-1"
+        projectFileNames={new Set(['index.html'])}
+        onRequestOpenFile={onRequestOpenFile}
+      />,
+    );
+
+    fireEvent.click(onlyAnchor(container));
+    expect(onRequestOpenFile).toHaveBeenCalledTimes(1);
+    expect(onRequestOpenFile).toHaveBeenCalledWith('index.html');
   });
 
   it('does not intercept external https:// URLs — preserves default target="_blank" behavior', () => {
@@ -86,11 +109,10 @@ describe('AssistantMessage — chat file-link routing (#1239)', () => {
       />,
     );
 
-    const anchor = container.querySelector('a.md-link');
-    expect(anchor).not.toBeNull();
-    expect(anchor?.getAttribute('href')).toBe('https://example.com/docs');
+    const anchor = onlyAnchor(container);
+    expect(anchor.getAttribute('href')).toBe('https://example.com/docs');
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
-    anchor!.dispatchEvent(clickEvent);
+    anchor.dispatchEvent(clickEvent);
     expect(onRequestOpenFile).not.toHaveBeenCalled();
     expect(clickEvent.defaultPrevented).toBe(false);
   });
@@ -106,9 +128,7 @@ describe('AssistantMessage — chat file-link routing (#1239)', () => {
       />,
     );
 
-    const anchor = container.querySelector('a.md-link');
-    expect(anchor).not.toBeNull();
-    fireEvent.click(anchor!);
+    fireEvent.click(onlyAnchor(container));
     expect(onRequestOpenFile).not.toHaveBeenCalled();
   });
 
@@ -124,11 +144,10 @@ describe('AssistantMessage — chat file-link routing (#1239)', () => {
       />,
     );
 
-    const anchor = container.querySelector('a.md-link');
-    expect(anchor).not.toBeNull();
-    expect(anchor?.getAttribute('target')).toBe('_blank');
+    const anchor = onlyAnchor(container);
+    expect(anchor.getAttribute('target')).toBe('_blank');
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
-    anchor!.dispatchEvent(clickEvent);
+    anchor.dispatchEvent(clickEvent);
     expect(clickEvent.defaultPrevented).toBe(false);
   });
 });

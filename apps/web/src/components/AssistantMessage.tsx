@@ -248,7 +248,7 @@ export function AssistantMessage({
                   });
                   onSubmitForm?.(text);
                 }}
-                onRequestOpenFile={onRequestOpenFile}
+                projectId={projectId} projectFileNames={projectFileNames} onRequestOpenFile={onRequestOpenFile}
               />
             );
           if (b.kind === "thinking")
@@ -1228,7 +1228,7 @@ function latestStatusLabel(
   events: AgentEvent[]
 ): { label: string; detail?: string | undefined } | undefined {
   for (let i = events.length - 1; i >= 0; i--) {
-    const ev = events[i]!;
+    const ev = events[i]; if (!ev) continue;
     if (ev.kind === "status") return { label: ev.label, detail: ev.detail };
   }
   return undefined;
@@ -1242,7 +1242,7 @@ function ProseBlock({
   locallySubmitted,
   suppressDirectionForms,
   onSubmitForm,
-  onRequestOpenFile,
+  onRequestOpenFile, projectId, projectFileNames,
 }: {
   text: string;
   isLastAssistant: boolean;
@@ -1251,7 +1251,7 @@ function ProseBlock({
   locallySubmitted: Set<string>;
   suppressDirectionForms: boolean;
   onSubmitForm: (formId: string, text: string) => void;
-  onRequestOpenFile?: (name: string) => void;
+  onRequestOpenFile?: (name: string) => void; projectId: string | null; projectFileNames?: Set<string>;
 }) {
   const cleaned = useMemo(() => stripArtifact(text), [text]);
   const segments = useMemo(() => splitOnQuestionForms(cleaned), [cleaned]);
@@ -1262,12 +1262,12 @@ function ProseBlock({
   const onLinkClick = useMemo<MarkdownLinkClickHandler | undefined>(() => {
     if (!onRequestOpenFile) return undefined;
     return (href, event) => {
-      const path = asInProjectFilePath(href);
+      const path = asInProjectFilePath(href, projectFileNames, projectId);
       if (!path) return;
       event.preventDefault();
       onRequestOpenFile(path);
     };
-  }, [onRequestOpenFile]);
+  }, [onRequestOpenFile, projectFileNames, projectId]);
   // Each text segment is further split on `<system-reminder>` blocks so
   // those render as their own collapsible chip instead of raw markup.
   const renderable = segments.flatMap(
@@ -1498,7 +1498,7 @@ function dedupeSnapshotToolRetries(items: ToolItem[]): ToolItem[] {
     (it) => it.use.name === "TodoWrite" || it.use.name === "todowrite",
   );
   if (allTodoWrite && collapsed.length > 1) {
-    return [collapsed[collapsed.length - 1]!];
+    return collapsed.slice(-1);
   }
   return collapsed;
 }
@@ -1536,11 +1536,11 @@ function ToolGroupCard({
 
   // A run of one tool collapses to that tool's card directly so we don't
   // wrap a single child in a redundant disclosure.
-  if (items.length === 1) {
+  const onlyItem = items.length === 1 ? items[0] : undefined; if (onlyItem) {
     return (
       <ToolCard
-        use={items[0]!.use}
-        result={items[0]!.result}
+        use={onlyItem.use}
+        result={onlyItem.result}
         runStreaming={runStreaming}
         runSucceeded={runSucceeded}
         projectFileNames={projectFileNames}
@@ -1767,7 +1767,7 @@ function buildBlocks(events: AgentEvent[]): Block[] {
       if (
         last &&
         last.kind === "tool-group" &&
-        toolFamily(last.items[last.items.length - 1]!.use.name) === fam
+        toolFamily(last.items.at(-1)?.use.name ?? "") === fam
       ) {
         last.items.push(item);
       } else {
