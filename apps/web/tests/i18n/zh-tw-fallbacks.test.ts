@@ -11,6 +11,11 @@ const ZH_TW_PROJECT_OVERVIEW_KEYS: ReadonlyArray<keyof Dict> = [
   'recentProjects.title',
   'recentProjects.viewAll',
 ];
+const ZH_TW_WORKSPACE_TAB_KEYS: ReadonlyArray<keyof Dict> = [
+  'workspaceTabs.marketplace',
+  'workspaceTabs.pluginDetails',
+  'workspaceTabs.project',
+];
 const ZH_TW_SETTINGS_BYOK_KEYS: ReadonlyArray<keyof Dict> = [
   'settings.advanced',
   'settings.apiKeyGetLink',
@@ -160,6 +165,12 @@ const ZH_TW_TASKS_SAMPLE_KEYS: ReadonlyArray<keyof Dict> = [
 ];
 
 describe('zh-TW fallback parity', () => {
+  it('keeps workspace tabs translated instead of falling back to English', () => {
+    for (const key of ZH_TW_WORKSPACE_TAB_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
   it('keeps recent project and project instruction copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_PROJECT_OVERVIEW_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);

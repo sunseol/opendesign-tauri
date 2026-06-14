@@ -778,6 +778,113 @@ export const zhTW: Dict = {
   'mcpClient.storedAt': '儲存於',
   'mcpClient.daemonError': '無法連線到本機 daemon。請確認 Open Design 正在執行，然後重新開啟此面板。',
   'mcpClient.saveFailed': '儲存失敗。請確認 daemon 正在執行後再試一次。',
+  'useEverywhere.modalAria': '隨處使用 Open Design',
+  'useEverywhere.modalTitle': '隨處使用 Open Design',
+  'useEverywhere.modalSubtitle':
+    '將 Open Design 放進任何 IDE、代理或腳本 - CLI、HTTP、MCP 與 Skills 都可使用。點選「複製給代理的指南」並貼到 Claude Code、Codex、Cursor、openclaw 或 hermes，即可完成設定。',
+  'useEverywhere.closeAria': '關閉隨處使用',
+  'useEverywhere.closeTitle': '關閉 (Esc)',
+  'useEverywhere.tabsAria': '整合介面',
+  'useEverywhere.footStrong': '一鍵交接。',
+  'useEverywhere.footBody': '複製結構化 Markdown 指南，讓代理可立即依照它安裝、驗證並使用。',
+  'useEverywhere.configureMcp': '設定 MCP 伺服器',
+  'useEverywhere.copyGuide': '複製給代理的指南',
+  'useEverywhere.copy': '複製',
+  'useEverywhere.copied': '已複製',
+  'useEverywhere.copyFailed': '複製失敗',
+  'useEverywhere.copySnippetAria': '複製片段：{label}',
+  'useEverywhere.section.overview.tab': '總覽',
+  'useEverywhere.section.overview.heading': 'Open Design 可在代理工作的任何地方運作',
+  'useEverywhere.section.overview.intro':
+    'Open Design 不只是一個視窗 - 它包含本機特權 daemon (`od`) 以及 Skills + Design-Systems + Atoms registry。只要在你的機器上執行，任何程式碼代理 (Claude Code、Codex、Cursor、OpenCode/openclaw、Hermes 或你自己的腳本) 都能透過四種可互換介面驅動生成、檢查專案並產出設計成品。',
+  'useEverywhere.section.overview.bullet1': 'CLI - 使用 `od <command>` 執行無頭腳本、CI 與 shell 自動化。',
+  'useEverywhere.section.overview.bullet2':
+    'MCP 伺服器 - 將 Open Design 接成 Model Context Protocol 伺服器，讓任何支援 MCP 的代理都能列出 skills、執行情境並讀取成品。',
+  'useEverywhere.section.overview.bullet3':
+    'HTTP API - `http://127.0.0.1:7456/api/*` REST + SSE 端點；與 web UI 使用同一介面。',
+  'useEverywhere.section.overview.bullet4':
+    'Skills - 可直接放入的 `SKILL.md` 套件 (相容 Claude)，讓 PATH 上既有的任何代理即使不啟動 Open Design 也能呼叫。',
+  'useEverywhere.section.overview.bullet5':
+    '標準成品 - daemon 啟動前，即可從 Skills、內建預設 plugins 與社群 plugin 範例產生真實 HTML 專案。',
+  'useEverywhere.section.overview.snippet1': '啟動本機 daemon (及 web UI)',
+  'useEverywhere.section.overview.snippet2': '確認可連線',
+  'useEverywhere.section.overview.snippet3': '啟動前匯入標準成品',
+  'useEverywhere.section.overview.footer':
+    'daemon 預設寫入 `./.od/` (專案本機)。設定 `OD_DATA_DIR=~/.open-design` 可跨專案共享資料。',
+  'useEverywhere.section.cli.tab': 'CLI · od 指令',
+  'useEverywhere.section.cli.heading': '從任何 shell 驅動 Open Design',
+  'useEverywhere.section.cli.intro':
+    '`od` binary 隨 daemon 一起提供，也是 Claude Code / Codex 執行生成時使用的同一個 binary。多數子命令都是呼叫本機 daemon 的薄 client，因此無論透過 `pnpm tools-dev` 或封裝 app 啟動，行為都相同。',
+  'useEverywhere.section.cli.bullet1': '`od` (不帶參數) - 啟動 daemon 並開啟 web UI。',
+  'useEverywhere.section.cli.bullet2':
+    '`od media generate ...` - 透過統一 media protocol 產生 image / video / audio bytes。',
+  'useEverywhere.section.cli.bullet3': '`od run ...` - 從提示詞 + skill 啟動專案執行。',
+  'useEverywhere.section.cli.bullet4':
+    '`od plugin install <source>` / `od plugin apply <id>` - 安裝並套用社群 plugins。',
+  'useEverywhere.section.cli.bullet5':
+    '`od skills list` / `od design-systems list` - 檢查本機可用項目。',
+  'useEverywhere.section.cli.bullet6':
+    '`od status` / `od doctor` - 驗證 daemon 健康狀態並偵測 PATH 上的代理 CLI。',
+  'useEverywhere.section.cli.snippet1': '產生圖片 (委派給已設定的 media provider)',
+  'useEverywhere.section.cli.snippet2': '以無頭模式執行情境 plugin，並將事件串流為 JSON lines',
+  'useEverywhere.section.cli.snippet3': '盤點本機可用 skills 與 design systems',
+  'useEverywhere.section.cli.snippet4': '透過 CLI 檢查 seeded artifacts',
+  'useEverywhere.section.cli.snippet5': '驗證環境 + 偵測到的 agents (Claude、Codex、Cursor、...)',
+  'useEverywhere.section.cli.footer':
+    '所有子命令都接受 `--daemon-url http://127.0.0.1:<port>` 來指定執行中的 daemon - 在測試用 sandbox 第二實例時特別有用。',
+  'useEverywhere.section.mcp.tab': 'MCP 伺服器',
+  'useEverywhere.section.mcp.heading': '將 Open Design 作為 MCP server 暴露給任何 coding agent',
+  'useEverywhere.section.mcp.intro':
+    'Open Design 內建 Model Context Protocol server (`od mcp`)，讓任何支援 MCP 的 client - Cursor、Claude Code、Antigravity、VS Code Copilot Chat、openclaw、hermes - 無需手動 shell out，就能探索 Open Design tools (列出 skills、渲染預覽、產生 media、執行 plugins)。daemon 會透過 `GET /api/mcp/install-info` 為主要 client 提供可直接貼上的安裝片段。',
+  'useEverywhere.section.mcp.bullet1': 'Stdio transport - 不需要額外 port，client 會直接啟動 `od mcp`。',
+  'useEverywhere.section.mcp.bullet2':
+    '作為 sidecar 啟動時，會透過本機 IPC status socket 自動探索 live daemon URL。',
+  'useEverywhere.section.mcp.bullet3':
+    '一般安裝則回退到 `--daemon-url http://127.0.0.1:<port>`，確保 MCP process 永遠能找到執行中的 daemon。',
+  'useEverywhere.section.mcp.bullet4':
+    '固定 `OD_DATA_DIR`，讓 spawned MCP process 寫入 daemon 已使用的位置 (避免封裝 macOS app bundles 中的 EPERM)。',
+  'useEverywhere.section.mcp.snippet1': '通用 MCP client 設定 (適用 Cursor、Claude Code、Codex 等)',
+  'useEverywhere.section.mcp.snippet2': '或：向 daemon 要一段符合你安裝方式的片段',
+  'useEverywhere.section.mcp.snippet3': 'Live-artifacts MCP 變體 (讀取並重新整理 dashboards)',
+  'useEverywhere.section.mcp.footer':
+    '在 Open Design app 中，開啟 Settings → Integrations 即可複製 client 專用安裝命令 (Cursor、Claude Code、Antigravity、VS Code)，不必手動編輯 JSON。',
+  'useEverywhere.section.http.tab': 'HTTP API 介面',
+  'useEverywhere.section.http.heading': '與 web UI 相同的 REST + SSE 介面',
+  'useEverywhere.section.http.intro':
+    '本機 daemon 會在 `http://127.0.0.1:7456` 提供 HTTP API (port 可設定)。web UI 呼叫的每個 endpoint 也都可供你的 scripts 使用。串流 endpoint (chat turns、project runs) 會以 `@open-design/contracts` 中的 contract types 發出 Server-Sent Events。',
+  'useEverywhere.section.http.bullet1': '`GET /api/health` - daemon 存活檢查。',
+  'useEverywhere.section.http.bullet2': '`GET /api/skills` 和 `GET /api/design-systems` - 可用 registries。',
+  'useEverywhere.section.http.bullet3':
+    '`GET /api/projects` 和 `POST /api/projects` - 列出並建立專案 (POST 會回傳 project + 第一個 conversation)。',
+  'useEverywhere.section.http.bullet4':
+    '`GET /api/projects/:id/chat` - conversation 的代理事件 SSE stream。',
+  'useEverywhere.section.http.bullet5':
+    '`POST /api/plugins/:id/apply` - 綁定已安裝 plugin，並取得渲染後的範例 query + inputs。',
+  'useEverywhere.section.http.bullet6': '`GET /api/agents` - 偵測 PATH 上的 code-agent CLI。',
+  'useEverywhere.section.http.snippet1': '列出已安裝 skills (代理會將它們當作 templates 使用)',
+  'useEverywhere.section.http.snippet2': '從提示詞建立專案 (完整 server-side flow)',
+  'useEverywhere.section.http.snippet3': '串流 chat turn (SSE - 每一行都相容 JSON-Lines)',
+  'useEverywhere.section.http.footer':
+    '每個 request/response 的純 TypeScript types 都位於 `@open-design/contracts` - 在你的 script 中 import 即可獲得完整 autocomplete，無需接 generator。',
+  'useEverywhere.section.skills.tab': 'Skills 與無頭模式',
+  'useEverywhere.section.skills.heading': '任何代理都能使用的即插即用 Skills - 即使 Open Design 未執行',
+  'useEverywhere.section.skills.intro':
+    'Skill 是含有 Claude-compatible `SKILL.md` 的目錄 (YAML front matter + body)。Open Design 以 `od:` namespace (`mode`、`preview`、`design_system`、`inputs` 等) 擴充此格式，因此同一個成品可同時在 Open Design 內使用，也可給 Claude Code、Codex、openclaw 或 hermes 等 vanilla agent 使用。Discovery 會依 precedence chain 運作，讓專案可覆寫自己的 skills。',
+  'useEverywhere.section.skills.bullet1':
+    'Discovery: `./.claude/skills/` → `./skills/` → `~/.claude/skills/` (project wins)。',
+  'useEverywhere.section.skills.bullet2': '用 symlink 將同一個 skill 連到多個專案，無需複製即可共享。',
+  'useEverywhere.section.skills.bullet3':
+    '每個 skill 都可宣告 connectors、atoms、design-system requirements，以及 gallery 用的 `preview` 範例輸出。',
+  'useEverywhere.section.skills.bullet4':
+    'Headless: PATH 上有 `od` 的代理可以呼叫 `od skills list` 後執行任何 skill；唯讀流程不一定需要 daemon。',
+  'useEverywhere.section.skills.bullet5':
+    '`pnpm seed:test-projects` 會用預設 plugin examples 與社群 plugin examples 測試同一種 artifact shape，並把產出的 `index.html` projects 存為可重用 test data。',
+  'useEverywhere.section.skills.snippet1': '最小 SKILL.md (Claude-compatible front matter + Open Design extras)',
+  'useEverywhere.section.skills.snippet2': '將共享 skill symlink 到專案 (cc-switch 風格)',
+  'useEverywhere.section.skills.snippet3': 'Headless: 列出 daemon 目前看到的 skills',
+  'useEverywhere.section.skills.snippet4': '無頭成品 fixture bundle',
+  'useEverywhere.section.skills.footer':
+    '規格：`docs/skills-protocol.md` 與 `docs/agent-adapters.md` 涵蓋完整 adapter surface (Claude Code、Codex、Cursor、MCP-capable agents、BYOK API fallback) 以及各 adapter 的 skill injection 策略。',
   'tasks.kicker': '自動化工作區',
   'tasks.comingSoon': '即將推出',
   'tasks.lede':
@@ -1297,6 +1404,10 @@ export const zhTW: Dict = {
   'misc.savedTemplate': '已儲存的範本',
   'misc.primary': '主系統',
   'misc.designSystem': '設計系統',
+
+  'workspaceTabs.project': '專案',
+  'workspaceTabs.pluginDetails': 'Plugin 詳細資料',
+  'workspaceTabs.marketplace': '市集',
 
   'workspace.designFiles': '設計檔案',
   'workspace.focusMode': '專注工作區',
