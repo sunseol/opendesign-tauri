@@ -71,10 +71,16 @@ describe('HomeView plugin i18n', () => {
     cleanup();
   });
 
-  it('adds the plugin card Use action as context without hydrating the query', async () => {
+  it('routes the plugin card Use action as the active driver without hydrating the query', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [PLUGIN_ROW] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/plugins/localized-plugin/apply')) {
+        return new Response(JSON.stringify(APPLY_RESULT), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -96,9 +102,12 @@ describe('HomeView plugin i18n', () => {
 
     fireEvent.click(await waitFor(() => screen.getByTestId('plugins-home-use-localized-plugin')));
 
-    expect(screen.getByTestId('home-hero-context-plugin-localized-plugin')).toBeTruthy();
+    expect(screen.getByTestId('home-hero-active-plugin')).toBeTruthy();
     expect((await screen.findByTestId('home-hero-input') as HTMLTextAreaElement).value).toBe('');
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/localized-plugin/apply',
+      expect.anything(),
+    ));
   });
 
   it('hydrates the Home prompt with the localized plugin query', async () => {
@@ -139,6 +148,9 @@ describe('HomeView plugin i18n', () => {
       expect((input as HTMLTextAreaElement).selectionStart).toBe('生成一份关于 设计系统 的简报。'.length);
       expect((input as HTMLTextAreaElement).selectionEnd).toBe('生成一份关于 设计系统 的简报。'.length);
     });
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/localized-plugin/apply',
+      expect.anything(),
+    ));
   });
 });

@@ -383,10 +383,16 @@ describe('HomeView prompt handoff', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('adds a plugin-use handoff from the Plugins page as context', async () => {
+  it('routes a plugin-use handoff from the Plugins page as the active run driver', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [WEB_PROTOTYPE_PLUGIN] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply')) {
+        return new Response(JSON.stringify(WEB_PROTOTYPE_APPLY_RESULT), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -395,11 +401,12 @@ describe('HomeView prompt handoff', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     stubAnimationFrame();
+    const onSubmit = vi.fn();
 
     render(
       <HomeView
         projects={[]}
-        onSubmit={() => undefined}
+        onSubmit={onSubmit}
         onOpenProject={() => undefined}
         onViewAllProjects={() => undefined}
         promptHandoff={createPluginUseHandoff(1, 'example-web-prototype')}
@@ -407,11 +414,28 @@ describe('HomeView prompt handoff', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-context-plugin-example-web-prototype')).toBeTruthy();
+      expect(screen.getByTestId('home-hero-active-plugin')).toBeTruthy();
     });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/example-web-prototype/apply',
+      expect.anything(),
+    ));
     expect((await screen.findByTestId('home-hero-input') as HTMLTextAreaElement).value)
       .toBe('');
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+
+    fireEvent.change(screen.getByTestId('home-hero-input'), {
+      target: { value: 'Use the selected starter as the driver' },
+    });
+    await waitFor(() => {
+      expect((screen.getByTestId('home-hero-submit') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Use the selected starter as the driver',
+      pluginId: 'example-web-prototype',
+      appliedPluginSnapshotId: 'snap-web-prototype',
+    })));
   });
 
   it('routes free-form submits through the hidden default plugin without applying a visible chip', async () => {
@@ -720,6 +744,12 @@ describe('HomeView prompt handoff', () => {
           headers: { 'content-type': 'application/json' },
         });
       }
+      if (typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply')) {
+        return new Response(JSON.stringify(WEB_PROTOTYPE_APPLY_RESULT), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
       throw new Error(`unexpected fetch ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -760,14 +790,101 @@ describe('HomeView prompt handoff', () => {
       expect((input as HTMLTextAreaElement).selectionEnd).toBe(expectedPrompt.length);
     });
     expect(screen.queryByRole('dialog', { name: /replace current prompt/i })).toBeNull();
-    expect(screen.getByTestId('home-hero-context-plugin-example-web-prototype')).toBeTruthy();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+    expect(screen.getByTestId('home-hero-active-plugin')).toBeTruthy();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/example-web-prototype/apply',
+      expect.anything(),
+    ));
+  });
+
+  it('extracts edited use-with-query values after the draft prefix changes', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      if (typeof url === 'string' && url === '/api/plugins') {
+        return new Response(JSON.stringify({ plugins: [WEB_PROTOTYPE_PLUGIN] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply')) {
+        return new Response(JSON.stringify(WEB_PROTOTYPE_APPLY_RESULT), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubAnimationFrame();
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <HomeView
+        projects={[]}
+        onSubmit={onSubmit}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+      />,
+    );
+
+    const input = await screen.findByTestId('home-hero-input');
+    fireEvent.change(input, { target: { value: 'Keep my current brief' } });
+
+    rerender(
+      <HomeView
+        projects={[]}
+        onSubmit={onSubmit}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+        promptHandoff={createPluginUseHandoff(5, 'example-web-prototype', {
+          action: 'use-with-query',
+        })}
+      />,
+    );
+
+    const query =
+      'Build a high-fidelity web prototype for product evaluators using the active project design system from the bundled web prototype seed.';
+    const appended = `Keep my current brief\n\n${query}`;
+    await waitFor(() => expect((input as HTMLTextAreaElement).value).toBe(appended));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/example-web-prototype/apply',
+      expect.anything(),
+    ));
+
+    const edited = appended
+      .replace('Keep my current brief', 'Rewritten brief for the board')
+      .replace('product evaluators', 'enterprise architects');
+    fireEvent.change(input, { target: { value: edited } });
+    await waitFor(() => {
+      expect((screen.getByTestId('home-hero-submit') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      pluginId: 'example-web-prototype',
+      pluginInputs: expect.objectContaining({ audience: 'enterprise architects' }),
+    })));
   });
 
   it('seeds plugin-use handoff with the curated description instead of a raw meta query', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [META_INSTRUCTION_PLUGIN] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/plugins/example-meta-landing/apply')) {
+        return new Response(JSON.stringify({
+          ...WEB_PROTOTYPE_APPLY_RESULT,
+          query: META_INSTRUCTION_PLUGIN.manifest.od.useCase.query,
+          inputs: [],
+          appliedPlugin: {
+            ...WEB_PROTOTYPE_APPLY_RESULT.appliedPlugin,
+            snapshotId: 'snap-meta-landing',
+            pluginId: 'example-meta-landing',
+            inputs: {},
+          },
+        }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -795,8 +912,11 @@ describe('HomeView prompt handoff', () => {
     });
     expect((input as HTMLTextAreaElement).value).not.toContain('verbatim');
     expect((input as HTMLTextAreaElement).value).not.toContain('example.html');
-    expect(screen.getByTestId('home-hero-context-plugin-example-meta-landing')).toBeTruthy();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+    expect(screen.getByTestId('home-hero-active-plugin')).toBeTruthy();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/plugins/example-meta-landing/apply',
+      expect.anything(),
+    ));
   });
 
   it('binds od-plugin-authoring before submitting the rail create-plugin prompt', async () => {

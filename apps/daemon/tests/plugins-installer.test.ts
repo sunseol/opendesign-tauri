@@ -72,8 +72,10 @@ describe('installFromLocalFolder', () => {
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe('sample-plugin');
     expect(list[0]?.sourceKind).toBe('local');
-    expect(list[0]?.trust).toBe('restricted');
-    expect(list[0]?.capabilitiesGranted).toEqual(['prompt:inject']);
+    expect(list[0]?.trust).toBe('trusted');
+    expect(list[0]?.capabilitiesGranted).toEqual(
+      expect.arrayContaining(['prompt:inject', 'pipeline:*']),
+    );
     expect(list[0]?.fsPath).toBe(path.join(pluginsRoot, 'sample-plugin'));
   });
 

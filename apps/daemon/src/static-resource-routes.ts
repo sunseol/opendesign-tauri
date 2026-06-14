@@ -1,4 +1,4 @@
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import { detectAgents } from './agents.js';
@@ -14,7 +14,10 @@ import {
 import { listCodexPets, readCodexPetSpritesheet } from './codex-pets.js';
 import { syncCommunityPets } from './community-pets-sync.js';
 import { readDesignSystem } from './design-systems.js';
-import { registerDesignSystemImportRoutes } from './design-system-import-routes.js';
+import {
+  findUserDesignSystemInCatalog,
+  registerDesignSystemImportRoutes,
+} from './design-system-import-routes.js';
 import { renderDesignSystemPreview } from './design-system-preview.js';
 import { renderDesignSystemShowcase } from './design-system-showcase.js';
 import { listPromptTemplates, readPromptTemplate } from './prompt-templates.js';
@@ -44,7 +47,7 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
     mimeFor,
   } = ctx.resources;
   const { isLocalSameOrigin, resolvedPortRef, sendApiError } = ctx.http;
-  const requireLocalOrigin = (req: any, res: any) => {
+  const requireLocalOrigin = (req: Request, res: Response) => {
     if (isLocalSameOrigin(req, resolvedPortRef.current)) return true;
     sendApiError(res, 403, 'FORBIDDEN', 'local origin required');
     return false;
@@ -55,8 +58,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       const config = await readAppConfig(RUNTIME_DATA_DIR);
       const list = await detectAgents(config.agentCliEnv ?? {});
       res.json({ agents: list });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -71,8 +74,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof body === 'string' && body.length > 0,
         })),
       });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -83,8 +86,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       if (!skill) return res.status(404).json({ error: 'skill not found' });
       const { dir: _dir, ...serializable } = skill;
       res.json(serializable);
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -101,8 +104,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof body === 'string' && body.length > 0,
         })),
       });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -113,8 +116,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       if (!template) return res.status(404).json({ error: 'design template not found' });
       const { dir: _dir, ...serializable } = template;
       res.json(serializable);
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -141,12 +144,12 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof skill.body === 'string' && skill.body.length > 0,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SkillImportError) {
         const status = err.code === 'NOT_FOUND' ? 404 : err.code === 'BAD_REQUEST' ? 400 : 500;
         return sendApiError(res, status, err.code, err.message);
       }
-      sendApiError(res, 500, 'INTERNAL_ERROR', String(err));
+      sendApiError(res, 500, 'INTERNAL_ERROR', routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -184,12 +187,12 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof updated.body === 'string' && updated.body.length > 0,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SkillImportError) {
         const status = err.code === 'NOT_FOUND' ? 404 : err.code === 'BAD_REQUEST' ? 400 : 500;
         return sendApiError(res, status, err.code, err.message);
       }
-      sendApiError(res, 500, 'INTERNAL_ERROR', String(err));
+      sendApiError(res, 500, 'INTERNAL_ERROR', routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -205,8 +208,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       }
       const files = await listSkillFiles(skill.dir);
       res.json({ files });
-    } catch (err: any) {
-      sendApiError(res, 500, 'INTERNAL_ERROR', String(err));
+    } catch (err: unknown) {
+      sendApiError(res, 500, 'INTERNAL_ERROR', routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -220,8 +223,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
         bundledRoot: BUNDLED_PETS_DIR,
       });
       res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -244,8 +247,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
         force: Boolean(body.force),
       });
       res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: String((err && err.message) || err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorMessage(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -279,8 +282,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       }
       res.setHeader('Cache-Control', 'no-store');
       res.sendFile(sheet.absPath);
-    } catch (err: any) {
-      res.status(500).type('text/plain').send(String(err));
+    } catch (err: unknown) {
+      res.status(500).type('text/plain').send(routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -290,8 +293,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       res.json({
         designSystems: systems.map(({ body, ...rest }) => rest),
       });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -308,8 +311,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       res.json({
         promptTemplates: templates.map(({ prompt: _prompt, ...rest }) => rest),
       });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -323,8 +326,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       if (!tpl)
         return res.status(404).json({ error: 'prompt template not found' });
       res.json({ promptTemplate: tpl });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -428,8 +431,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           return res
             .type('text/html')
             .send(rewriteSkillAssetUrls(assembled, skill.id));
-        } catch {
-          // Fall through to raw template on read failure.
+        } catch (err: unknown) {
+          if (!(err instanceof Error)) throw err;
         }
       }
       if (fs.existsSync(tpl)) {
@@ -459,7 +462,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
         let entries: string[] = [];
         try {
           entries = await fs.promises.readdir(examplesDir);
-        } catch {
+        } catch (err: unknown) {
+          if (!(err instanceof Error)) throw err;
           entries = [];
         }
         entries.sort();
@@ -472,7 +476,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
             return res
               .type('text/html')
               .send(rewriteSkillAssetUrls(html, skill.id));
-          } catch {
+          } catch (err: unknown) {
+            if (!(err instanceof Error)) throw err;
             continue;
           }
         }
@@ -484,8 +489,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
         .send(
           'no example.html, assets/template.html, assets/index.html, or examples/*.html for this skill',
         );
-    } catch (err: any) {
-      res.status(500).type('text/plain').send(String(err));
+    } catch (err: unknown) {
+      res.status(500).type('text/plain').send(routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -505,7 +510,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       if (!skill) {
         return res.status(404).type('text/plain').send('skill not found');
       }
-      const relPath = String((req.params as any)[0] || '');
+      const params = req.params as Record<string, string | undefined>;
+      const relPath = String(params[0] || '');
       const assetsRoot = path.resolve(skill.dir, 'assets');
       const target = path.resolve(assetsRoot, relPath);
       if (target !== assetsRoot && !target.startsWith(assetsRoot + path.sep)) {
@@ -521,8 +527,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
         res.header('Access-Control-Allow-Origin', '*');
       }
       res.type(mimeFor(target)).sendFile(target);
-    } catch (err: any) {
-      res.status(500).type('text/plain').send(String(err));
+    } catch (err: unknown) {
+      res.status(500).type('text/plain').send(routeErrorText(err instanceof Error ? err : String(err)));
     }
   });
 
@@ -548,8 +554,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof skill.body === 'string' && skill.body.length > 0,
         },
       });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -559,8 +565,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       const result = await uninstallById(req.params.id, USER_SKILLS_DIR, SKILLS_DIR, 'skill');
       if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
       res.json({ ok: true });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -574,13 +580,13 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       }
       const systems = await listAllDesignSystems();
       const designSystemId = path.basename(fs.realpathSync.native(result.dir));
-      const designSystem = systems.find((system) => system.id === designSystemId);
+      const designSystem = findUserDesignSystemInCatalog(systems, designSystemId);
       if (!designSystem) {
         return res.status(500).json({ error: `installed design system was not found in catalog: ${result.dir}` });
       }
       res.json({ designSystem });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -600,8 +606,8 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       );
       if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
       res.json({ ok: true });
-    } catch (err: any) {
-      res.status(500).json({ error: String(err) });
+    } catch (err: unknown) {
+      res.status(500).json({ error: routeErrorText(err instanceof Error ? err : String(err)) });
     }
   });
 
@@ -623,4 +629,14 @@ function rewriteSkillAssetUrls(html: string, skillId: string) {
       return `${attr}${openQuote}${prefix}${relPath}${closeQuote}`;
     },
   );
+}
+
+type RouteError = Error | string;
+
+function routeErrorText(err: RouteError): string {
+  return typeof err === 'string' ? err : String(err);
+}
+
+function routeErrorMessage(err: RouteError): string {
+  return typeof err === 'string' ? err : err.message || String(err);
 }

@@ -96,6 +96,7 @@ interface ActivePlugin {
   inputFields: InputFieldSpec[];
   inputsValid: boolean;
   queryTemplate: string | null;
+  queryTemplateAllowsPrefix?: boolean;
   lastRenderedPrompt: string | null;
   // Stage B of plugin-driven-flow-plan: when the user applied this
   // plugin through the Home chip rail, the chip carries the project
@@ -608,6 +609,7 @@ export function HomeView({
       // Slide deck binds the plugin context, leaving the user's draft
       // alone.
       suppressPromptUpdate?: boolean;
+      queryTemplateAllowsPrefix?: boolean;
       // Type chips are a mode switch, not a commitment to run. Keeping
       // their apply deferred makes Prototype <-> Deck <-> Media changes
       // feel instant; submit() still resolves the snapshot before sending.
@@ -654,6 +656,7 @@ export function HomeView({
       inputFields,
       inputsValid,
       queryTemplate,
+      queryTemplateAllowsPrefix: options?.queryTemplateAllowsPrefix === true,
       // When prompt updates are suppressed we leave lastRenderedPrompt
       // null so the inline pattern-extraction in handlePromptChange
       // doesn't claim ownership of the user's typed text.
@@ -779,6 +782,7 @@ export function HomeView({
       preserveInputFields?: boolean;
       replaceWithoutConfirmation?: boolean;
       suppressPromptUpdate?: boolean;
+      queryTemplateAllowsPrefix?: boolean;
       deferApply?: boolean;
     },
   ) {
@@ -798,28 +802,39 @@ export function HomeView({
     });
   }
 
-  function requestPluginContextUse(
+  async function routePluginUse(
     record: InstalledPluginRecord,
     action: PluginUseAction = 'use',
     inputs?: Record<string, unknown>,
   ) {
-    let shouldFocusOnly = true;
-    setSelectedPluginContexts((prev) => {
-      if (prev.some((item) => item.record.id === record.id)) return prev;
-      return [...prev, { record }];
-    });
+    const inputFields = record.manifest?.od?.inputs ?? [];
+    const hydratedInputs = hydratePluginInputs(inputFields, inputs);
     if (action === 'use-with-query') {
-      const queryPrompt = renderPluginContextPrompt(record, inputs);
+      const queryPrompt = renderPluginContextPrompt(record, hydratedInputs);
       if (queryPrompt) {
-        shouldFocusOnly = false;
-        pendingPromptFocusEndRef.current = true;
-        setPromptEditedByUser(true);
-        setPrompt((current) => appendPromptQuery(current, queryPrompt));
+        const currentDraft = prompt.trim();
+        const combinedPrompt = appendPromptQuery(prompt, queryPrompt);
+        const rawQuery = pluginPresetQuery(record, locale);
+        const renderedRawQuery = rawQuery ? renderPluginBriefTemplate(rawQuery, hydratedInputs) : null;
+        const queryTemplate = renderedRawQuery && renderedRawQuery.trim() === queryPrompt.trim()
+          ? rawQuery
+          : null;
+        await usePlugin(record, combinedPrompt, {
+          inputs: hydratedInputs,
+          inputFields,
+          queryTemplate,
+          queryTemplateAllowsPrefix: Boolean(queryTemplate && currentDraft),
+          replaceWithoutConfirmation: true,
+        });
+        return;
       }
     }
-    setError(null);
-    setDetailsRecord(null);
-    if (shouldFocusOnly) focusPromptAtEnd();
+    await usePlugin(record, undefined, {
+      inputs: hydratedInputs,
+      inputFields,
+      replaceWithoutConfirmation: true,
+      suppressPromptUpdate: true,
+    });
   }
 
   function runWithReplacementConfirmation(
@@ -896,7 +911,7 @@ export function HomeView({
       );
       return;
     }
-    requestPluginContextUse(
+    void routePluginUse(
       record,
       pendingPluginUseHandoff.action,
       pendingPluginUseHandoff.inputs,
@@ -943,6 +958,7 @@ export function HomeView({
       active.queryTemplate,
       nextPrompt,
       active.inputFields,
+      active.queryTemplateAllowsPrefix === true,
     );
     if (!extracted) return;
     const nextInputs = { ...active.inputs, ...extracted };
@@ -1441,7 +1457,7 @@ export function HomeView({
         loading={pluginsLoading}
         activePluginId={active?.record.id ?? null}
         pendingApplyId={pendingApplyId}
-        onUse={(record, action) => requestPluginContextUse(record, action)}
+        onUse={(record, action) => void routePluginUse(record, action)}
         onOpenDetails={setDetailsRecord}
         onBrowseRegistry={onBrowseRegistry}
         preferDefaultFacet={false}
@@ -1452,7 +1468,7 @@ export function HomeView({
         <PluginDetailsModal
           record={detailsRecord}
           onClose={() => setDetailsRecord(null)}
-          onUse={(record) => requestPluginContextUse(record, 'use')}
+          onUse={(record) => void routePluginUse(record, 'use')}
           isApplying={pendingApplyId === detailsRecord.id}
         />
       ) : null}
@@ -1920,11 +1936,12 @@ function extractPluginInputsFromPrompt(
   template: string,
   prompt: string,
   fields: InputFieldSpec[],
+  allowPrefix = false,
 ): Record<string, unknown> | null {
   TEMPLATE_INPUT_PATTERN.lastIndex = 0;
   const fieldByName = new Map(fields.map((field) => [field.name, field]));
   const keys: string[] = [];
-  let pattern = '^';
+  let pattern = allowPrefix ? '^[\\s\\S]*?' : '^';
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = TEMPLATE_INPUT_PATTERN.exec(template)) !== null) {

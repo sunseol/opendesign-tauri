@@ -12,6 +12,7 @@ import type { RouteDeps } from './server-context.js';
 
 type DesignSystemImportRoutesDeps = RouteDeps<'http' | 'paths' | 'resources'>;
 type RequireLocalOrigin = (req: Request, res: Response) => boolean;
+type CatalogDesignSystem = { id: string };
 
 export function registerDesignSystemImportRoutes(
   app: Express,
@@ -36,7 +37,7 @@ export function registerDesignSystemImportRoutes(
       );
       await sendImportedDesignSystem(ctx, res, result.id, result.dir, 'imported design system');
     } catch (err: unknown) {
-      sendImportError(ctx, res, err);
+      sendImportError(ctx, res, err instanceof Error ? err : new Error(String(err)));
     }
   });
 
@@ -63,7 +64,7 @@ export function registerDesignSystemImportRoutes(
       );
       await sendImportedDesignSystem(ctx, res, result.id, result.dir, 'imported GitHub design system');
     } catch (err: unknown) {
-      sendImportError(ctx, res, err);
+      sendImportError(ctx, res, err instanceof Error ? err : new Error(String(err)));
     }
   });
 
@@ -89,7 +90,7 @@ export function registerDesignSystemImportRoutes(
       );
       await sendImportedDesignSystem(ctx, res, result.id, result.dir, 'imported shadcn design system');
     } catch (err: unknown) {
-      sendImportError(ctx, res, err);
+      sendImportError(ctx, res, err instanceof Error ? err : new Error(String(err)));
     }
   });
 }
@@ -152,7 +153,7 @@ async function importWithCatalogReservation<T>(
   run: (reservedIds: readonly string[]) => Promise<T>,
 ): Promise<T> {
   const before = await ctx.resources.listAllDesignSystems();
-  return await run(before.map((system) => system.id));
+  return await run(designSystemDirIdsFromCatalog(before));
 }
 
 function commonImportOptions(body: Record<string, unknown>, reservedIds: readonly string[]) {
@@ -173,12 +174,26 @@ async function sendImportedDesignSystem(
   missingMessage: string,
 ): Promise<void> {
   const systems = await ctx.resources.listAllDesignSystems();
-  const designSystem = systems.find((system) => system.id === id);
+  const designSystem = findUserDesignSystemInCatalog(systems, id);
   if (!designSystem) {
     ctx.http.sendApiError(res, 500, 'INTERNAL_ERROR', `${missingMessage} was not found in catalog: ${dir}`);
     return;
   }
   res.status(201).json({ designSystem });
+}
+
+export function findUserDesignSystemInCatalog<T extends CatalogDesignSystem>(
+  systems: readonly T[],
+  dirId: string,
+): T | undefined {
+  const catalogId = `user:${dirId}`;
+  return systems.find((system) => system.id === catalogId || system.id === dirId);
+}
+
+export function designSystemDirIdsFromCatalog(systems: readonly CatalogDesignSystem[]): string[] {
+  return systems.map((system) => (
+    system.id.startsWith('user:') ? system.id.slice('user:'.length) : system.id
+  ));
 }
 
 function sendImportError(ctx: DesignSystemImportRoutesDeps, res: Response, err: unknown): void {

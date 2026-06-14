@@ -31,6 +31,7 @@ import type {
   PluginSourceKind,
   TrustTier,
 } from '@open-design/contracts';
+import { defaultTrustForRecord, resolveCapabilitiesGranted } from './trust.js';
 import type Database from 'better-sqlite3';
 
 type SqliteDb = Database.Database;
@@ -101,8 +102,9 @@ export async function resolvePluginFolder(opts: ResolveOptions): Promise<Resolve
   let stats: fs.Stats;
   try {
     stats = await fsp.stat(folder);
-  } catch (err) {
-    return { ok: false, errors: [`Plugin folder not found: ${folder} (${(err as Error).message})`], warnings };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, errors: [`Plugin folder not found: ${folder} (${message})`], warnings };
   }
   if (!stats.isDirectory()) {
     return { ok: false, errors: [`Plugin path is not a directory: ${folder}`], warnings };
@@ -162,11 +164,14 @@ export async function resolvePluginFolder(opts: ResolveOptions): Promise<Resolve
   // folderId fallback only kicks in when an adapter-only manifest forgot to
   // set name, which Zod validation already rejects.
   const id = (manifest.name ?? opts.folderId).toLowerCase();
+  const sourceKind = opts.sourceKind ?? 'local';
+  const trust: TrustTier = opts.trust ?? defaultTrustForRecord({ sourceKind });
+  const capabilitiesGranted = opts.capabilitiesGranted ?? resolveCapabilitiesGranted({ manifest, trust });
   const record: InstalledPluginRecord = {
     id,
     title: manifest.title ?? manifest.name,
     version: manifest.version,
-    sourceKind: opts.sourceKind ?? 'local',
+    sourceKind,
     source: opts.source ?? folder,
     pinnedRef: opts.pinnedRef,
     sourceMarketplaceId: opts.sourceMarketplaceId,
@@ -177,20 +182,14 @@ export async function resolvePluginFolder(opts: ResolveOptions): Promise<Resolve
     resolvedRef: opts.resolvedRef,
     manifestDigest: opts.manifestDigest,
     archiveIntegrity: opts.archiveIntegrity,
-    trust: opts.trust ?? 'restricted',
-    capabilitiesGranted: opts.capabilitiesGranted ?? defaultRestrictedCapabilities(),
+    trust,
+    capabilitiesGranted,
     manifest,
     fsPath: folder,
     installedAt: now,
     updatedAt: now,
   };
   return { ok: true, record, warnings };
-}
-
-function defaultRestrictedCapabilities(): string[] {
-  // Spec §5.3: restricted plugins start with prompt:inject only. Apply-time
-  // grants land additional capabilities on the snapshot, never here.
-  return ['prompt:inject'];
 }
 
 // Map a SQLite row back into an InstalledPluginRecord. Centralized so every

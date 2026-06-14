@@ -164,6 +164,8 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
     };
     expect(createBody.project.id).toBe(projectId);
     expect(createBody.appliedPluginSnapshotId).toBeTruthy();
+    const appliedPluginSnapshotId = createBody.appliedPluginSnapshotId;
+    if (!appliedPluginSnapshotId) throw new Error('Expected applied plugin snapshot id');
 
     // 3. Start a run that re-uses the same applied snapshot id.
     const runResp = await fetch(`${baseUrl}/api/runs`, {
@@ -172,7 +174,7 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
       body:    JSON.stringify({
         projectId,
         pluginId:                 'sample-plugin',
-        appliedPluginSnapshotId:  createBody.appliedPluginSnapshotId,
+        appliedPluginSnapshotId,
         pluginInputs:             { topic: 'agentic design' },
       }),
     });
@@ -184,7 +186,7 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
     };
     expect(runBody.runId).toBeTruthy();
     expect(runBody.pluginId).toBe('sample-plugin');
-    expect(runBody.appliedPluginSnapshotId).toBe(createBody.appliedPluginSnapshotId);
+    expect(runBody.appliedPluginSnapshotId).toBe(appliedPluginSnapshotId);
 
     // 4. The run status surfaces the snapshot id so a polling client
     // can reach replay without parsing the SSE stream.
@@ -197,10 +199,10 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
       appliedPluginSnapshotId: string | null;
     };
     expect(statusBody.pluginId).toBe('sample-plugin');
-    expect(statusBody.appliedPluginSnapshotId).toBe(createBody.appliedPluginSnapshotId);
+    expect(statusBody.appliedPluginSnapshotId).toBe(appliedPluginSnapshotId);
 
     // 5. Replay reads the same snapshot row.
-    const snapResp = await fetch(`${baseUrl}/api/applied-plugins/${encodeURIComponent(createBody.appliedPluginSnapshotId!)}`);
+    const snapResp = await fetch(`${baseUrl}/api/applied-plugins/${encodeURIComponent(appliedPluginSnapshotId)}`);
     expect(snapResp.status).toBe(200);
     const snap = (await snapResp.json()) as {
       snapshotId: string;
@@ -208,7 +210,7 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
       query?: string;
       inputs?: Record<string, string | number | boolean>;
     };
-    expect(snap.snapshotId).toBe(createBody.appliedPluginSnapshotId);
+    expect(snap.snapshotId).toBe(appliedPluginSnapshotId);
     expect(snap.pluginId).toBe('sample-plugin');
     expect(snap.query).toBe('Generate a {{topic}} brief for {{audience}}.');
     expect(snap.inputs).toEqual({ audience: 'general', topic: 'agentic design' });
@@ -247,6 +249,8 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
     expect(shareBody.actionPluginId).toBe('od-plugin-publish-github');
     expect(shareBody.sourcePluginId).toBe('sample-plugin');
     expect(shareBody.appliedPluginSnapshotId).toBeTruthy();
+    const shareSnapshotId = shareBody.appliedPluginSnapshotId;
+    if (!shareSnapshotId) throw new Error('Expected share plugin snapshot id');
     expect(shareBody.stagedPath).toBe('plugin-source/sample-plugin');
     expect(shareBody.prompt).toContain('Publish the local Open Design plugin');
     expect(shareBody.prompt).toContain('/api/projects/$OD_PROJECT_ID/plugins/publish-github');
@@ -263,7 +267,7 @@ describe('Plan §8 e2e-3 (entry slice) — headless install → project → run'
     expect(fileNames).toContain('plugin-source/sample-plugin/SKILL.md');
 
     const snapshotResp = await fetch(
-      `${baseUrl}/api/applied-plugins/${encodeURIComponent(shareBody.appliedPluginSnapshotId!)}`,
+      `${baseUrl}/api/applied-plugins/${encodeURIComponent(shareSnapshotId)}`,
     );
     expect(snapshotResp.status).toBe(200);
     const snapshot = (await snapshotResp.json()) as {
@@ -573,11 +577,6 @@ process.stdin.on('end', () => {
     await readSseUntilSuccess(installResp);
 
     const projectId = `pipeline-${Date.now()}`;
-    // The fixture declares od.pipeline.stages and is installed under
-    // sourceKind='local' (default trust='restricted'). The required
-    // capabilities therefore include pipeline:*; the test grants it
-    // ephemerally via the resolver so the snapshot is created without
-    // re-asking the user.
     const createResp = await fetch(`${baseUrl}/api/projects`, {
       method:  'POST',
       headers: { 'content-type': 'application/json' },
@@ -586,7 +585,6 @@ process.stdin.on('end', () => {
         name:         'Pipeline e2e-3',
         pluginId:     'pipeline-plugin',
         pluginInputs: { topic: 'agentic design' },
-        grantCaps:    ['pipeline:*'],
       }),
     });
     expect(createResp.status).toBe(200);
@@ -604,7 +602,6 @@ process.stdin.on('end', () => {
         projectId,
         pluginId:                'pipeline-plugin',
         appliedPluginSnapshotId: createBody.appliedPluginSnapshotId,
-        grantCaps:               ['pipeline:*'],
       }),
     });
     expect(runResp.status).toBe(202);
@@ -629,8 +626,10 @@ process.stdin.on('end', () => {
     const eventsResp = await fetch(`${baseUrl}/api/runs/${encodeURIComponent(runBody.runId)}/events`, {
       headers: { accept: 'text/event-stream' },
     });
-    expect(eventsResp.body).toBeTruthy();
-    const reader = eventsResp.body!.getReader();
+    const eventsBody = eventsResp.body;
+    expect(eventsBody).toBeTruthy();
+    if (!eventsBody) throw new Error('Expected SSE response body');
+    const reader = eventsBody.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let firstStageEvent: string | null = null;
