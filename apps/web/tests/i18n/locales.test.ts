@@ -92,6 +92,13 @@ const HIGH_VISIBILITY_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'settings.onboardingAmrCloudUpcomingRouting',
   'settings.onboardingAmrCloudUpcomingSkills',
 ];
+const ZH_TW_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'designFiles.filterBy',
+  'designFiles.filterClear',
+  'designFiles.filterCount',
+  'entry.navPlugins',
+  'entry.navTasks',
+];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
   'designFiles.filterClear',
@@ -368,6 +375,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW AMR, settings, plugin, and chat copy translated instead of falling back to English', () => {
     for (const key of HIGH_VISIBILITY_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW navigation and file filters translated instead of falling back to English', () => {
+    for (const key of ZH_TW_NAV_AND_FILE_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
