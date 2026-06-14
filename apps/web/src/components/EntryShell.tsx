@@ -31,17 +31,8 @@ import {
 import {
   trackHomeNavClick,
   trackHomeToolbarClick,
-  trackPageView,
 } from '../analytics/events';
-import {
-  clearOnboardingSessionId,
-  getOrCreateOnboardingSessionId,
-} from '../analytics/onboarding-session';
-import type {
-  TrackingOnboardingArea,
-  TrackingOnboardingStepIndex,
-  TrackingOnboardingStepName,
-} from '@open-design/contracts/analytics';
+import { useOnboardingAnalytics } from './entry-shell/onboardingAnalytics';
 import { useT } from '../i18n';
 import { navigate, useRoute } from '../router';
 import type {
@@ -805,6 +796,12 @@ function OnboardingView({
     source: '',
     email: '',
   });
+  const onboarding = useOnboardingAnalytics({
+    profile,
+    runtime,
+    step,
+    track: analytics.track,
+  });
   const agentRevealTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const cliScanTokenRef = useRef(0);
   const amrAgentRefreshAttemptedRef = useRef(false);
@@ -925,47 +922,6 @@ function OnboardingView({
     setAmrLoginCancelPending(false);
   }, [runtime]);
 
-  const onboardingSessionIdRef = useRef<string>('');
-  if (!onboardingSessionIdRef.current) {
-    onboardingSessionIdRef.current = getOrCreateOnboardingSessionId();
-  }
-  useEffect(() => {
-    return () => {
-      clearOnboardingSessionId();
-    };
-  }, []);
-  useEffect(() => {
-    const onboardingSessionId = onboardingSessionIdRef.current;
-    if (!onboardingSessionId) return;
-    let area: TrackingOnboardingArea;
-    let stepIndex: TrackingOnboardingStepIndex;
-    let stepName: TrackingOnboardingStepName;
-    if (step === 0) {
-      area = 'runtime';
-      stepIndex = '1';
-      stepName = 'connect';
-    } else if (step === 1) {
-      area = 'about_you';
-      stepIndex = '2';
-      stepName = 'about_you';
-    } else if (step === 2) {
-      area = 'newsletter';
-      stepIndex = '3';
-      stepName = 'newsletter';
-    } else {
-      area = 'design_system';
-      stepIndex = '4';
-      stepName = 'design_system';
-    }
-    trackPageView(analytics.track, {
-      page_name: 'onboarding',
-      area,
-      step_index: stepIndex,
-      step_name: stepName,
-      onboarding_session_id: onboardingSessionId,
-    });
-  }, [analytics.track, step]);
-
   const steps = [
     t('settings.onboardingStepConnect'),
     t('settings.onboardingStepProfile'),
@@ -987,6 +943,9 @@ function OnboardingView({
       title: t('settings.onboardingLocalTitle'),
       body: t('settings.onboardingLocalBody'),
       onSelect: () => {
+        onboarding.emitClick('local_coding_agent', 'select_runtime', {
+          runtime_type: 'local_cli',
+        });
         void scanCliAgents();
       },
     },
@@ -996,6 +955,9 @@ function OnboardingView({
       title: t('settings.onboardingByokTitle'),
       body: t('settings.onboardingByokBody'),
       onSelect: () => {
+        onboarding.emitClick('byok', 'select_runtime', {
+          runtime_type: 'byok',
+        });
         setRuntime('byok');
         onModeChange('api');
       },
@@ -1131,6 +1093,23 @@ function OnboardingView({
     agentRevealTimersRef.current = [];
   }
 
+  function finishSkippedOnboarding(): void {
+    onboarding.emitClick('skip', 'skip');
+    onboarding.emitComplete('skipped', 'skipped');
+    onboarding.clearSession();
+    onFinish();
+  }
+
+  function handleSecondaryAction(): void {
+    if (newsletterSubmitting) return;
+    if (step === 0) {
+      finishSkippedOnboarding();
+      return;
+    }
+    onboarding.emitClick('back', 'back');
+    setStep((current) => current - 1);
+  }
+
   async function handlePrimaryAction() {
     if (newsletterSubmitting) return;
     if (step === 0 && amrSelectedAndSignedOut) {
@@ -1144,14 +1123,23 @@ function OnboardingView({
       return;
     }
     if (step === 2) {
-      await submitNewsletterEmail(profile.email);
+      await submitNewsletterEmail(onboarding.getProfile().email);
+      onboarding.emitClick('continue', 'continue');
       setStep((current) => current + 1);
       return;
     }
     if (isLastStep) {
+      onboarding.emitAboutYouSubmit();
+      onboarding.emitClick('continue', 'continue');
+      onboarding.emitComplete('completed', 'completed_without_design_system', {
+        hasDesignSystemRequest: Boolean(designSource),
+        sourceCount: designSource ? 1 : 0,
+      });
+      onboarding.clearSession();
       onFinish();
       return;
     }
+    onboarding.emitClick('continue', 'continue');
     setStep((current) => current + 1);
   }
 
@@ -1254,6 +1242,7 @@ function OnboardingView({
   async function submitNewsletterEmail(rawEmail: string): Promise<void> {
     const email = rawEmail.trim().toLowerCase();
     if (!NEWSLETTER_EMAIL_RE.test(email)) return;
+    onboarding.emitClick('newsletter_email', 'subscribe', { newsletter_opt_in: true });
     setNewsletterSubmitting(true);
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5000);
@@ -1459,6 +1448,10 @@ function OnboardingView({
                       featured
                       selected={runtime === 'amr'}
                       onClick={() => {
+                        onboarding.emitClick('amr_cloud', 'select_runtime', {
+                          runtime_type: 'amr_cloud',
+                          is_recommended: true,
+                        });
                         recordAmrEntry(analytics.track, 'onboarding_amr_card');
                         setRuntime('amr');
                         onModeChange('daemon');
@@ -1557,14 +1550,26 @@ function OnboardingView({
                   placeholder={t('settings.onboardingSelectPlaceholder')}
                   value={profile.role}
                   options={roleOptions}
-                  onChange={(value) => setProfile((current) => ({ ...current, role: value }))}
+                  onChange={(value) => {
+                    if (typeof value === 'string' && value) {
+                      onboarding.emitClick('role', 'select_option', { role: value });
+                    }
+                    setProfile((current) => ({ ...current, role: value }));
+                  }}
                 />
                 <OnboardingDropdown
                   label={t('settings.onboardingOrgSizeLabel')}
                   placeholder={t('settings.onboardingSelectPlaceholder')}
                   value={profile.orgSize}
                   options={orgSizeOptions}
-                  onChange={(value) => setProfile((current) => ({ ...current, orgSize: value }))}
+                  onChange={(value) => {
+                    if (typeof value === 'string' && value) {
+                      onboarding.emitClick('organization_size', 'select_option', {
+                        organization_size: value,
+                      });
+                    }
+                    setProfile((current) => ({ ...current, orgSize: value }));
+                  }}
                 />
                 <OnboardingDropdown
                   label={t('settings.onboardingUseCaseLabel')}
@@ -1574,6 +1579,12 @@ function OnboardingView({
                   multiple
                   onChange={(value) => {
                     if (!Array.isArray(value)) return;
+                    const previousSet = new Set(onboarding.getProfile().useCase);
+                    for (const item of value) {
+                      if (!previousSet.has(item)) {
+                        onboarding.emitClick('use_case', 'select_option', { use_case: item });
+                      }
+                    }
                     setProfile((current) => ({ ...current, useCase: value }));
                   }}
                 />
@@ -1582,7 +1593,14 @@ function OnboardingView({
                   placeholder={t('settings.onboardingSelectPlaceholder')}
                   value={profile.source}
                   options={sourceOptions}
-                  onChange={(value) => setProfile((current) => ({ ...current, source: value }))}
+                  onChange={(value) => {
+                    if (typeof value === 'string' && value) {
+                      onboarding.emitClick('hear_about_us', 'select_option', {
+                        discovery_source: value,
+                      });
+                    }
+                    setProfile((current) => ({ ...current, source: value }));
+                  }}
                 />
               </div>
             </div>
@@ -1630,7 +1648,11 @@ function OnboardingView({
                     <span>{t('settings.onboardingDesignIntroReuseBody')}</span>
                   </div>
                 </div>
-                <button type="button" className="onboarding-view__ds-skip" onClick={onFinish}>
+                <button
+                  type="button"
+                  className="onboarding-view__ds-skip"
+                  onClick={finishSkippedOnboarding}
+                >
                   {t('settings.onboardingSkip')}
                 </button>
               </div>
@@ -1669,7 +1691,7 @@ function OnboardingView({
               <button
                 type="button"
                 className="onboarding-view__secondary"
-                onClick={() => (step === 0 ? onFinish() : setStep((current) => current - 1))}
+                onClick={handleSecondaryAction}
                 disabled={newsletterSubmitting}
               >
                 {step === 0 ? t('settings.onboardingSkip') : t('settings.onboardingBack')}
