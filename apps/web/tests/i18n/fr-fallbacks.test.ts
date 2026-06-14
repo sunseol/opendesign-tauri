@@ -24,6 +24,24 @@ const FR_MANUAL_EDIT_ACTION_KEYS: ReadonlyArray<keyof Dict> = [
   'manualEdit.uploadingImage',
 ];
 
+const FR_PET_IDLE_QUOTE_TEXT_KEYS: ReadonlyArray<keyof Dict> = [
+  'pet.idleQuote.bernini.text',
+  'pet.idleQuote.caravaggio.text',
+  'pet.idleQuote.leonardo.text',
+  'pet.idleQuote.michelangelo.text',
+  'pet.idleQuote.raphael.text',
+  'pet.idleQuote.rodin.text',
+];
+
+const FR_PET_IDLE_QUOTE_AUTHOR_KEYS: ReadonlyArray<keyof Dict> = [
+  'pet.idleQuote.bernini.author',
+  'pet.idleQuote.caravaggio.author',
+  'pet.idleQuote.leonardo.author',
+  'pet.idleQuote.michelangelo.author',
+  'pet.idleQuote.raphael.author',
+  'pet.idleQuote.rodin.author',
+];
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -50,6 +68,21 @@ describe('fr fallback parity', () => {
   it('keeps French manual edit actions translated instead of falling back to English', () => {
     for (const key of FR_MANUAL_EDIT_ACTION_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French pet idle quote text translated instead of falling back to English', () => {
+    for (const key of FR_PET_IDLE_QUOTE_TEXT_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('declares French pet idle quote authors explicitly instead of relying on fallback', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_PET_IDLE_QUOTE_AUTHOR_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
+      expect(fr[key], `fr.${key}`).not.toHaveLength(0);
     }
   });
 

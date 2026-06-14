@@ -1475,6 +1475,22 @@ export const fr: Dict = {
   'pet.atlasRow.waiting': 'Attente',
   'pet.atlasRow.running': 'Course',
   'pet.atlasRow.review': 'Révision',
+  'pet.idleQuote.leonardo.text': 'Apprendre ne fatigue jamais l’esprit.',
+  'pet.idleQuote.leonardo.author': 'Léonard de Vinci',
+  'pet.idleQuote.michelangelo.text':
+    'J’ai vu l’ange dans le marbre et j’ai sculpté jusqu’à le libérer.',
+  'pet.idleQuote.michelangelo.author': 'Michel-Ange',
+  'pet.idleQuote.bernini.text':
+    'Deux moyens peuvent aider le sculpteur : la lumière et l’ombre.',
+  'pet.idleQuote.bernini.author': 'Le Bernin',
+  'pet.idleQuote.raphael.text': 'Quand on peint, on ne pense pas.',
+  'pet.idleQuote.raphael.author': 'Raphaël',
+  'pet.idleQuote.caravaggio.text':
+    'Toutes les œuvres, quoi qu’elles représentent et quel que soit leur auteur, ne sont que bagatelles et enfantillages si elles ne sont pas faites et peintes d’après nature.',
+  'pet.idleQuote.caravaggio.author': 'Le Caravage',
+  'pet.idleQuote.rodin.text':
+    'L’essentiel est d’être ému, d’aimer, d’espérer, de trembler, de vivre.',
+  'pet.idleQuote.rodin.author': 'Auguste Rodin',
   'pet.hatchTitle': 'Faire éclore un nouveau compagnon avec l\'IA',
   'pet.hatchHint': 'Utilisez la compétence hatch-pet intégrée dans le chat pour générer une planche de sprites style Codex, puis importez-la ici.',
   'pet.hatchConcept': 'Concept du compagnon (optionnel)',
