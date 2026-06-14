@@ -34,6 +34,24 @@
 | DESK-103 | 构建出的 Windows Tauri NSIS 安装包可以完成 build/install/start/inspect/screenshot/stop/uninstall | `OD_PACKAGED_E2E_WIN_TAURI=1` | `win-tauri.spec.ts` |
 | DESK-104 | 构建出的 Linux Tauri AppImage 可以完成 build/install/start/inspect/screenshot/stop/uninstall，且 headless 入口仍可 start/stop | `OD_PACKAGED_E2E_LINUX=1` | `linux.spec.ts` |
 
+## #27 Packaged Runtime Update Matrix
+
+| Platform | Gate | 自动化证据 | 更新/不支持范围 |
+| --- | --- | --- | --- |
+| `macOS` | `OD_PACKAGED_E2E_MAC=1` | `e2e/specs/mac.spec.ts` installs the packaged app, waits for the updater fixture to reach `downloaded`, verifies `downloadPath`, shows the updater popup, clicks the install handoff in dry-run mode, captures logs/screenshot, then stops and uninstalls. | DMG/install handoff is covered by the packaged smoke. Live notarized replacement is an environment-owned release check outside this CI gate. |
+| `Windows` | `OD_PACKAGED_E2E_WIN=1` | `e2e/specs/win.spec.ts` runs Windows NSIS update/reinstall coverage: install/start/health, updater popup, `downloadPath` under the installed update root, installer handoff dry-run, direct reinstall while running, restart, screenshot, logs, stop, uninstall, and residue checks. | NSIS updater and reinstall lifecycle are covered by the Windows packaged smoke; `OD_PACKAGED_E2E_WIN_VERIFY_REINSTALL=0` may skip the direct reinstall probe only when the host cannot run that side effect. |
+| `Linux` | `OD_PACKAGED_E2E_LINUX=1` | `e2e/specs/linux.spec.ts` builds the Tauri AppImage, installs, starts, inspects health/eval/screenshot, stops, uninstalls, and rechecks the headless launcher lifecycle. CI publishes this through `packaged_smoke_tauri_linux`. | AppImage updater install handoff is one of the explicitly documented unsupported update paths for #27; Linux currently owns packaged lifecycle evidence, not self-update replacement. |
+
+The Windows Tauri migration gate remains separate in `e2e/specs/win-tauri.spec.ts` under
+`OD_PACKAGED_E2E_WIN_TAURI=1`. CI wires Windows and Linux native package gates through
+`packaged_smoke_tauri_win` and `packaged_smoke_tauri_linux`.
+
+Packaged sidecars inherit the environment needed for #27 runtime parity:
+
+- `OD_DATA_DIR` is honored as a namespace-scoped packaged data root; already-scoped values are preserved, and relative or mismatched namespace paths are rejected by `apps/packaged/tests/paths.test.ts`.
+- Node proxy variables are forwarded to sidecars: `NODE_USE_ENV_PROXY`, `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `http_proxy`, `https_proxy`, and `no_proxy`.
+- Host OS language signals are forwarded through `LANG` and `LC_ALL`, so packaged sidecars observe the same host OS language inputs as the desktop shell.
+
 ## 自动化候选
 
 | ID | 场景 | 原因 |
