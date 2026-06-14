@@ -54,6 +54,47 @@ const FR_PET_TASK_STATUS_KEYS: ReadonlyArray<keyof Dict> = [
   'pet.taskSummarySingle',
 ];
 
+const FR_PLUGIN_AVAILABLE_DETAILS_KEYS: ReadonlyArray<keyof Dict> = [
+  'plugins.availableDetails.provenance',
+  'plugins.availableDetails.provenanceLine',
+  'plugins.availableDetails.provenanceLineWithIntegrity',
+  'plugins.availableDetails.install',
+  'plugins.availableDetails.version',
+  'plugins.availableDetails.pluginVersion',
+  'plugins.availableDetails.copyInstallCommand',
+  'plugins.availableDetails.copied',
+  'plugins.availableDetails.deprecatedPrefix',
+  'plugins.availableDetails.deprecatedFallback',
+  'plugins.availableDetails.yanked',
+  'plugins.availableDetails.yankedWithReason',
+  'plugins.availableDetails.versionDeprecatedSuffix',
+  'plugins.availableDetails.versionYankedSuffix',
+  'plugins.availableDetails.ref',
+  'plugins.availableDetails.integrity',
+  'plugins.availableDetails.permissions',
+  'plugins.availableDetails.capabilitySummary',
+];
+
+const FR_PLUGIN_AVAILABLE_DETAILS_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
+  'plugins.availableDetails.provenance',
+  'plugins.availableDetails.provenanceLine',
+  'plugins.availableDetails.provenanceLineWithIntegrity',
+  'plugins.availableDetails.install',
+  'plugins.availableDetails.pluginVersion',
+  'plugins.availableDetails.copyInstallCommand',
+  'plugins.availableDetails.copied',
+  'plugins.availableDetails.deprecatedPrefix',
+  'plugins.availableDetails.deprecatedFallback',
+  'plugins.availableDetails.yanked',
+  'plugins.availableDetails.yankedWithReason',
+  'plugins.availableDetails.versionDeprecatedSuffix',
+  'plugins.availableDetails.versionYankedSuffix',
+  'plugins.availableDetails.ref',
+  'plugins.availableDetails.integrity',
+  'plugins.availableDetails.permissions',
+  'plugins.availableDetails.capabilitySummary',
+];
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -100,6 +141,21 @@ describe('fr fallback parity', () => {
 
   it('keeps French pet task status copy translated instead of falling back to English', () => {
     for (const key of FR_PET_TASK_STATUS_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('declares French available plugin detail labels explicitly instead of relying on fallback', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_PLUGIN_AVAILABLE_DETAILS_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
+      expect(fr[key], `fr.${key}`).not.toHaveLength(0);
+    }
+  });
+
+  it('keeps French available plugin detail copy translated instead of falling back to English', () => {
+    for (const key of FR_PLUGIN_AVAILABLE_DETAILS_TRANSLATED_KEYS) {
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
