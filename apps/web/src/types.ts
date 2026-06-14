@@ -50,7 +50,9 @@ import type {
   ProviderModelsRequest,
   ProviderModelsResponse,
   Project,
+  ProjectBrowserWorkspaceTab,
   ProjectPlatform,
+  ProjectTabsState,
   PreviewCommentMember,
   PreviewCommentSelectionKind,
   PreviewComment,
@@ -86,6 +88,7 @@ export type {
   ChatCommentSelectionKind,
   OrbitRunSummary,
   OrbitStatusResponse,
+  ProjectBrowserWorkspaceTab,
   PreviewCommentMember,
   PreviewCommentSelectionKind,
   PreviewVisualMarkKind,
@@ -522,7 +525,4 @@ export type {
   UpdateDeployConfigRequest,
 };
 
-export interface OpenTabsState {
-  tabs: ProjectWorkspaceTabId[];
-  active: ProjectWorkspaceTabId | null;
-}
+export type OpenTabsState = ProjectTabsState;
