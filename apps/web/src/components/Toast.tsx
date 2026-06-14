@@ -10,7 +10,9 @@
 // explanation (e.g. Anthropic account-usage-cap reasons) can surface
 // the real upstream message alongside the daemon's category label.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
+import { Icon, type IconName } from './Icon';
 
 export interface ToastProps {
   message: string;
@@ -27,11 +29,21 @@ export interface ToastProps {
   /** ARIA role. Use "alert" for error messages (announced immediately),
    *  "status" (default) for non-urgent confirmations. */
   role?: 'status' | 'alert';
-  tone?: 'default' | 'success';
+  tone?: 'default' | 'success' | 'error' | 'loading';
   placement?: 'bottom' | 'top';
 }
 
 const DEFAULT_TTL = 4000;
+const EXIT_MS = 160;
+
+type ToastTone = NonNullable<ToastProps['tone']>;
+
+const TONE_ICON: Record<ToastTone, IconName | null> = {
+  default: null,
+  success: 'check',
+  error: 'close',
+  loading: 'spinner',
+};
 
 export function Toast({
   message,
@@ -46,22 +58,36 @@ export function Toast({
   // When code is present the toast is a manual-action surface; never
   // auto-dismiss it out from under the user mid-copy.
   const effectiveTtl = code ? 0 : ttlMs;
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    setLeaving(false);
     if (!onDismiss || !Number.isFinite(effectiveTtl) || effectiveTtl <= 0) return;
-    const id = window.setTimeout(() => {
-      onDismiss();
-    }, effectiveTtl);
-    return () => window.clearTimeout(id);
+    const fadeAt = Math.max(0, effectiveTtl - EXIT_MS);
+    const fadeId = window.setTimeout(() => setLeaving(true), fadeAt);
+    const dismissId = window.setTimeout(() => onDismiss(), effectiveTtl);
+    return () => {
+      window.clearTimeout(fadeId);
+      window.clearTimeout(dismissId);
+    };
   }, [message, details, code, effectiveTtl, onDismiss]);
+
+  const iconName = TONE_ICON[tone];
 
   return (
     <div
-      className={`od-toast tone-${tone} placement-${placement}`}
+      className={`od-toast tone-${tone} placement-${placement}${leaving ? ' leaving' : ''}`}
       role={role}
       aria-live={role === 'alert' ? 'assertive' : 'polite'}
     >
-      <div className="od-toast-message">{message}</div>
+      <div className="od-toast-body">
+        {iconName ? (
+          <span className="od-toast-icon" aria-hidden>
+            <Icon name={iconName} size={14} />
+          </span>
+        ) : null}
+        <div className="od-toast-message">{message}</div>
+      </div>
       {details ? <div className="od-toast-details">{details}</div> : null}
       {code ? (
         <pre className="od-toast-code">{code}</pre>
