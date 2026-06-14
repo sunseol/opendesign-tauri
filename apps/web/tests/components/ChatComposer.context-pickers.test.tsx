@@ -57,18 +57,7 @@ const SKILL = {
 function makeSkill(overrides: Partial<typeof SKILL>): typeof SKILL {
   return {
     ...SKILL,
-    id: overrides.id ?? SKILL.id,
-    name: overrides.name ?? SKILL.name,
-    description: overrides.description ?? SKILL.description,
-    triggers: overrides.triggers ?? SKILL.triggers,
-    mode: overrides.mode ?? SKILL.mode,
-    previewType: overrides.previewType ?? SKILL.previewType,
-    designSystemRequired: overrides.designSystemRequired ?? SKILL.designSystemRequired,
-    defaultFor: overrides.defaultFor ?? SKILL.defaultFor,
-    upstream: overrides.upstream ?? SKILL.upstream,
-    hasBody: overrides.hasBody ?? SKILL.hasBody,
-    examplePrompt: overrides.examplePrompt ?? SKILL.examplePrompt,
-    aggregatesExamples: overrides.aggregatesExamples ?? SKILL.aggregatesExamples,
+    ...overrides,
   };
 }
 
@@ -228,24 +217,6 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@Deck Builder');
   });
 
-  it('inserts a skill mention when picking from the tools panel', async () => {
-    const onProjectSkillChange = vi.fn();
-    renderComposer({ onProjectSkillChange });
-    const input = screen.getByTestId('chat-composer-input') as HTMLTextAreaElement;
-
-    fireEvent.change(input, {
-      target: { value: 'Build ', selectionStart: 6 },
-    });
-    input.setSelectionRange(6, 6);
-    fireEvent.click(screen.getByLabelText('Open CLI and model settings'));
-    fireEvent.click(screen.getByRole('tab', { name: 'Skills' }));
-    fireEvent.click(screen.getByText('Deck Builder'));
-
-    await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
-    await waitFor(() => expect(input.value).toBe('Build @Deck Builder '));
-    expect(input.selectionStart).toBe('Build @Deck Builder '.length);
-  });
-
   it('shows all matching skills and ranks exact prefix matches first', async () => {
     skills = [
       makeSkill({
@@ -302,20 +273,4 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getByTestId('chat-composer-mention-overlay').textContent).toContain('@My Export');
   });
 
-  it('lets the tools panel switch between Official and My plugins', async () => {
-    renderComposer();
-    fireEvent.click(screen.getByLabelText('Open CLI and model settings'));
-
-    await waitFor(() => expect(screen.getByText('Community Deck')).toBeTruthy());
-    expect(screen.queryByText('My Export')).toBeNull();
-
-    fireEvent.click(screen.getByText('My plugins'));
-    expect(screen.getByText('My Export')).toBeTruthy();
-    expect(screen.queryByText('Community Deck')).toBeNull();
-
-    fireEvent.change(screen.getByLabelText('Search plugins'), {
-      target: { value: 'private' },
-    });
-    expect(screen.getByText('Private export workflow')).toBeTruthy();
-  });
 });

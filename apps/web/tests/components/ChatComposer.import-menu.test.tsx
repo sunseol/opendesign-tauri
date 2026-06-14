@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-// Composer Tools -> Import menu — regression coverage.
+// Composer plus menu -> Import submenu — regression coverage.
 //
 // The "Link code folder" item is the only enabled action on this menu
 // when a chat has no linked dirs yet. An unrelated refactor once
@@ -84,17 +84,20 @@ afterEach(() => {
   cleanup();
 });
 
-describe('ChatComposer Tools -> Import menu', () => {
+describe('ChatComposer plus menu -> Import', () => {
   it('exposes an enabled "Link code folder" item that opens the folder dialog and patches linkedDirs', async () => {
     const onProjectMetadataChange = vi.fn();
     renderComposer({ onProjectMetadataChange });
 
-    fireEvent.click(screen.getByLabelText('Open CLI and model settings'));
-    fireEvent.click(screen.getByRole('tab', { name: 'Import' }));
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Import' }));
 
     const folderItem = await screen.findByRole('menuitem', { name: /Link code folder/i });
     expect(folderItem).toBeTruthy();
-    expect((folderItem as HTMLButtonElement).disabled).toBe(false);
+    if (!(folderItem instanceof HTMLButtonElement)) {
+      throw new Error('Expected import folder item to be a button.');
+    }
+    expect(folderItem.disabled).toBe(false);
 
     fireEvent.click(folderItem);
 
