@@ -1211,6 +1211,8 @@ export const fa: Dict = {
   'assistant.role': 'دستیار',
   'assistant.workingLabel': 'در حال کار',
   'assistant.doneLabel': 'انجام شد',
+  'assistant.shareToOpenDesign': 'اشتراک‌گذاری در Open Design',
+  'assistant.shareToOpenDesignBusy': 'در حال اشتراک‌گذاری...',
   'assistant.feedbackPrompt': 'بازخورد',
   'assistant.feedbackPositive': 'مفید',
   'assistant.feedbackNegative': 'غیرمفید',

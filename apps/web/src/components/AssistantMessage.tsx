@@ -88,6 +88,8 @@ interface Props {
   onSubmitForm?: (text: string) => void;
   onContinueRemainingTasks?: (todos: TodoItem[]) => void;
   onFeedback?: (change: ChatMessageFeedbackChange) => void;
+  onShareToOpenDesign?: () => void;
+  shareToOpenDesignBusy?: boolean;
   suppressDirectionForms?: boolean;
   hasDesignSystemContext?: boolean;
 }
@@ -116,6 +118,8 @@ export function AssistantMessage({
   onSubmitForm,
   onContinueRemainingTasks,
   onFeedback,
+  onShareToOpenDesign,
+  shareToOpenDesignBusy = false,
   suppressDirectionForms = false,
   hasDesignSystemContext = false,
 }: Props) {
@@ -328,6 +332,19 @@ export function AssistantMessage({
                 hasEmptyResponse={hasEmptyResponse}
               />
             )}
+            {onShareToOpenDesign && isLast && showFeedback ? (
+              <button
+                type="button"
+                className="assistant-share-to-od-btn"
+                data-testid="assistant-share-to-od"
+                disabled={shareToOpenDesignBusy}
+                onClick={onShareToOpenDesign}
+              >
+                {shareToOpenDesignBusy
+                  ? t('assistant.shareToOpenDesignBusy')
+                  : t('assistant.shareToOpenDesign')}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

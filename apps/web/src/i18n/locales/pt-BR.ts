@@ -1271,6 +1271,8 @@ export const ptBR: Dict = {
   'assistant.role': 'Assistente',
   'assistant.workingLabel': 'Trabalhando',
   'assistant.doneLabel': 'Concluído',
+  'assistant.shareToOpenDesign': 'Compartilhar com Open Design',
+  'assistant.shareToOpenDesignBusy': 'Compartilhando...',
   'assistant.feedbackPrompt': 'Feedback',
   'assistant.feedbackPositive': 'Útil',
   'assistant.feedbackNegative': 'Não útil',

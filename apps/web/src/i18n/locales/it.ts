@@ -2222,6 +2222,8 @@ export const it: Dict = {
   'tool.todosCollapse': 'Nascondi attività',
   'tool.todosDone': 'Fatto',
   'tool.todosDismiss': 'Chiudi l\'elenco delle attività',
+  'assistant.shareToOpenDesign': 'Condividi su Open Design',
+  'assistant.shareToOpenDesignBusy': 'Condivisione...',
   'assistant.feedbackPrompt': 'Feedback',
   'assistant.feedbackPositive': 'Utile',
   'assistant.feedbackNegative': 'Non utile',

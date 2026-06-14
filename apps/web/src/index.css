@@ -16739,6 +16739,31 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
 .assistant-footer[data-unfinished="true"] .dot {
   background: var(--amber);
 }
+.assistant-share-to-od-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-default);
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.assistant-share-to-od-btn:hover:not(:disabled) {
+  background: var(--bg-default);
+  border-color: var(--border-strong);
+}
+.assistant-share-to-od-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* ---------------------------------------------------------------------
  * Critique Theater (Phase 8). Role-keyed tinting via `data-role` so the

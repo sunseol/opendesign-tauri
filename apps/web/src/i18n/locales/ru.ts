@@ -1271,6 +1271,8 @@ export const ru: Dict = {
   'assistant.role': 'Ассистент',
   'assistant.workingLabel': 'Работает',
   'assistant.doneLabel': 'Готово',
+  'assistant.shareToOpenDesign': 'Поделиться в Open Design',
+  'assistant.shareToOpenDesignBusy': 'Делимся...',
   'assistant.feedbackPrompt': 'Отзыв',
   'assistant.feedbackPositive': 'Полезно',
   'assistant.feedbackNegative': 'Не полезно',

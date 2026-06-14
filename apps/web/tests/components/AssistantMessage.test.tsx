@@ -75,6 +75,44 @@ describe('AssistantMessage feedback gate', () => {
     expect(screen.getByRole('button', { name: 'Not helpful' })).toBeTruthy();
   });
 
+  it('shows the share-to-community action on the latest successful turn', () => {
+    const onShareToOpenDesign = vi.fn();
+
+    render(
+      <AssistantMessage
+        message={baseMessage({ producedFiles: [producedFile('index.html')] })}
+        streaming={false}
+        projectId="proj-1"
+        isLast
+        onFeedback={vi.fn()}
+        onShareToOpenDesign={onShareToOpenDesign}
+      />,
+    );
+
+    const share = screen.getByTestId('assistant-share-to-od');
+    expect(share.textContent).toBe('Share to Open Design');
+    share.click();
+    expect(onShareToOpenDesign).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the share-to-community action while a share send is in flight', () => {
+    render(
+      <AssistantMessage
+        message={baseMessage({ producedFiles: [producedFile('index.html')] })}
+        streaming={false}
+        projectId="proj-1"
+        isLast
+        onFeedback={vi.fn()}
+        onShareToOpenDesign={vi.fn()}
+        shareToOpenDesignBusy
+      />,
+    );
+
+    const share = screen.getByTestId('assistant-share-to-od');
+    expect(share.textContent).toBe('Sharing...');
+    expect((share as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('shows the feedback widget for a successful text-only turn with no producedFiles', () => {
     render(
       <AssistantMessage

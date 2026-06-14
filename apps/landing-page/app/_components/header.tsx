@@ -38,7 +38,8 @@ export interface HeaderProps {
     | 'templates'
     | 'craft'
     | 'blog'
-    | 'tutorials';
+    | 'tutorials'
+    | 'community';
   /**
    * Live counts from the Markdown catalogs. Required so we can never
    * silently render stale fallback numbers when a caller forgets to
@@ -242,6 +243,11 @@ export function Header({
             <li>
               <a href={href('/tutorials/')} className={linkClass('tutorials')}>
                 {headerCopy.nav.tutorials}
+              </a>
+            </li>
+            <li>
+              <a href={href('/community/')} className={linkClass('community')}>
+                Community
               </a>
             </li>
             <li>

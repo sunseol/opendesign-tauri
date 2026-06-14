@@ -1230,6 +1230,8 @@ export const pl: Dict = {
   'assistant.role': 'Asystent',
   'assistant.workingLabel': 'Pracuję',
   'assistant.doneLabel': 'Gotowe',
+  'assistant.shareToOpenDesign': 'Udostępnij Open Design',
+  'assistant.shareToOpenDesignBusy': 'Udostępnianie...',
   'assistant.feedbackPrompt': 'Opinia',
   'assistant.feedbackPositive': 'Pomocne',
   'assistant.feedbackNegative': 'Niepomocne',

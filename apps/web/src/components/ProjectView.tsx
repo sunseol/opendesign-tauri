@@ -136,6 +136,7 @@ import {
   buildPluginFolderAgentActionPrompt,
   type PluginFolderAgentAction,
 } from './design-files/pluginFolderActions';
+import { SHARE_TO_COMMUNITY_PROMPT } from './share-to-community/shareToCommunityPrompt';
 import { CenteredLoader } from './Loading';
 import { Toast } from './Toast';
 import { useDesignMdState } from '../hooks/useDesignMdState';
@@ -3001,6 +3002,22 @@ export function ProjectView({
     [currentConversationActionDisabled, handleSend],
   );
 
+  const [shareToOpenDesignBusy, setShareToOpenDesignBusy] = useState(false);
+  const shareToOpenDesignBusyRef = useRef(false);
+  const handleShareToOpenDesign = useCallback(() => {
+    if (currentConversationActionDisabled || shareToOpenDesignBusyRef.current) return;
+    shareToOpenDesignBusyRef.current = true;
+    setShareToOpenDesignBusy(true);
+    void (async () => {
+      try {
+        await handleSend(SHARE_TO_COMMUNITY_PROMPT, [], []);
+      } finally {
+        shareToOpenDesignBusyRef.current = false;
+        setShareToOpenDesignBusy(false);
+      }
+    })();
+  }, [currentConversationActionDisabled, handleSend]);
+
   const sentDesignSystemReviewTaskKeysRef = useRef<Set<string>>(new Set());
   const persistDesignSystemReviewEntry = useCallback((
     sectionTitle: string,
@@ -3958,6 +3975,8 @@ export function ProjectView({
               onSendQueuedNow={sendQueuedChatSendNow}
               onRequestOpenFile={requestOpenFile}
               onRequestPluginFolderAgentAction={handlePluginFolderAgentAction}
+              onShareToOpenDesign={handleShareToOpenDesign}
+              shareToOpenDesignBusy={shareToOpenDesignBusy}
               initialDraft={chatInitialDraft}
               onSubmitForm={(text) => {
                 if (currentConversationActionDisabled) return;
