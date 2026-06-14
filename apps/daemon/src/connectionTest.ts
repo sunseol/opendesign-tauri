@@ -446,10 +446,15 @@ function inspectProviderCompletion(
   const obj = data && typeof data === 'object' ? data as Record<string, unknown> : null;
   if (!obj) return { valid: false };
 
-  if (protocol === 'openai' || protocol === 'azure' || protocol === 'senseaudio') {
+  if (
+    protocol === 'openai' ||
+    protocol === 'openrouter' ||
+    protocol === 'azure' ||
+    protocol === 'senseaudio'
+  ) {
     const responseModel = typeof obj.model === 'string' ? obj.model : '';
     if (
-      (protocol === 'openai' || protocol === 'senseaudio') &&
+      (protocol === 'openai' || protocol === 'openrouter' || protocol === 'senseaudio') &&
       enforceResponseModel &&
       responseModel &&
       requestedModel &&
@@ -622,6 +627,15 @@ function buildProviderCall(input: ProviderTestRequest): ProviderCallShape {
   const baseUrl = String(input.baseUrl);
   const apiKey = String(input.apiKey);
   const model = String(input.model);
+  const isOpenRouter =
+    input.protocol === 'openrouter' ||
+    (() => {
+      try {
+        return new URL(baseUrl).hostname === 'openrouter.ai';
+      } catch {
+        return false;
+      }
+    })();
   switch (input.protocol) {
     case 'anthropic':
       return {
@@ -654,6 +668,7 @@ function buildProviderCall(input: ProviderTestRequest): ProviderCallShape {
         },
       };
     case 'openai':
+    case 'openrouter':
     case 'senseaudio':
       // SenseAudio is wire-compatible with OpenAI (POST /v1/chat/completions,
       // Bearer auth, identical body + response shape), so the connection
@@ -665,6 +680,12 @@ function buildProviderCall(input: ProviderTestRequest): ProviderCallShape {
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${apiKey}`,
+          ...(isOpenRouter
+            ? {
+                'HTTP-Referer': 'https://opendesign.dev',
+                'X-Title': 'Open Design',
+              }
+            : {}),
         },
         body: {
           model,

@@ -89,9 +89,17 @@ function extractOpenAiModels(data: unknown): ProviderModelOption[] {
   if (!Array.isArray(items)) return [];
   return uniqueModels(
     items
-      .map((item) => (item as { id?: unknown })?.id)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0)
-      .map((id) => ({ id, label: id })),
+      .map((item) => {
+        const obj = item && typeof item === 'object'
+          ? item as { id?: unknown; name?: unknown }
+          : null;
+        const id = typeof obj?.id === 'string' ? obj.id : '';
+        const label = typeof obj?.name === 'string' && obj.name.trim()
+          ? obj.name
+          : id;
+        return id ? { id, label } : null;
+      })
+      .filter((item): item is ProviderModelOption => item != null),
   );
 }
 
@@ -156,7 +164,7 @@ function providerModelsUrl(protocol: ConnectionTestProtocol, baseUrl: string, ap
   if (protocol === 'aihubmix') {
     return aihubmixCatalogUrl(baseUrl, 'llm');
   }
-  if (protocol === 'openai' || protocol === 'senseaudio') {
+  if (protocol === 'openai' || protocol === 'openrouter' || protocol === 'senseaudio') {
     return appendVersionedApiPath(baseUrl, '/models');
   }
   if (protocol === 'anthropic') {
@@ -174,8 +182,16 @@ function providerModelsHeaders(
   protocol: ConnectionTestProtocol,
   apiKey: string,
 ): Record<string, string> {
-  if (protocol === 'openai' || protocol === 'senseaudio') {
-    return { authorization: `Bearer ${apiKey}` };
+  if (protocol === 'openai' || protocol === 'openrouter' || protocol === 'senseaudio') {
+    return {
+      authorization: `Bearer ${apiKey}`,
+      ...(protocol === 'openrouter'
+        ? {
+            'HTTP-Referer': 'https://opendesign.dev',
+            'X-Title': 'Open Design',
+          }
+        : {}),
+    };
   }
   if (protocol === 'aihubmix') {
     return apiKey.trim() ? aihubmixHeaders(apiKey) : {};
@@ -193,7 +209,9 @@ function extractModels(protocol: ConnectionTestProtocol, data: unknown): Provide
   // SenseAudio's /v1/models response follows the OpenAI envelope
   // (`{ data: [{ id, ... }] }`), so the same extractor handles both.
   if (protocol === 'aihubmix') return parseAIHubMixCatalog(data, { chatOnly: true });
-  if (protocol === 'openai' || protocol === 'senseaudio') return extractOpenAiModels(data);
+  if (protocol === 'openai' || protocol === 'openrouter' || protocol === 'senseaudio') {
+    return extractOpenAiModels(data);
+  }
   if (protocol === 'anthropic') return extractAnthropicModels(data);
   if (protocol === 'google') return extractGoogleModels(data);
   return [];

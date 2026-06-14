@@ -8,4 +8,10 @@ describe('apiProtocols table consistency', () => {
   it('FAST_MODEL_BY_PROTOCOL.google is one of the live suggested models', () => {
     expect(SUGGESTED_MODELS_BY_PROTOCOL.google).toContain(FAST_MODEL_BY_PROTOCOL.google);
   });
+
+  it('defines OpenRouter as its own BYOK protocol with a matching fast model', () => {
+    expect(SUGGESTED_MODELS_BY_PROTOCOL.openrouter).toContain(
+      FAST_MODEL_BY_PROTOCOL.openrouter,
+    );
+  });
 });

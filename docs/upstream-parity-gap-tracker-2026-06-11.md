@@ -31,7 +31,7 @@ The second pass found six weakly tracked areas that were too easy to miss:
 | --- | ---: | --- | --- |
 | Upstream integration strategy | 956 upstream-only commits | [#1](https://github.com/sunseol/opendesign-tauri/issues/1) | Not started |
 | Web app and Studio | `apps/web` 576 files | [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#3](https://github.com/sunseol/opendesign-tauri/issues/3), [#9](https://github.com/sunseol/opendesign-tauri/issues/9), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#16](https://github.com/sunseol/opendesign-tauri/issues/16), [#17](https://github.com/sunseol/opendesign-tauri/issues/17), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#19](https://github.com/sunseol/opendesign-tauri/issues/19), [#26](https://github.com/sunseol/opendesign-tauri/issues/26), [#41](https://github.com/sunseol/opendesign-tauri/issues/41), [#42](https://github.com/sunseol/opendesign-tauri/issues/42), [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - AMR onboarding skeleton, agent icon id helper, BYOK model persistence, #4080 annotation capture fallback, PreviewDrawOverlay IME Enter guard, inline mention plain-text fast path plus cached mention-token index/right-boundary parsing, connector mention brand hues with dark-mode contrast adjustment, required plugin input gating with named missing-field submit errors, smooth return-to-composer scrolling for Home prompt handoffs, compact chat timestamp utility, localized routine empty-output failures, #4202 persisted-artifact transcript summaries, Motion UMD repair, artifact manifest primary/entry validation, editable PPTX export prompt fidelity, create-plugin repo-owner auth guards, draft design-system picker exclusion, preview path hardening, markdown URL punctuation normalization, and GitHub star offline retry cooldown covered |
-| Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, sandbox runtime isolation, sandbox OD_DATA_DIR explicitness, skill cwd stream-copy fallback, origin-validation startup rejection coverage, HTTP route adapter harness, runtime auth/timeout hints, provider fetch proxy passthrough, AIHubMix provider-model catalogue support, daemon bind-host normalization, MCP project preview URLs/web base advert, CLI daemon URL discovery, ESM-safe CLI file write/upload reads, Cursor Agent replay de-duplication, Browser Use unavailable diagnostics, and AMR stale-model normalization wired |
+| Daemon/runtime/API | `apps/daemon` 353 files | [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#20](https://github.com/sunseol/opendesign-tauri/issues/20), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#43](https://github.com/sunseol/opendesign-tauri/issues/43), [#48](https://github.com/sunseol/opendesign-tauri/issues/48) | In progress - Grok Build prompt-file transport, duplicate route guard, sandbox runtime isolation, sandbox OD_DATA_DIR explicitness, skill cwd stream-copy fallback, origin-validation startup rejection coverage, HTTP route adapter harness, runtime auth/timeout hints, provider fetch proxy passthrough, AIHubMix/OpenRouter provider-model catalogue support, daemon bind-host normalization, MCP project preview URLs/web base advert, CLI daemon URL discovery, ESM-safe CLI file write/upload reads, Cursor Agent replay de-duplication, Browser Use unavailable diagnostics, and AMR stale-model normalization wired |
 | Contracts/shared DTOs | `packages/contracts` 48 files | [#43](https://github.com/sunseol/opendesign-tauri/issues/43) | In progress - chat run lifecycle, Browser Use run-state DTOs, finalize provider protocol reuse, project raw-file URL helper, and integrations analytics contract drift covered |
 | Shared UI package | `packages/components` 13 files | [#44](https://github.com/sunseol/opendesign-tauri/issues/44) | In progress - shared React primitive package imported with build/typecheck, root guard, and postinstall build-target coverage |
 | Design systems | `design-systems` 1,666 files | [#8](https://github.com/sunseol/opendesign-tauri/issues/8), [#34](https://github.com/sunseol/opendesign-tauri/issues/34), [#35](https://github.com/sunseol/opendesign-tauri/issues/35) | In progress - 150 official design-system 2.0 backfill outputs imported and guarded. #35 interaction parity is covered with shadcn registry import/API/CLI, Settings and `od` rename paths, user-system pin/order behavior, project picker switching, GitHub evidence/review flows, and design-system new conversation actions. |
@@ -77,7 +77,7 @@ protect against unsafe parity claims.
 - [#14](https://github.com/sunseol/opendesign-tauri/issues/14), [#27](https://github.com/sunseol/opendesign-tauri/issues/27), [#37](https://github.com/sunseol/opendesign-tauri/issues/37) desktop/packaged runtime
 - [#7](https://github.com/sunseol/opendesign-tauri/issues/7), [#42](https://github.com/sunseol/opendesign-tauri/issues/42) daemon runtime and conversation continuity
 - [#2](https://github.com/sunseol/opendesign-tauri/issues/2), [#15](https://github.com/sunseol/opendesign-tauri/issues/15), [#16](https://github.com/sunseol/opendesign-tauri/issues/16), [#18](https://github.com/sunseol/opendesign-tauri/issues/18), [#26](https://github.com/sunseol/opendesign-tauri/issues/26) Studio/reference/artifact/workspace
-- [#4](https://github.com/sunseol/opendesign-tauri/issues/4), [#29](https://github.com/sunseol/opendesign-tauri/issues/29), [#30](https://github.com/sunseol/opendesign-tauri/issues/30) AMR/BYOK/model providers
+- [#4](https://github.com/sunseol/opendesign-tauri/issues/4), [#29](https://github.com/sunseol/opendesign-tauri/issues/29) AMR/BYOK/model providers
 
 ### P2 - Catalog, Public Surface, And Growth Loops
 
@@ -136,7 +136,7 @@ protect against unsafe parity claims.
   color declarations can seed design-system swatches without exposing local
   paths. Chat composer paperclip uploads now emit `file_upload_result` telemetry
   for success, partial failure, and rejected upload attempts.
-- AMR/BYOK/model-provider parity #4/#29/#30 now carries project-screen BYOK
+- AMR/BYOK/model-provider parity #4/#29 now carries project-screen BYOK
   model changes from the avatar menu into the saved app config, using the
   selected provider's own model list instead of the broad protocol fallback.
   Stale saved AMR model ids now normalize to the first live AMR model before
@@ -169,6 +169,10 @@ protect against unsafe parity claims.
   Anthropic-compatible fallback routing is now centralized in
   `usesAnthropicProxy`, keeping explicit OpenAI/Azure/Google/Ollama/SenseAudio/
   AIHubMix protocols out of the Anthropic proxy path.
+  #30 is closed with OpenRouter promoted to its own BYOK protocol across the
+  contracts, web protocol metadata, provider-model cache partitioning, daemon
+  model discovery route, connection smoke test, memory extractor provider enum,
+  and analytics provider-id mapping.
   Media picker readiness now shares a guarded provider/model predicate so
   OpenAI OAuth-only auth does not masquerade as a configured media key while
   daemon-restored key markers still enable supported media models.

@@ -367,6 +367,10 @@ const API_KEY_CONSOLE_LINKS: Record<ApiProtocol, { host: string; url: string }> 
     host: 'platform.openai.com',
     url: 'https://platform.openai.com/api-keys',
   },
+  openrouter: {
+    host: 'openrouter.ai',
+    url: 'https://openrouter.ai/settings/keys',
+  },
   azure: {
     host: 'portal.azure.com',
     url: 'https://portal.azure.com/',

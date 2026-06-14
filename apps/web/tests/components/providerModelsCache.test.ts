@@ -20,4 +20,22 @@ describe('provider model cache helpers', () => {
       ),
     );
   });
+
+  it('keeps OpenRouter model cache entries separate from generic OpenAI hosts', () => {
+    const openRouterKey = providerModelsCacheKey(
+      'openrouter',
+      'https://openrouter.ai/api/v1',
+      'sk-or-secret',
+    );
+
+    expect(openRouterKey).toContain('openrouter');
+    expect(openRouterKey).not.toContain('sk-or-secret');
+    expect(openRouterKey).not.toBe(
+      providerModelsCacheKey(
+        'openai',
+        'https://openrouter.ai/api/v1',
+        'sk-or-secret',
+      ),
+    );
+  });
 });

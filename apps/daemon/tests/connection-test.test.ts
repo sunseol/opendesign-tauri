@@ -181,6 +181,48 @@ describe('POST /api/provider/models', () => {
     });
   });
 
+  it('lists OpenRouter account models as a first-class BYOK protocol', async () => {
+    const fetchMock = passThroughOrUpstream((url, init) => {
+      expect(url).toBe('https://openrouter.ai/api/v1/models');
+      expect((init?.headers as Record<string, string>).authorization).toBe(
+        'Bearer sk-or',
+      );
+      expect((init?.headers as Record<string, string>)['HTTP-Referer']).toBe(
+        'https://opendesign.dev',
+      );
+      expect((init?.headers as Record<string, string>)['X-Title']).toBe(
+        'Open Design',
+      );
+      return jsonResponse({
+        data: [
+          { id: 'openai/gpt-5.2', name: 'GPT-5.2' },
+          { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5' },
+        ],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await realFetch(`${baseUrl}/api/provider/models`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol: 'openrouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiKey: 'sk-or',
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      kind: 'success',
+      models: [
+        { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+        { id: 'openai/gpt-5.2', label: 'GPT-5.2' },
+      ],
+    });
+  });
+
   it('routes provider model discovery through the live proxy dispatcher', async () => {
     const proxySpy = vi.spyOn(platform, 'resolveSystemProxyEnv').mockReturnValue({
       HTTP_PROXY: 'http://proxy.example.test:8080',

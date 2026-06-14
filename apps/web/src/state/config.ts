@@ -156,6 +156,21 @@ export const KNOWN_PROVIDERS: KnownProvider[] = [
     models: ['gpt-4o', 'gpt-4o-mini', 'o3', 'o4-mini'],
   },
   {
+    label: 'OpenRouter',
+    protocol: 'openrouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    model: 'openrouter/auto',
+    models: [
+      'openrouter/auto',
+      'openai/gpt-5.2',
+      'openai/gpt-4o-mini',
+      'anthropic/claude-sonnet-4.5',
+      'anthropic/claude-haiku-4.5',
+      'google/gemini-3-flash-preview',
+      'deepseek/deepseek-chat',
+    ],
+  },
+  {
     label: 'Azure OpenAI',
     protocol: 'azure',
     baseUrl: '',
@@ -335,6 +350,7 @@ function inferApiProtocol(model: string, baseUrl: string): ApiProtocol {
     // picked — even though the on-wire shape is OpenAI-compatible.
     if (normalized.includes('senseaudio.cn')) return 'senseaudio';
     if (normalized.includes('aihubmix.com')) return 'aihubmix';
+    if (normalized.includes('openrouter.ai')) return 'openrouter';
     return isOpenAICompatible(model, baseUrl) ? 'openai' : 'anthropic';
   } catch {
     // Preserve the rest of the user's settings even if an old saved base URL is

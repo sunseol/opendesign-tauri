@@ -178,7 +178,15 @@ export interface ConnectionTestDiagnostics {
   stderrTail?: string;
 }
 
-export type ConnectionTestProtocol = 'anthropic' | 'openai' | 'azure' | 'google' | 'ollama' | 'senseaudio' | 'aihubmix';
+export type ConnectionTestProtocol =
+  | 'anthropic'
+  | 'openai'
+  | 'openrouter'
+  | 'azure'
+  | 'google'
+  | 'ollama'
+  | 'senseaudio'
+  | 'aihubmix';
 
 export interface ProviderTestRequest {
   protocol: ConnectionTestProtocol;

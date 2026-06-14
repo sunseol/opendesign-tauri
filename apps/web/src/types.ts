@@ -94,6 +94,7 @@ export type ExecMode = 'daemon' | 'api';
 export type ApiProtocol =
   | 'anthropic'
   | 'openai'
+  | 'openrouter'
   | 'azure'
   | 'google'
   | 'ollama'

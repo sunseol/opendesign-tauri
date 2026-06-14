@@ -160,13 +160,14 @@ export type TrackingFidelity =
 export type TrackingExecutionMode = 'local_cli' | 'byok';
 
 // v2 BYOK provider catalogue (CSV row 65). Replaces v1's
-// `anthropic|openai|azure|ollama|google`. `senseaudio` was added on
-// `main` after the v2 doc was published; we forward it verbatim so
-// dashboards can split it out even though the product CSV does not yet
-// list it.
+// `anthropic|openai|azure|ollama|google`. `senseaudio` and `openrouter`
+// were added on `main` after the v2 doc was published; we forward them
+// verbatim so dashboards can split them out even though the product CSV
+// does not yet list them.
 export type TrackingByokProviderId =
   | 'anthropic'
   | 'openai'
+  | 'openrouter'
   | 'azure_openai'
   | 'google_gemini'
   | 'ollama_cloud'
@@ -3111,6 +3112,8 @@ export function feedbackAgentProviderIdToTracking(
       return byokProtocolToTracking('anthropic') ?? 'other';
     case 'openai-api':
       return byokProtocolToTracking('openai') ?? 'other';
+    case 'openrouter-api':
+      return byokProtocolToTracking('openrouter') ?? 'other';
     case 'azure-openai-api':
       return byokProtocolToTracking('azure') ?? 'other';
     case 'google-gemini-api':
@@ -3134,6 +3137,8 @@ export function byokProtocolToTracking(
       return 'anthropic';
     case 'openai':
       return 'openai';
+    case 'openrouter':
+      return 'openrouter';
     case 'azure':
     case 'azure_openai':
       return 'azure_openai';

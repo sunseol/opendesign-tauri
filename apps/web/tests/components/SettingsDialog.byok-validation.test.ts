@@ -23,4 +23,13 @@ describe('SettingsDialog BYOK validation preconditions', () => {
       ),
     ).toBe(false);
   });
+
+  it('allows OpenRouter model fetches to use OpenAI-shaped keys on the OpenRouter host', () => {
+    expect(
+      canFetchProviderModels(
+        { apiKey: 'sk-or-test', baseUrl: 'https://openrouter.ai/api/v1' },
+        'openrouter',
+      ),
+    ).toBe(true);
+  });
 });

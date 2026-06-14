@@ -81,14 +81,12 @@ export interface MemoryListResponse {
  *  BYOK form's protocols — anthropic + openai-compatible + azure
  *  (openai-compatible at a different URL/header) + google gemini +
  *  ollama (also openai-compatible, just hosted on Ollama Cloud) +
- *  senseaudio (also openai-compatible, SenseAudio's OpenAI-shaped
- *  /v1/chat/completions gateway) — so the memory picker can offer the
- *  same options as the chat picker above it. The daemon routes both
- *  ollama and senseaudio through the same callOpenAI path since the
- *  wire protocol is identical. */
+ *  senseaudio/openrouter (OpenAI-compatible gateways) — so the memory
+ *  picker can offer the same options as the chat picker above it. */
 export type MemoryExtractionProvider =
   | 'anthropic'
   | 'openai'
+  | 'openrouter'
   | 'azure'
   | 'google'
   | 'ollama'

@@ -4,6 +4,7 @@ import type { ApiProtocol, AppConfig } from '../types';
 const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
   anthropic: 'Anthropic API',
   openai: 'OpenAI API',
+  openrouter: 'OpenRouter API',
   azure: 'Azure OpenAI',
   google: 'Google Gemini',
   ollama: 'Ollama Cloud API',
@@ -14,6 +15,7 @@ const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
 const API_PROTOCOL_AGENT_IDS: Record<ApiProtocol, string> = {
   anthropic: 'anthropic-api',
   openai: 'openai-api',
+  openrouter: 'openrouter-api',
   azure: 'azure-openai-api',
   google: 'google-gemini-api',
   ollama: 'ollama-cloud-api',
@@ -45,6 +47,7 @@ export function usesAnthropicProxy(cfg: AppConfig): boolean {
     cfg.apiProtocol === 'google' ||
     cfg.apiProtocol === 'senseaudio' ||
     cfg.apiProtocol === 'aihubmix' ||
+    cfg.apiProtocol === 'openrouter' ||
     cfg.apiProtocol === 'openai'
   ) {
     return false;
