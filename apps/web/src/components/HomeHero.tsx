@@ -34,6 +34,7 @@ import type {
 import type { SkillSummary } from '../types';
 import { Icon, type IconName } from './Icon';
 import { HomeHeroSubTypeRail } from './HomeHeroSubTypeRail';
+import { ComposerPlusMenu } from './ComposerPlusMenu';
 import { PluginInputsForm } from './PluginInputsForm';
 import {
   chipsForGroup,
@@ -1091,16 +1092,16 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
             }}
           />
           <div className="home-hero__foot-left">
-            <button
-              type="button"
-              className="home-hero__attach"
-              data-testid="home-hero-attach"
-              onClick={() => fileInputRef.current?.click()}
-              title={t('chat.attachAria')}
-              aria-label={t('chat.attachAria')}
-            >
-              <Icon name="attach" size={15} />
-            </button>
+            <ComposerPlusMenu
+              triggerTestId="home-hero-plus-trigger"
+              connectors={connectorOptions}
+              onPickConnector={pickConnector}
+              plugins={pluginOptions}
+              onPickPlugin={pickPlugin}
+              mcpServers={mcpOptions}
+              onPickMcp={pickMcp}
+              onAttachFiles={() => fileInputRef.current?.click()}
+            />
             {activeCreateChip ? (
               <ActiveTypeChip chip={activeCreateChip} onClear={onClearActiveChip} />
             ) : null}
