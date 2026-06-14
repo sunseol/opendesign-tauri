@@ -149,6 +149,15 @@ const ZH_TW_HOME_HERO_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
 ];
 const ZH_TW_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
+  'pluginsHome.facet.figma',
+  'pluginsHome.facet.framer',
+  'pluginsHome.facet.github',
+  'pluginsHome.facet.githubGist',
+  'pluginsHome.facet.githubPr',
+  'pluginsHome.facet.pdf',
+  'pluginsHome.facet.pptx',
+  'pluginsHome.facet.url',
+  'pluginsHome.facet.webflow',
 ];
 const ZH_TW_LIVE_ARTIFACT_REFRESH_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'liveArtifact.refresh.button',
@@ -275,6 +284,36 @@ const ZH_TW_PLUGIN_DETAILS_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'plugins.availableDetails.integrity',
   'plugins.availableDetails.permissions',
   'plugins.availableDetails.capabilitySummary',
+];
+const ZH_TW_PLUGINS_HOME_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
+  'pluginsHome.allCategory',
+  'pluginsHome.browseRegistry',
+  'pluginsHome.categoryFilterAria',
+  'pluginsHome.clearFilters',
+  'pluginsHome.clearSearch',
+  'pluginsHome.count',
+  'pluginsHome.emptyCatalog',
+  'pluginsHome.emptyFiltered',
+  'pluginsHome.facet.codeFolder',
+  'pluginsHome.facet.create',
+  'pluginsHome.facet.deploy',
+  'pluginsHome.facet.export',
+  'pluginsHome.facet.extend',
+  'pluginsHome.facet.import',
+  'pluginsHome.facet.publicLink',
+  'pluginsHome.facet.refine',
+  'pluginsHome.facet.screenshot',
+  'pluginsHome.facet.share',
+  'pluginsHome.facet.slides',
+  'pluginsHome.featured',
+  'pluginsHome.loadingCatalog',
+  'pluginsHome.modeAria',
+  'pluginsHome.searchAria',
+  'pluginsHome.searchPlaceholder',
+  'pluginsHome.subcategoryFilterAria',
+  'pluginsHome.subtitle',
+  'pluginsHome.title',
+  'pluginsHome.totalInCatalog',
 ];
 const FR_NAV_AND_FILE_FALLBACK_KEYS: ReadonlyArray<keyof Dict> = [
   'designFiles.filterBy',
@@ -591,6 +630,12 @@ describe('i18n locales', () => {
 
   it('keeps zh-TW plugin detail copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_PLUGIN_DETAILS_FALLBACK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps zh-TW plugins home copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_PLUGINS_HOME_FALLBACK_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
