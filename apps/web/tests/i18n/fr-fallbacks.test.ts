@@ -222,6 +222,28 @@ const FR_PLUGINS_VIEW_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = FR_PLUGINS_VI
   (key) => !FR_PLUGINS_VIEW_STABLE_KEYS.has(key),
 );
 
+const FR_SETTINGS_WORKSPACE_RECENT_KEYS: ReadonlyArray<keyof Dict> = [
+  'recentProjects.empty',
+  'recentProjects.title',
+  'recentProjects.viewAll',
+  'settings.advanced',
+  'settings.apiKeyGetLink',
+  'settings.apiKeyInvalid',
+  'settings.fetchModelsInvalidBaseUrl',
+  'settings.fetchModelsMissingFields',
+  'settings.fetchModelsUnsupportedAzure',
+  'settings.fetchModelsUnsupportedOllama',
+  'settings.memoryExtractionsClearConfirm',
+  'settings.memoryModelInlineHintByokNeutral',
+  'settings.modelsLoadedFromAccount',
+  'settings.required',
+  'settings.testMissingFields',
+  'settings.testRetry',
+  'workspaceTabs.marketplace',
+  'workspaceTabs.pluginDetails',
+  'workspaceTabs.project',
+];
+
 const FR_STABLE_PRODUCT_NAME_KEYS: ReadonlyArray<keyof Dict> = [
   'homeHero.chip.hyperframes',
   'integrations.tabLabel.mcp',
@@ -313,6 +335,15 @@ describe('fr fallback parity', () => {
 
   it('keeps French plugins view management copy translated instead of falling back to English', () => {
     for (const key of FR_PLUGINS_VIEW_TRANSLATED_KEYS) {
+      expect(fr[key], `fr.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps French settings, workspace, and recent-project labels translated instead of falling back to English', () => {
+    const explicitKeys = explicitFrenchKeys();
+
+    for (const key of FR_SETTINGS_WORKSPACE_RECENT_KEYS) {
+      expect(explicitKeys.has(key), `fr.${key}`).toBe(true);
       expect(fr[key], `fr.${key}`).not.toBe(en[key]);
     }
   });
