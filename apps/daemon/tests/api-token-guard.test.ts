@@ -41,6 +41,20 @@ describe('bound-API-token guard', () => {
       .rejects.toThrow(/OD_API_TOKEN/);
   });
 
+  it('treats a blank OD_BIND_HOST as the loopback default', async () => {
+    delete process.env.OD_API_TOKEN;
+    process.env.OD_BIND_HOST = '   ';
+    const started = (await startServer({ port: 0, returnServer: true })) as {
+      url: string;
+      server: http.Server;
+      shutdown?: () => Promise<void> | void;
+    };
+    server = started.server;
+    shutdown = started.shutdown;
+    baseUrl = started.url;
+    expect(baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:/);
+  });
+
   it('starts on a public host when OD_API_TOKEN is set', async () => {
     process.env.OD_API_TOKEN = 'test-token-abc';
     // Bind to 127.0.0.1 (loopback) but pretend we crossed the guard

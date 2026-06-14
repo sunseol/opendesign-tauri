@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { runDaemonCliStartup } from './daemon-startup.js';
+import { normalizeDaemonBindHost, runDaemonCliStartup } from './daemon-startup.js';
 import { runLiveArtifactsMcpServer } from './mcp-live-artifacts-server.js';
 import { runArtifactsCli } from './artifacts-cli.js';
 import { runProjectHandoff } from './handoff-cli.js';
@@ -4352,7 +4352,7 @@ async function runDaemonStart(flags) {
   // mutating process.argv before re-entering the boot path.
   // Simpler path: re-implement the boot inline, mirroring the default.
   const port = Number(flags.port ?? process.env.OD_PORT ?? 7456);
-  const host = String(flags.host ?? process.env.OD_BIND_HOST ?? '127.0.0.1');
+  const host = normalizeDaemonBindHost(flags.host ?? process.env.OD_BIND_HOST);
   const headless = Boolean(flags.headless || flags['no-open'] || flags['serve-web']);
   process.env.OD_BIND_HOST = host;
   process.env.OD_PORT = String(port);
