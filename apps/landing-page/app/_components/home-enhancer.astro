@@ -8,6 +8,7 @@
  * `/zh-CN/`). Both need the *exact same* enhancement behavior:
  *
  *   - Headroom-style sticky header (hide on scroll down, reveal on up)
+ *   - Mobile menu toggle behavior
  *   - Live GitHub stars + latest release version injection
  *   - Live Wire contributors row (replaces the static fallback)
  *   - IntersectionObserver-driven `data-reveal` choreography (without
@@ -56,8 +57,8 @@ import { RELEASE_METADATA_URL } from '../_lib/release-metadata';
     };
 
     const enhanceHeader = () => {
-      const nav = document.querySelector('[data-nav-headroom]');
-      if (nav) {
+      const chrome = document.querySelector('[data-chrome-headroom]');
+      if (chrome) {
         let lastY = window.scrollY;
         const showTopThreshold = 100;
         const scrollDelta = 6;
@@ -66,13 +67,36 @@ import { RELEASE_METADATA_URL } from '../_lib/release-metadata';
           () => {
             const y = window.scrollY;
             const delta = y - lastY;
-            if (y <= showTopThreshold) nav.classList.remove('is-hidden');
-            else if (delta > scrollDelta) nav.classList.add('is-hidden');
-            else if (delta < -scrollDelta) nav.classList.remove('is-hidden');
+            if (y <= showTopThreshold) chrome.classList.remove('is-hidden');
+            else if (delta > scrollDelta) chrome.classList.add('is-hidden');
+            else if (delta < -scrollDelta) chrome.classList.remove('is-hidden');
             lastY = y;
           },
           { passive: true },
         );
+      }
+
+      const navToggle = document.querySelector('[data-nav-toggle]');
+      const primaryNav = document.querySelector('[data-nav-primary]');
+      const navEl = navToggle ? navToggle.closest('header.nav') : null;
+      if (navToggle && primaryNav && navEl) {
+        const setNavOpen = (open) => {
+          navEl.classList.toggle('is-open', open);
+          navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        navToggle.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          setNavOpen(!navEl.classList.contains('is-open'));
+        });
+        primaryNav.querySelectorAll('a').forEach((link) => {
+          link.addEventListener('click', () => setNavOpen(false));
+        });
+        document.addEventListener('click', (ev) => {
+          if (!navEl.contains(ev.target)) setNavOpen(false);
+        });
+        document.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Escape') setNavOpen(false);
+        });
       }
 
       const stars = document.querySelector('[data-github-stars]');

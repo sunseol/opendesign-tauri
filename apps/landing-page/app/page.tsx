@@ -10,6 +10,7 @@
  */
 
 import { Header, type HeaderProps } from './_components/header';
+import { HomeNewsletterSection } from './_components/home-newsletter-section';
 import { Wire } from './_components/wire';
 import {
   DEFAULT_LOCALE,
@@ -1273,6 +1274,8 @@ export default function Page({
             </div>
           </div>
         </section>
+
+        <HomeNewsletterSection locale={locale} />
 
         {/* ====== FOOTER ====== */}
         <footer data-od-id='footer'>
