@@ -12,6 +12,7 @@ import {
   fetchAppVersionInfo,
   fetchConnectorDetail,
   fetchConnectorDiscovery,
+  fetchRecentLinkedDirs,
   fetchProjectDesignSystemPackageAudit,
   fetchProjectFolders,
   fetchProjectFileText,
@@ -19,6 +20,7 @@ import {
   createProjectFolder,
   deleteProjectFolder,
   isDeployProviderId,
+  pushRecentLinkedDir,
   updateDeployConfig,
   uploadProjectFiles,
 } from '../../src/providers/registry';
@@ -699,6 +701,53 @@ describe('project folder registry helpers', () => {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: 'assets/new' }),
+    });
+  });
+});
+
+describe('recent linked directory registry helpers', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches recent linked directories and ignores malformed entries', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      dirs: ['/Users/me/app', 12, '/Users/me/site', null],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchRecentLinkedDirs()).resolves.toEqual([
+      '/Users/me/app',
+      '/Users/me/site',
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith('/api/recent-dirs');
+  });
+
+  it('pushes a recent linked directory without clobbering other app config', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url, init) => {
+      if (url === '/api/recent-dirs') {
+        return new Response(JSON.stringify({ dirs: ['/Users/me/app'] }), {
+          status: 200,
+        });
+      }
+      if (url === '/api/app-config' && init?.method === 'PUT') {
+        return new Response(JSON.stringify({
+          config: { recentLinkedDirs: ['/Users/me/site', '/Users/me/app'] },
+        }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch ${String(url)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(pushRecentLinkedDir('/Users/me/site')).resolves.toEqual([
+      '/Users/me/site',
+      '/Users/me/app',
+    ]);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/app-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recentLinkedDirs: ['/Users/me/site', '/Users/me/app'] }),
     });
   });
 });

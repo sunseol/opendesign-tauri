@@ -50,6 +50,7 @@ import type { Locale } from '../i18n/types';
 import { PreviewSurface } from './plugins-home/cards/PreviewSurface';
 import { inferPluginPreview } from './plugins-home/preview';
 import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
+import { WorkingDirPicker } from './WorkingDirPicker';
 
 export interface HomeHeroSubmitHandler {
   (): void;
@@ -102,6 +103,11 @@ interface Props {
   contextItemCount: number;
   error: string | null;
   showActivePluginChip?: boolean;
+  workingDir?: string | null;
+  recentDirs?: readonly string[];
+  onPickWorkingDir?: () => void;
+  onSelectRecentWorkingDir?: (dir: string) => void;
+  onClearWorkingDir?: () => void;
 }
 
 interface HomeHeroDesignSystemOption {
@@ -187,6 +193,11 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
     contextItemCount,
     error,
     showActivePluginChip = true,
+    workingDir = null,
+    recentDirs = [],
+    onPickWorkingDir,
+    onSelectRecentWorkingDir,
+    onClearWorkingDir,
   },
   ref,
 ) {
@@ -1106,6 +1117,18 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
           </button>
         </div>
       </div>
+
+      {onPickWorkingDir ? (
+        <div className="home-hero__workdir-row">
+          <WorkingDirPicker
+            workingDir={workingDir}
+            recentDirs={recentDirs}
+            onPickDirectory={onPickWorkingDir}
+            onSelectRecent={(dir) => onSelectRecentWorkingDir?.(dir)}
+            onClear={onClearWorkingDir}
+          />
+        </div>
+      ) : null}
 
       {activeCreateChip ? null : (
         <RailGroup

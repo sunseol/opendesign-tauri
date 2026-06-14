@@ -1820,6 +1820,54 @@ export async function openFolderDialog(): Promise<string | null> {
   }
 }
 
+function stringsFromList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+export async function fetchRecentLinkedDirs(): Promise<string[]> {
+  try {
+    const resp = await fetch('/api/recent-dirs');
+    if (!resp.ok) return [];
+    const data: unknown = await resp.json();
+    const dirs = typeof data === 'object' && data !== null && 'dirs' in data
+      ? data.dirs
+      : undefined;
+    return stringsFromList(dirs);
+  } catch (err) {
+    if (err instanceof Error) return [];
+    throw err;
+  }
+}
+
+export async function pushRecentLinkedDir(dir: string): Promise<string[]> {
+  const trimmed = dir.trim();
+  const existing = await fetchRecentLinkedDirs();
+  if (!trimmed) return existing;
+  const next = [trimmed, ...existing.filter((item) => item !== trimmed)].slice(0, 5);
+  try {
+    const resp = await fetch('/api/app-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recentLinkedDirs: next }),
+    });
+    if (!resp.ok) return next;
+    const data: unknown = await resp.json();
+    const config = typeof data === 'object' && data !== null && 'config' in data
+      ? data.config
+      : undefined;
+    const dirs = typeof config === 'object' && config !== null && 'recentLinkedDirs' in config
+      ? config.recentLinkedDirs
+      : undefined;
+    const persisted = stringsFromList(dirs);
+    return persisted.length > 0 ? persisted : next;
+  } catch (err) {
+    if (err instanceof Error) return next;
+    throw err;
+  }
+}
+
 // "Replace working directory" — points an existing project at a new
 // folder. Mirrors the import-folder trust gate but updates the current
 // project record instead of creating a new project.

@@ -37,7 +37,13 @@ import {
 import { fetchMcpServers } from '../state/mcp';
 import { useI18n } from '../i18n';
 import { fetchElevenLabsVoiceOptions } from '../providers/elevenlabs-voices';
-import { fetchProjectFiles, projectFileUrl } from '../providers/registry';
+import {
+  fetchProjectFiles,
+  fetchRecentLinkedDirs,
+  openFolderDialog,
+  projectFileUrl,
+  pushRecentLinkedDir,
+} from '../providers/registry';
 import type {
   DesignSystemSummary,
   Project,
@@ -241,6 +247,8 @@ export function HomeView({
   const [selectedMcpContexts, setSelectedMcpContexts] = useState<SelectedMcpContext[]>([]);
   const [selectedConnectorContexts, setSelectedConnectorContexts] = useState<SelectedConnectorContext[]>([]);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [workingDir, setWorkingDir] = useState<string | null>(null);
+  const [recentDirs, setRecentDirs] = useState<string[]>([]);
   const [mcpServers, setMcpServers] = useState<McpServerConfig[]>([]);
   const [mcpLoading, setMcpLoading] = useState(true);
   const [prompt, setPrompt] = useState('');
@@ -308,6 +316,21 @@ export function HomeView({
       setMcpServers(result?.servers ?? []);
       setMcpLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRecentLinkedDirs()
+      .then((dirs) => {
+        if (!cancelled) setRecentDirs(dirs);
+      })
+      .catch((err) => {
+        if (err instanceof Error) return;
+        throw err;
+      });
     return () => {
       cancelled = true;
     };
@@ -954,6 +977,22 @@ export function HomeView({
     setStagedFiles((current) => current.filter((_, i) => i !== index));
   }
 
+  function rememberRecentDir(dir: string) {
+    void pushRecentLinkedDir(dir)
+      .then((dirs) => setRecentDirs(dirs))
+      .catch((err) => {
+        if (err instanceof Error) return;
+        throw err;
+      });
+  }
+
+  async function handlePickWorkingDir() {
+    const picked = await openFolderDialog();
+    if (!picked) return;
+    setWorkingDir(picked);
+    rememberRecentDir(picked);
+  }
+
   function updateActiveInputs(next: Record<string, unknown>) {
     if (!active) return;
     const normalized = active.mediaSurface
@@ -1298,6 +1337,7 @@ export function HomeView({
       contextMcpServers,
       contextConnectors,
       attachments: stagedFiles,
+      ...(workingDir ? { workingDir } : {}),
     });
   }
 
@@ -1358,6 +1398,14 @@ export function HomeView({
         onPickChip={pickChip}
         contextItemCount={contextItemCount}
         error={error}
+        workingDir={workingDir}
+        recentDirs={recentDirs}
+        onPickWorkingDir={() => void handlePickWorkingDir()}
+        onSelectRecentWorkingDir={(dir) => {
+          setWorkingDir(dir);
+          rememberRecentDir(dir);
+        }}
+        onClearWorkingDir={() => setWorkingDir(null)}
       />
 
       <RecentProjectsStrip

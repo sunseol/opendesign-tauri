@@ -92,7 +92,10 @@ export interface AppConfigPrefs {
   privacyDecisionAt?: number | null;
   orbit?: OrbitConfigPrefs;
   customInstructions?: string | null;
+  recentLinkedDirs?: string[];
 }
+
+const RECENT_LINKED_DIRS_MAX = 5;
 
 const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'onboardingCompleted',
@@ -108,6 +111,7 @@ const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'privacyDecisionAt',
   'orbit',
   'customInstructions',
+  'recentLinkedDirs',
 ] as const);
 
 function configFile(dataDir: string): string {
@@ -238,6 +242,19 @@ function validateOrbit(raw: unknown): OrbitConfigPrefs | undefined {
   return orbit;
 }
 
+function validateRecentLinkedDirs(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const dirs: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed || dirs.includes(trimmed)) continue;
+    dirs.push(trimmed);
+    if (dirs.length >= RECENT_LINKED_DIRS_MAX) break;
+  }
+  return dirs;
+}
+
 export function agentCliEnvForAgent(
   prefs: AgentCliEnvPrefs | undefined,
   agentId: string,
@@ -322,6 +339,14 @@ function applyConfigValue(
       target[key] = value;
     }
     return;
+  }
+  if (key === 'recentLinkedDirs') {
+    const validated = validateRecentLinkedDirs(value);
+    if (validated !== undefined) {
+      target[key] = validated;
+    } else {
+      delete target[key];
+    }
   }
 }
 

@@ -562,6 +562,46 @@ describe('app-config telemetry prefs', () => {
   });
 });
 
+describe('app-config recent linked directories', () => {
+  let dataDir: string;
+
+  beforeEach(async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'od-recentdirs-'));
+  });
+
+  afterEach(async () => {
+    await rm(dataDir, { recursive: true, force: true });
+  });
+
+  it('trims, deduplicates, and caps recent linked directories', async () => {
+    const manyDirs = Array.from({ length: 8 }, (_, index) => `/Users/me/dir-${index}`);
+
+    const cfg = await writeAppConfig(dataDir, {
+      recentLinkedDirs: ['  /Users/me/app  ', '', '/Users/me/app', ...manyDirs],
+    });
+
+    expect(cfg.recentLinkedDirs).toEqual([
+      '/Users/me/app',
+      '/Users/me/dir-0',
+      '/Users/me/dir-1',
+      '/Users/me/dir-2',
+      '/Users/me/dir-3',
+    ]);
+    expect((await readAppConfig(dataDir)).recentLinkedDirs).toEqual(cfg.recentLinkedDirs);
+  });
+
+  it('ignores malformed recent linked directory updates without clobbering prefs', async () => {
+    await writeAppConfig(dataDir, { skillId: 'prototype' });
+
+    const cfg = await writeAppConfig(dataDir, {
+      recentLinkedDirs: 'not-an-array',
+    });
+
+    expect(cfg.recentLinkedDirs).toBeUndefined();
+    expect(cfg.skillId).toBe('prototype');
+  });
+});
+
 describe('app-config origin guard', () => {
   let server: http.Server;
   let port: number;

@@ -1,7 +1,21 @@
 import type { Express } from 'express';
+import { statSync } from 'node:fs';
 import type { RouteDeps } from './server-context.js';
 
 export interface RegisterMediaRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'ids' | 'media' | 'appConfig' | 'orbit' | 'nativeDialogs' | 'projectStore' | 'projectFiles' | 'conversations' | 'research'> {}
+
+function directoryExists(target: string): boolean {
+  try {
+    return statSync(target).isDirectory();
+  } catch (err) {
+    if (err instanceof Error) return false;
+    throw err;
+  }
+}
+
+function messageFromUnknown(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) {
   const { db } = ctx;
@@ -136,6 +150,28 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       res
         .status(500)
         .json({ error: String(err && err.message ? err.message : err) });
+    }
+  });
+
+  app.get('/api/recent-dirs', async (req, res) => {
+    if (!isLocalSameOrigin(req, getResolvedPort())) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    try {
+      const config = await readAppConfig(RUNTIME_DATA_DIR);
+      const rawRecents: unknown = config.recentLinkedDirs;
+      const recents: string[] = Array.isArray(rawRecents)
+        ? rawRecents.filter((dir: unknown): dir is string => typeof dir === 'string')
+        : [];
+      const existing = recents.filter((dir) => directoryExists(dir));
+      if (existing.length !== recents.length) {
+        await writeAppConfig(RUNTIME_DATA_DIR, { recentLinkedDirs: existing });
+      }
+      res.json({ dirs: existing });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ error: messageFromUnknown(err) });
     }
   });
 
