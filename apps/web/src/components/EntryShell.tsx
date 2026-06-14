@@ -206,6 +206,8 @@ const ONBOARDING_AMR_MODEL_OPTIONS: NonNullable<AgentInfo['models']> = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { id: 'glm-5.1', label: 'GLM 5.1' },
 ];
+const NEWSLETTER_SUBSCRIBE_URL = 'https://open-design.ai/subscribe';
+const NEWSLETTER_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Props {
   skills: SkillSummary[];
@@ -780,6 +782,7 @@ function OnboardingView({
   const [amrRefreshPending, setAmrRefreshPending] = useState(false);
   const [amrLoginPending, setAmrLoginPending] = useState(false);
   const [amrLoginCancelPending, setAmrLoginCancelPending] = useState(false);
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [amrLoginError, setAmrLoginError] = useState<string | null>(null);
   const [visibleAgentIds, setVisibleAgentIds] = useState<string[]>([]);
   const [providerTestState, setProviderTestState] = useState<
@@ -800,6 +803,7 @@ function OnboardingView({
     orgSize: '',
     useCase: [] as string[],
     source: '',
+    email: '',
   });
   const agentRevealTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const cliScanTokenRef = useRef(0);
@@ -921,13 +925,6 @@ function OnboardingView({
     setAmrLoginCancelPending(false);
   }, [runtime]);
 
-  // Onboarding 4-step funnel (v2 doc). Fires one `page_view` per step
-  // exposure. The fourth step (`generation`) lives in
-  // `DesignSystemDetailView` because the user navigates out of this
-  // component once the design system project opens; that emission
-  // reads the same `onboarding_session_id` from sessionStorage.
-  // `clearOnboardingSessionId` runs on `onFinish` / unmount so a
-  // later DS visit unrelated to onboarding doesn't inherit the id.
   const onboardingSessionIdRef = useRef<string>('');
   if (!onboardingSessionIdRef.current) {
     onboardingSessionIdRef.current = getOrCreateOnboardingSessionId();
@@ -951,9 +948,13 @@ function OnboardingView({
       area = 'about_you';
       stepIndex = '2';
       stepName = 'about_you';
+    } else if (step === 2) {
+      area = 'newsletter';
+      stepIndex = '3';
+      stepName = 'newsletter';
     } else {
       area = 'design_system';
-      stepIndex = '3';
+      stepIndex = '4';
       stepName = 'design_system';
     }
     trackPageView(analytics.track, {
@@ -968,6 +969,7 @@ function OnboardingView({
   const steps = [
     t('settings.onboardingStepConnect'),
     t('settings.onboardingStepProfile'),
+    t('settings.onboardingStepNewsletter'),
     t('settings.onboardingStepDesignSystem'),
   ];
   const isLastStep = step === steps.length - 1;
@@ -1130,6 +1132,7 @@ function OnboardingView({
   }
 
   async function handlePrimaryAction() {
+    if (newsletterSubmitting) return;
     if (step === 0 && amrSelectedAndSignedOut) {
       const attribution = recordAmrEntry(
         analytics.track,
@@ -1138,6 +1141,11 @@ function OnboardingView({
         { reuseExistingFrom: ['onboarding_amr_card'] },
       );
       await handleAmrSignInToContinue(attribution);
+      return;
+    }
+    if (step === 2) {
+      await submitNewsletterEmail(profile.email);
+      setStep((current) => current + 1);
       return;
     }
     if (isLastStep) {
@@ -1241,6 +1249,27 @@ function OnboardingView({
       }
     }
     return false;
+  }
+
+  async function submitNewsletterEmail(rawEmail: string): Promise<void> {
+    const email = rawEmail.trim().toLowerCase();
+    if (!NEWSLETTER_EMAIL_RE.test(email)) return;
+    setNewsletterSubmitting(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch(NEWSLETTER_SUBSCRIBE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'client' }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+    } finally {
+      window.clearTimeout(timeout);
+      setNewsletterSubmitting(false);
+    }
   }
 
   async function scanCliAgents() {
@@ -1359,6 +1388,8 @@ function OnboardingView({
 
   const primaryActionLabel = step === 0 && amrLoginPending
     ? t('settings.amrSigningIn')
+    : newsletterSubmitting
+      ? t('common.loading')
     : step === 0 && amrSelectedAndSignedOut
       ? t('settings.amrSignInToContinue')
       : isLastStep
@@ -1557,7 +1588,32 @@ function OnboardingView({
             </div>
           ) : null}
 
-          {step === 2 && renderDesignSystemCreation ? (
+          {step === 2 ? (
+            <div className="onboarding-view__panel onboarding-view__panel--newsletter">
+              <OnboardingPanelHeader
+                title={t('settings.onboardingNewsletterTitle')}
+                body={t('settings.onboardingNewsletterBody')}
+              />
+              <label className="onboarding-view__email-field">
+                <span className="onboarding-view__email-label">
+                  {t('newsletter.label')}
+                </span>
+                <input
+                  className="onboarding-view__email-input"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  placeholder={t('newsletter.placeholder')}
+                  value={profile.email}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, email: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {step === 3 && renderDesignSystemCreation ? (
             <div className="onboarding-view__design-system-create">
               <div className="onboarding-view__ds-intro">
                 <OnboardingPanelHeader
@@ -1578,11 +1634,11 @@ function OnboardingView({
                   {t('settings.onboardingSkip')}
                 </button>
               </div>
-              {renderDesignSystemCreation(() => setStep(1))}
+              {renderDesignSystemCreation(() => setStep(2))}
             </div>
           ) : null}
 
-          {step === 2 && !renderDesignSystemCreation ? (
+          {step === 3 && !renderDesignSystemCreation ? (
             <div className="onboarding-view__panel">
               <OnboardingPanelHeader
                 title={t('settings.onboardingDesignTitle')}
@@ -1603,7 +1659,7 @@ function OnboardingView({
             </div>
           ) : null}
 
-          {step === 2 && renderDesignSystemCreation ? null : (
+          {step === 3 && renderDesignSystemCreation ? null : (
             <div className="onboarding-view__actions">
               {step === 0 && amrLoginError ? (
                 <span className="onboarding-view__action-status is-error" role="alert">
@@ -1614,6 +1670,7 @@ function OnboardingView({
                 type="button"
                 className="onboarding-view__secondary"
                 onClick={() => (step === 0 ? onFinish() : setStep((current) => current - 1))}
+                disabled={newsletterSubmitting}
               >
                 {step === 0 ? t('settings.onboardingSkip') : t('settings.onboardingBack')}
               </button>
@@ -1631,7 +1688,8 @@ function OnboardingView({
                 type="button"
                 className="onboarding-view__primary"
                 onClick={() => void handlePrimaryAction()}
-                disabled={amrLoginPending || amrLoginCancelPending}
+                disabled={amrLoginPending || amrLoginCancelPending || newsletterSubmitting}
+                aria-busy={newsletterSubmitting ? true : undefined}
               >
                 <span>{primaryActionLabel}</span>
                 <Icon name={isLastStep ? 'check' : 'chevron-right'} size={16} />

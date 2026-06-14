@@ -110,6 +110,9 @@ export interface Dict {
   'settings.onboardingStepConnect': string;
   'settings.onboardingStepDesignSystem': string;
   'settings.onboardingStepProfile': string;
+  'settings.onboardingStepNewsletter': string;
+  'settings.onboardingNewsletterTitle': string;
+  'settings.onboardingNewsletterBody': string;
   'settings.onboardingConnectTitle': string;
   'settings.onboardingConnectBody': string;
   'settings.onboardingRecommended': string;
@@ -147,6 +150,8 @@ export interface Dict {
   'settings.onboardingUploadBody': string;
   'settings.onboardingPromptTitle': string;
   'settings.onboardingPromptBody': string;
+  'newsletter.label': string;
+  'newsletter.placeholder': string;
   'settings.onboardingProfileTitle': string;
   'settings.onboardingProfileBody': string;
   'settings.onboardingRoleLabel': string;

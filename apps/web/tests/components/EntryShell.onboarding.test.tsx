@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { render, screen, cleanup } from '@testing-library/react';
+import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EntryShell } from '../../src/components/EntryShell';
@@ -11,6 +11,17 @@ import type { AgentInfo, AppConfig } from '../../src/types';
 const analyticsMocks = vi.hoisted(() => ({
   track: vi.fn(),
 }));
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function trackedPayloads(eventName: string): Record<string, unknown>[] {
+  return analyticsMocks.track.mock.calls.flatMap((call) => {
+    const [event, payload] = call;
+    return event === eventName && isRecord(payload) ? [payload] : [];
+  });
+}
 
 vi.mock('../../src/analytics/provider', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/analytics/provider')>();
@@ -119,6 +130,7 @@ function renderOnboarding(
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   analyticsMocks.track.mockReset();
 });
 
@@ -145,5 +157,59 @@ describe('EntryShell onboarding AMR detection', () => {
 
     expect(screen.getByRole('button', { name: /Open Design AMR/i })).toBeTruthy();
     expect(document.querySelector('.onboarding-view__card--skeleton')).toBeNull();
+  });
+
+  it('shows newsletter signup as its own step before design-system setup', async () => {
+    renderOnboarding({
+      agents: [cliAgent()],
+      agentsLoading: false,
+      onRefreshAgents: vi.fn(() => [cliAgent()]),
+    });
+
+    expect(screen.getByRole('button', { name: 'Stay updated' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'About you' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Stay in the loop' })).toBeTruthy();
+    });
+
+    expect(screen.getByLabelText('Newsletter (optional)')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Design system' })).toBeNull();
+    expect(
+      trackedPayloads('page_view').find((payload) => payload.area === 'newsletter'),
+    ).toMatchObject({
+      step_index: '3',
+      step_name: 'newsletter',
+    });
+
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    fireEvent.change(screen.getByLabelText('Newsletter (optional)'), {
+      target: { value: 'User@Example.COM ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Design system' })).toBeTruthy();
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://open-design.ai/subscribe',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'user@example.com', source: 'client' }),
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(
+      trackedPayloads('page_view').find((payload) => payload.area === 'design_system'),
+    ).toMatchObject({
+      step_index: '4',
+      step_name: 'design_system',
+    });
   });
 });
