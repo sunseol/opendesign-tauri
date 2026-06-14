@@ -775,6 +775,7 @@ export function NewAutomationModal({
                             setPopover(null);
                           }}
                           label={p.name}
+                          title={p.name}
                         />
                       ))}
                     </>
@@ -971,17 +972,20 @@ function PopoverItem({
   label,
   hint,
   onClick,
+  title,
 }: {
   selected?: boolean;
   label: string;
   hint?: string;
   onClick: () => void;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       className={`automation-popover__item${selected ? ' is-selected' : ''}`}
       onClick={onClick}
+      title={title}
     >
       <span className="automation-popover__check">
         {selected ? <Icon name="check" size={12} /> : null}

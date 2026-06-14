@@ -131,4 +131,33 @@ describe('NewAutomationModal context picker', () => {
     expect(screen.getByTitle('Remove Figma MCP')).toBeTruthy();
     expect(screen.getByTitle('Remove Linear')).toBeTruthy();
   });
+
+  it('exposes full project names as titles in the project picker', () => {
+    vi.mocked(listPlugins).mockResolvedValue([]);
+    vi.mocked(fetchMcpServers).mockResolvedValue({ servers: [], templates: [] });
+    const longName = 'A very long project name that would otherwise wrap onto several lines inside the automation picker';
+
+    render(
+      <NewAutomationModal
+        open
+        templates={[]}
+        projects={[
+          { id: 'p-1', name: longName },
+          { id: 'p-2', name: 'Short' },
+        ]}
+        skills={[]}
+        connectors={[]}
+        onClose={() => undefined}
+        onSaved={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /New project each run/i }));
+
+    expect(screen.getByRole('button', { name: longName }).getAttribute('title')).toBe(longName);
+    expect(screen.getByRole('button', { name: 'Short' }).getAttribute('title')).toBe('Short');
+
+    const fixedRows = screen.getAllByRole('button', { name: /New project each run/i });
+    expect(fixedRows.at(-1)?.getAttribute('title')).toBeNull();
+  });
 });
