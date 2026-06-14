@@ -5,6 +5,8 @@ import test from "node:test";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const ciWorkflowPath = join(repoRoot, ".github", "workflows", "ci.yml");
+const agentExploreWorkflowPath = join(repoRoot, ".github", "workflows", "agent-pr-explore-sandbox.yml");
+const agentExploreScriptPath = join(repoRoot, ".github", "scripts", "agent-pr-explore-sandbox.sh");
 
 const tauriEvidencePaths = [
   "scripts/advance-tauri-migration-m4-m5.ts",
@@ -64,6 +66,40 @@ test("Tauri migration handoff can manually dispatch native CI", async () => {
     /^\s+if: \$\{\{ needs\.change_scopes\.outputs\.tauri_smoke_required == 'true' \}\}\s*$/m,
     "Tauri smoke jobs must remain tied to tauri_smoke_required",
   );
+});
+
+test("main CI reuses cached setup actions for Ubuntu validation jobs", async () => {
+  const workflow = await readFile(ciWorkflowPath, "utf8");
+
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-workspace/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-playwright/);
+  assert.match(workflow, /package-json-path: e2e\/package\.json/);
+  assert.match(workflow, /install-command: pnpm -C e2e exec playwright install --with-deps chromium/);
+
+  const ubuntuValidationRegion = workflow.match(
+    /preflight:[\s\S]*?\n\n  packaged_smoke_tauri_win:/,
+  )?.[0];
+  assert.ok(ubuntuValidationRegion, "ci.yml must keep the Ubuntu validation region before packaged smoke jobs");
+  assert.doesNotMatch(ubuntuValidationRegion, /Resolve pnpm store path/);
+  assert.doesNotMatch(ubuntuValidationRegion, /Restore pnpm store cache/);
+  assert.doesNotMatch(ubuntuValidationRegion, /Resolve Playwright version/);
+  assert.doesNotMatch(ubuntuValidationRegion, /Restore Playwright browser cache/);
+});
+
+test("agent PR exploration remains gated with slim artifacts and mirror transport", async () => {
+  const workflow = await readFile(agentExploreWorkflowPath, "utf8");
+  const script = await readFile(agentExploreScriptPath, "utf8");
+
+  assert.match(workflow, /vars\.AGENT_PR_EXPLORE_ENABLED == 'true'/);
+  assert.match(workflow, /contains\(fromJSON\('\["OWNER","MEMBER","COLLABORATOR"\]'\), github\.event\.comment\.author_association\)/);
+  assert.match(workflow, /!\$\{\{ runner\.temp \}\}\/agent-pr-explore-sandbox\/artifacts\/\*\*\/\*\.zip/);
+  assert.match(workflow, /!\$\{\{ runner\.temp \}\}\/agent-pr-explore-sandbox\/artifacts\/\*\*\/\*\.webm/);
+
+  assert.match(script, /agent_report_file="\$artifacts\/agent-report\.md"/);
+  assert.match(script, /agent-pr-exploration-report\.md/);
+  assert.match(script, /registry\.npmmirror\.com/);
+  assert.match(script, /PLAYWRIGHT_DOWNLOAD_HOST="https:\/\/npmmirror\.com\/mirrors\/playwright"/);
+  assert.match(script, /report_persist_dir="\$\{OD_SANDBOX_REPORT_DIR:-\$HOME\/\.cache\/agent-pr-explore\/reports\}\/pr-\$\{PR_NUMBER\}"/);
 });
 
 function quotedPathPattern(filePath: string): RegExp {

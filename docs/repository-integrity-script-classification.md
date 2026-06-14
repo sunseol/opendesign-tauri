@@ -41,6 +41,57 @@ fork workflow approval policy, and Nix hash updater coverage. These are not
 temporary migration tools; keep them unless a later upstream contract replaces
 them.
 
+## Release/Governance Workflow Classification
+
+The release/governance parity lane for
+[#36](https://github.com/sunseol/opendesign-tauri/issues/36) is intentionally
+split between active fork workflows and upstream workflows that should not be
+copied verbatim while this repository is still Tauri-first.
+
+Active fork governance:
+
+- `.github/workflows/fork-pr-workflow-approval.yml` runs the low-risk fork
+  workflow approval policy from trusted base code.
+- `.github/workflows/actionlint.yml` keeps workflow syntax and runner-label
+  drift visible.
+- `.github/workflows/agent-pr-explore-sandbox.yml` is present but disabled by
+  default behind `AGENT_PR_EXPLORE_ENABLED`; maintainers must intentionally
+  provision the self-hosted runner before `/explore` or manual dispatch can run.
+- `.github/workflows/contributor-card-bot.yml` and
+  `.github/workflows/notify-main-ci-feishu.yml` are fork-gated and disabled by
+  default behind repository variables.
+- `.github/actions/setup-workspace` and `.github/actions/setup-playwright`
+  provide the cached pnpm and Playwright setup path. Main Ubuntu CI validation
+  jobs use them; Windows/Linux packaged smoke jobs keep their platform-specific
+  setup order because Rust, NSIS, GTK/WebKit, and Tauri smoke evidence are part
+  of the migration gate.
+- `.github/workflows/ci.yml` remains this fork's factual required check. It
+  owns `merge_group`, scoped validation, Tauri packaged smoke gates, Nix hash
+  refresh artifacts, and runtime summaries.
+
+Classified but not copied verbatim:
+
+- Upstream `.github/workflows/ci-gate.yml`,
+  `.github/workflows/ci-hosted.yml`, `.github/workflows/ci-runner.yml`, and
+  `.github/workflows/scripts/ci/**` describe a split hosted/self-hosted
+  aggregation stack. This fork keeps the direct `ci.yml` gate until repository
+  rulesets and Tauri packaged-smoke requirements are redesigned around that
+  split stack.
+- Upstream `.github/workflows/notify-daily-feishu.yml`,
+  `.github/workflows/notify-release-feishu.yml`, and
+  `.github/scripts/release/feishu/notify.ts` target the official upstream
+  release streams. They should not run here until Tauri release ownership,
+  Feishu destinations, and release-branch policy are explicitly configured.
+- Upstream release PowerShell and macOS build script deltas remain release
+  engineering work under #12/#14 rather than generic governance work under #36.
+
+The agent PR exploration path carries the upstream operational safeguards that
+do apply to this fork: it writes a clean Markdown report, keeps large trace zip
+and webm artifacts out of the GitHub artifact upload, can publish trace media
+to R2 when configured, persists small report pointers on the runner, and uses
+the `registry.npmmirror.com` / `npmmirror.com` transport mirrors inside the
+isolated sandbox while retaining lockfile integrity checks.
+
 ## Deferred Nix Split-Hash Work
 
 Upstream now shapes Nix packaging around source-filtered pnpm stores:

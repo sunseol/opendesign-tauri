@@ -55,7 +55,37 @@ test("repository integrity classification names deferred Nix split-hash work", (
   }
 });
 
+test("repository integrity classification records #36 governance workflow decisions", () => {
+  const doc = readText(classificationPath);
+
+  for (const token of [
+    ".github/workflows/fork-pr-workflow-approval.yml",
+    ".github/workflows/actionlint.yml",
+    ".github/workflows/agent-pr-explore-sandbox.yml",
+    "AGENT_PR_EXPLORE_ENABLED",
+    ".github/actions/setup-workspace",
+    ".github/actions/setup-playwright",
+    ".github/workflows/ci.yml",
+    "merge_group",
+    ".github/workflows/ci-gate.yml",
+    ".github/workflows/ci-hosted.yml",
+    ".github/workflows/ci-runner.yml",
+    ".github/workflows/notify-daily-feishu.yml",
+    ".github/workflows/notify-release-feishu.yml",
+    "registry.npmmirror.com",
+  ]) {
+    assert.match(doc, new RegExp(escapeRegExp(token)), `${token} needs a #36 classification entry`);
+  }
+
+  assert.match(doc, /Classified but not copied verbatim/);
+  assert.match(doc, /Tauri packaged-smoke requirements/);
+});
+
 test("guard runs repository integrity classification checks", () => {
   const manifest = JSON.parse(readText("package.json")) as { scripts?: Record<string, string> };
   assert.match(manifest.scripts?.guard ?? "", /scripts\/repository-integrity-classification\.test\.ts/);
 });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

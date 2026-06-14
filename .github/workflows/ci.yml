@@ -262,30 +262,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       # `scripts/postinstall.mjs` only prebuilds package/tool entrypoints that
       # are needed immediately after install for linked bins and shared
@@ -328,30 +306,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Core package tests
         run: |
@@ -372,30 +328,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Tools workspace smoke tests
         run: |
@@ -421,30 +355,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Prebuild daemon entrypoint declarations
         run: pnpm --filter @open-design/daemon build
@@ -463,30 +375,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Prebuild web sidecar declarations
         run: pnpm --filter @open-design/web build:sidecar
@@ -542,49 +432,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
         with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Some Vitest-based smoke tests drive the browser directly through
-      # @playwright/test. Restore browser binaries without saving from CI runs;
-      # the key follows the @playwright/test version so browser revisions
-      # update with package bumps.
-      - name: Resolve Playwright version
-        id: playwright-version
-        run: |
-          version=$(node -p "require('./e2e/package.json').devDependencies['@playwright/test'].replace(/[^0-9.]/g,'')")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        run: pnpm -C e2e exec playwright install --with-deps chromium
+          package-json-path: e2e/package.json
+          install-command: pnpm -C e2e exec playwright install --with-deps chromium
 
       - name: E2E vitest
         run: pnpm --filter @open-design/e2e test
@@ -610,48 +465,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
         with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Restore Playwright browser binaries without saving from CI runs. The
-      # key follows the @playwright/test version so browser revisions update
-      # with package bumps.
-      - name: Resolve Playwright version
-        id: playwright-version
-        run: |
-          version=$(node -p "require('./e2e/package.json').devDependencies['@playwright/test'].replace(/[^0-9.]/g,'')")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        run: pnpm -C e2e exec playwright install --with-deps chromium
+          package-json-path: e2e/package.json
+          install-command: pnpm -C e2e exec playwright install --with-deps chromium
 
       - name: Prebuild workspace type declarations
         run: |
@@ -675,30 +496,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.8
-        with:
-          version: 10.33.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache
-        uses: actions/cache/restore@v5.0.5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Prebuild workspace type declarations
         run: |
