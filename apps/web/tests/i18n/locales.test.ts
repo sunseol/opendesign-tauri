@@ -499,6 +499,14 @@ describe('i18n locales', () => {
     }
   });
 
+  it('declares every supported locale key explicitly instead of relying on English fallback spread', () => {
+    const englishKeys = explicitLocaleKeys('en').sort();
+
+    for (const locale of LOCALES) {
+      expect(explicitLocaleKeys(locale).sort(), locale).toEqual(englishKeys);
+    }
+  });
+
   it('keeps Indonesian connector settings copy translated instead of falling back to English', () => {
     const translatedKeys: Array<keyof Dict> = [
       'settings.connectorsNavHint',
