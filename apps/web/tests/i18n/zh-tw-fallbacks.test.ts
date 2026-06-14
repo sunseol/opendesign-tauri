@@ -33,6 +33,13 @@ const ZH_TW_SETTINGS_BYOK_KEYS: ReadonlyArray<keyof Dict> = [
   'settings.fetchModelsUnsupportedOllama',
   'settings.modelsLoadedFromAccount',
 ];
+const ZH_TW_SETTINGS_TEST_AND_MEMORY_KEYS: ReadonlyArray<keyof Dict> = [
+  'settings.memoryExtractionsClearConfirm',
+  'settings.memoryModelInlineHintByokNeutral',
+  'settings.required',
+  'settings.testMissingFields',
+  'settings.testRetry',
+];
 
 describe('zh-TW fallback parity', () => {
   it('keeps recent project and project instruction copy translated instead of falling back to English', () => {
@@ -43,6 +50,12 @@ describe('zh-TW fallback parity', () => {
 
   it('keeps BYOK settings and global instruction copy translated instead of falling back to English', () => {
     for (const key of ZH_TW_SETTINGS_BYOK_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
+  });
+
+  it('keeps settings test and memory action copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_SETTINGS_TEST_AND_MEMORY_KEYS) {
       expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
