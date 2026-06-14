@@ -23,6 +23,11 @@ type CoreDocLink = {
   syntax: "html" | "markdown";
 };
 
+type ReadmeSwitcherBaseline = {
+  sourceName: string;
+  targets: string[];
+};
+
 const coreDocTargetPattern = "(QUICKSTART(?:\\.[A-Za-z0-9-]+)?\\.md|CONTRIBUTING(?:\\.[A-Za-z0-9-]+)?\\.md)";
 
 function repositoryPath(filePath: string): string {
@@ -115,6 +120,56 @@ function extractReadmeSwitcher(source: string): ReadmeSwitcherEntry[] | null {
   return entries;
 }
 
+function isForkCanonicalReadme(source: string): boolean {
+  return [
+    "# Open Design Tauri",
+    "https://github.com/sunseol/opendesign-tauri",
+    "Tauri is the default desktop runtime",
+    "Electron is a transition fallback",
+  ].every((token) => source.includes(token));
+}
+
+function checkForkCanonicalReadme(source: string, errors: string[]): void {
+  if (!isForkCanonicalReadme(source)) {
+    errors.push("README.md has no root README language switcher and is missing the fork-specific Tauri identity block.");
+    return;
+  }
+
+  for (const token of [
+    '<a href="#korean">한국어</a>',
+    '<a href="#english">English</a>',
+    '<a id="korean"></a>',
+    '<a id="english"></a>',
+  ]) {
+    if (!source.includes(token)) {
+      errors.push(`README.md fork language navigation is missing ${token}.`);
+    }
+  }
+}
+
+async function readSwitcherBaseline(readmes: string[], canonicalEntries: ReadmeSwitcherEntry[] | null): Promise<ReadmeSwitcherBaseline | null> {
+  if (canonicalEntries) {
+    return {
+      sourceName: "README.md",
+      targets: canonicalEntries.map((entry) => entry.href ?? "README.md"),
+    };
+  }
+
+  for (const readme of readmes) {
+    if (readme === "README.md") continue;
+    const source = await readFile(path.join(repoRoot, readme), "utf8");
+    const entries = extractReadmeSwitcher(source);
+    if (entries) {
+      return {
+        sourceName: readme,
+        targets: entries.map((entry) => entry.href ?? readme),
+      };
+    }
+  }
+
+  return null;
+}
+
 function readmeTarget(fileName: string): string {
   return fileName === "README.md" ? "README.md" : fileName;
 }
@@ -169,10 +224,16 @@ async function checkReadmeSwitchers(): Promise<CheckResult> {
   const canonicalEntries = extractReadmeSwitcher(canonicalSource);
 
   if (!canonicalEntries) {
-    return { name: "root README language switchers", errors: [`${canonicalName} has no root README language switcher.`] };
+    checkForkCanonicalReadme(canonicalSource, errors);
   }
 
-  const canonicalTargets = canonicalEntries.map((entry) => entry.href ?? canonicalName);
+  const switcherBaseline = await readSwitcherBaseline(readmes, canonicalEntries);
+  if (!switcherBaseline) {
+    errors.push("No translated README contains a root README language switcher.");
+    return { name: "root README language switchers", errors };
+  }
+
+  const canonicalTargets = switcherBaseline.targets;
   const expectedTargets = new Set(readmes.map(readmeTarget));
   const canonicalTargetSet = new Set(canonicalTargets);
 
@@ -182,7 +243,7 @@ async function checkReadmeSwitchers(): Promise<CheckResult> {
     Array.from(expectedTargets).some((target) => !canonicalTargetSet.has(target))
   ) {
     errors.push(
-      `${canonicalName} switcher targets differ from root README files. Expected ${Array.from(expectedTargets).join(", ")}; found ${canonicalTargets.join(", ")}.`,
+      `${switcherBaseline.sourceName} switcher targets differ from root README files. Expected ${Array.from(expectedTargets).join(", ")}; found ${canonicalTargets.join(", ")}.`,
     );
   }
 
@@ -190,6 +251,7 @@ async function checkReadmeSwitchers(): Promise<CheckResult> {
     const source = await readFile(path.join(repoRoot, readme), "utf8");
     const entries = extractReadmeSwitcher(source);
     if (!entries) {
+      if (readme === canonicalName && isForkCanonicalReadme(source)) continue;
       errors.push(`${readme} has no root README language switcher.`);
       continue;
     }
@@ -263,7 +325,11 @@ for (const check of checks) {
   try {
     results.push(await check());
   } catch (error) {
-    results.push({ name: check.name, errors: [`Unexpected check failure: ${String(error)}`] });
+    if (error instanceof Error) {
+      results.push({ name: check.name, errors: [`Unexpected check failure: ${error.message}`] });
+    } else {
+      results.push({ name: check.name, errors: [`Unexpected check failure: ${String(error)}`] });
+    }
   }
 }
 
