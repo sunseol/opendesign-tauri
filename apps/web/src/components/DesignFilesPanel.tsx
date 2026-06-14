@@ -29,10 +29,10 @@ interface Props {
   onRenameFile: (from: string, to: string) => Promise<ProjectFile | null> | ProjectFile | null;
   onDeleteFile: (name: string) => void;
   onDeleteFiles: (names: string[]) => Promise<void> | void;
-  onUpload: () => void;
-  onUploadFiles: (files: File[]) => void;
-  onPaste: () => void;
-  onNewSketch: () => void;
+  onUpload: (currentDir?: string) => void;
+  onUploadFiles: (files: File[], currentDir?: string) => void;
+  onPaste: (currentDir?: string) => void;
+  onNewSketch: (currentDir?: string) => void;
   uploadError?: string | null;
   onClearUploadError?: () => void;
   onPluginFolderAgentAction?: (
@@ -833,7 +833,10 @@ export function DesignFilesPanel({
     setDropReadError(null);
     try {
       const dropped = await filesFromDataTransfer(ev.dataTransfer);
-      if (dropped.length > 0) onUploadFiles(dropped);
+      if (dropped.length > 0) {
+        if (currentDir) onUploadFiles(dropped, currentDir);
+        else onUploadFiles(dropped);
+      }
     } catch (error) {
       if (!isFileSystemReadError(error)) throw error;
       setDropReadError(FILE_SYSTEM_READ_ERROR_MESSAGE);
@@ -904,18 +907,35 @@ export function DesignFilesPanel({
       </div>
     ) : (
       <div className="df-actions">
-        <button type="button" onClick={onNewSketch} title={t('designFiles.newSketch')}>
+        <button
+          type="button"
+          onClick={() => {
+            if (currentDir) onNewSketch(currentDir);
+            else onNewSketch();
+          }}
+          title={t('designFiles.newSketch')}
+        >
           <Icon name="pencil" size={13} />
           <span>{t('designFiles.newSketch')}</span>
         </button>
-        <button type="button" onClick={onPaste} title={t('designFiles.paste.title')}>
+        <button
+          type="button"
+          onClick={() => {
+            if (currentDir) onPaste(currentDir);
+            else onPaste();
+          }}
+          title={t('designFiles.paste.title')}
+        >
           <Icon name="copy" size={13} />
           <span>{t('designFiles.paste.label')}</span>
         </button>
         <button
           type="button"
           data-testid="design-files-upload-trigger"
-          onClick={onUpload}
+          onClick={() => {
+            if (currentDir) onUpload(currentDir);
+            else onUpload();
+          }}
           title={t('designFiles.upload.title')}
         >
           <Icon name="upload" size={13} />
@@ -1102,7 +1122,10 @@ export function DesignFilesPanel({
                   type="button"
                   className="df-empty-cta"
                   data-testid="design-files-empty-new-sketch"
-                  onClick={onNewSketch}
+                  onClick={() => {
+                    if (currentDir) onNewSketch(currentDir);
+                    else onNewSketch();
+                  }}
                   title={t('designFiles.newSketch')}
                 >
                   <Icon name="pencil" size={13} />

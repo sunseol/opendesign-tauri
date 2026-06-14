@@ -9,7 +9,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileWorkspace, scrollWorkspaceTabsWithWheel } from '../../src/components/FileWorkspace';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import { projectSplitClassName } from '../../src/components/ProjectView';
-import { fetchProjectFolders, uploadProjectFiles } from '../../src/providers/registry';
+import {
+  fetchProjectFolders,
+  uploadProjectFiles,
+  writeProjectTextFile,
+} from '../../src/providers/registry';
 import type { ProjectFile } from '../../src/types';
 
 vi.mock('../../src/providers/registry', async () => {
@@ -20,11 +24,13 @@ vi.mock('../../src/providers/registry', async () => {
     ...actual,
     fetchProjectFolders: vi.fn(async () => []),
     uploadProjectFiles: vi.fn(),
+    writeProjectTextFile: vi.fn(),
   };
 });
 
 const mockedFetchProjectFolders = vi.mocked(fetchProjectFolders);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
+const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -322,6 +328,144 @@ describe('FileWorkspace upload input', () => {
     fireEvent.click(screen.getByTestId('design-folder-row-assets'));
 
     expect(screen.getByTestId('design-folder-row-assets/empty')).toBeTruthy();
+  });
+
+  it('uploads files into the open Design Files folder', async () => {
+    mockedFetchProjectFolders.mockResolvedValueOnce([
+      {
+        name: 'assets',
+        path: 'assets',
+        type: 'dir',
+        size: 0,
+        mtime: 1700000000,
+      },
+    ]);
+    mockedUploadProjectFiles.mockResolvedValueOnce({
+      uploaded: [{ path: 'assets/mock.png', name: 'mock.png', kind: 'image', size: 4 }],
+      failed: [],
+    });
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    fireEvent.click(screen.getByTestId('design-files-upload-trigger'));
+
+    fireEvent.change(screen.getByTestId('design-files-upload-input'), {
+      target: { files: [new File(['mock'], 'mock.png', { type: 'image/png' })] },
+    });
+
+    await waitFor(() => {
+      expect(mockedUploadProjectFiles).toHaveBeenCalled();
+    });
+    const call = mockedUploadProjectFiles.mock.calls[0];
+    if (!call) throw new Error('Expected uploadProjectFiles call');
+    expect(call[1][0]?.webkitRelativePath).toBe('assets/mock.png');
+  });
+
+  it('creates pending sketches inside the open Design Files folder', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+    mockedFetchProjectFolders.mockResolvedValueOnce([
+      {
+        name: 'assets',
+        path: 'assets',
+        type: 'dir',
+        size: 0,
+        mtime: 1700000000,
+      },
+    ]);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    fireEvent.click(screen.getByRole('button', { name: 'New sketch' }));
+
+    expect(document.body.textContent).toContain('assets/sketch-');
+  });
+
+  it('pastes text files into the open Design Files folder', async () => {
+    mockedFetchProjectFolders.mockResolvedValueOnce([
+      {
+        name: 'assets',
+        path: 'assets',
+        type: 'dir',
+        size: 0,
+        mtime: 1700000000,
+      },
+    ]);
+    mockedWriteProjectTextFile.mockResolvedValueOnce(
+      baseFile({
+        name: 'assets/note.txt',
+        path: 'assets/note.txt',
+        kind: 'text',
+        mime: 'text/plain',
+      }),
+    );
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('design-folder-row-assets')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId('design-folder-row-assets'));
+    fireEvent.click(screen.getByRole('button', { name: 'Paste' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'File name' }), {
+      target: { value: 'note' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Content' }), {
+      target: { value: 'hello from assets' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mockedWriteProjectTextFile).toHaveBeenCalledWith(
+        'project-1',
+        'assets/note.txt',
+        'hello from assets',
+      );
+    });
   });
 
   it('hides upload failure details during in-panel preview and restores them after closing preview', async () => {

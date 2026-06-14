@@ -250,6 +250,7 @@ export function FileWorkspace({
 
   const [showPasteDialog, setShowPasteDialog] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [designFilesActionDir, setDesignFilesActionDir] = useState('');
   const [sketches, setSketches] = useState<Record<string, SketchState>>({});
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
   const [draggedTabName, setDraggedTabName] = useState<string | null>(null);
@@ -409,17 +410,18 @@ export function FileWorkspace({
   async function handleFilePicked(ev: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(ev.target.files ?? []);
     ev.target.value = '';
-    await uploadFiles(picked);
+    await uploadFiles(picked, designFilesActionDir);
   }
 
-  async function uploadFiles(picked: File[]) {
+  async function uploadFiles(picked: File[], targetDir = '') {
     if (picked.length === 0) return;
 
     setUploadError(null);
     const cohort = deriveUploadCohort(picked);
+    const uploadTargets = filesForDesignFilesDirectory(picked, targetDir);
     let result: UploadProjectFilesResult;
     try {
-      result = await uploadProjectFiles(projectId, picked);
+      result = await uploadProjectFiles(projectId, uploadTargets);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       setUploadError(`Upload failed for ${picked.length} file(s) (${detail}).`);
@@ -650,9 +652,9 @@ export function FileWorkspace({
     return renamed;
   }
 
-  function startNewSketch() {
+  function startNewSketch(targetDir = '') {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const name = `sketch-${stamp}.sketch.json`;
+    const name = joinProjectRelativePath(targetDir, `sketch-${stamp}.sketch.json`);
     setSketches((curr) => ({
       ...curr,
       [name]: {
@@ -764,7 +766,7 @@ export function FileWorkspace({
         active: name,
       });
       setActiveTab(name);
-      await onRefreshFiles();
+      await refreshFilesAndFolders();
     } else {
       setSketches((curr) => ({ ...curr, [name]: { ...curr[name]!, saving: false } }));
     }
@@ -1001,30 +1003,32 @@ export function FileWorkspace({
               });
               return handleDeleteMany(names);
             }}
-            onUpload={() => {
+            onUpload={(currentDir) => {
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'upload',
               });
+              setDesignFilesActionDir(currentDir ?? '');
               fileInputRef.current?.click();
             }}
-            onUploadFiles={(picked) => void uploadFiles(picked)}
-            onPaste={() => {
+            onUploadFiles={(picked, currentDir) => void uploadFiles(picked, currentDir ?? '')}
+            onPaste={(currentDir) => {
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'paste',
               });
+              setDesignFilesActionDir(currentDir ?? '');
               setShowPasteDialog(true);
             }}
-            onNewSketch={() => {
+            onNewSketch={(currentDir) => {
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'new_sketch',
               });
-              startNewSketch();
+              startNewSketch(currentDir ?? '');
             }}
             uploadError={uploadError}
             onClearUploadError={() => setUploadError(null)}
@@ -1101,9 +1105,10 @@ export function FileWorkspace({
           onClose={() => setShowPasteDialog(false)}
           onSave={async (name, content) => {
             setShowPasteDialog(false);
-            const file = await writeProjectTextFile(projectId, name, content);
+            const targetName = joinProjectRelativePath(designFilesActionDir, name);
+            const file = await writeProjectTextFile(projectId, targetName, content);
             if (file) {
-              await onRefreshFiles();
+              await refreshFilesAndFolders();
               openFile(file.name);
             }
           }}
@@ -2803,6 +2808,47 @@ function kindIconName(
 
 function isSketchName(name: string): boolean {
   return isSketchJsonFileName(name);
+}
+
+function filesForDesignFilesDirectory(files: File[], targetDir: string): File[] {
+  const dir = safeProjectRelativePath(targetDir);
+  if (!dir) return files;
+  return files.map((file) => fileWithDesignFilesDirectory(file, dir));
+}
+
+function fileWithDesignFilesDirectory(file: File, targetDir: string): File {
+  const sourcePath = safeProjectRelativePath(file.webkitRelativePath) ?? safeProjectRelativePath(file.name);
+  if (!sourcePath) return file;
+  const relativePath = `${targetDir}/${sourcePath}`;
+  const fileWithPath = new File([file], file.name, {
+    type: file.type,
+    lastModified: file.lastModified,
+  });
+  Object.defineProperty(fileWithPath, 'webkitRelativePath', {
+    configurable: true,
+    value: relativePath,
+  });
+  return fileWithPath;
+}
+
+function joinProjectRelativePath(targetDir: string, name: string): string {
+  const dir = safeProjectRelativePath(targetDir);
+  const relativeName = safeProjectRelativePath(name);
+  if (!dir || !relativeName) return name;
+  return `${dir}/${relativeName}`;
+}
+
+function safeProjectRelativePath(input: string | undefined): string | null {
+  if (typeof input !== 'string') return null;
+  const value = input.replace(/\\/g, '/').trim();
+  if (!value || value.includes('\0') || value.startsWith('/') || /^[A-Za-z]:\//.test(value)) {
+    return null;
+  }
+  const parts = value.split('/').filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..')) {
+    return null;
+  }
+  return parts.join('/');
 }
 
 function sameFileName(a: string, b: string): boolean {
