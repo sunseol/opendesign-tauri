@@ -59,6 +59,39 @@ const ZH_CN_ALLOWED_ENGLISH_KEYS: ReadonlySet<keyof Dict> = new Set([
   'useEverywhere.section.cli.tab',
   'useEverywhere.section.http.tab',
 ]);
+const ZH_TW_REQUIRED_TRANSLATED_KEYS: ReadonlyArray<keyof Dict> = [
+  'agentPicker.byok',
+  'chat.amrError.authMessage',
+  'chat.amrError.authorizeCta',
+  'chat.amrError.balanceMessage',
+  'chat.amrError.rechargeCta',
+  'chat.resumeRunCta',
+  'entry.githubStarLabel',
+  'pluginsHome.featured',
+  'pluginsHome.title',
+  'settings.amrCancelSignIn',
+  'settings.amrLoginErrorCompact',
+  'settings.amrSignInToContinue',
+  'settings.amrSigningIn',
+  'settings.baseUrl',
+  'settings.cliEnvClaudeApiKey',
+  'settings.cliEnvClaudeBaseUrl',
+  'settings.cliEnvCodexApiKey',
+  'settings.cliEnvCodexBaseUrl',
+  'settings.cliEnvCodexHome',
+  'settings.designSystemsGithubUrl',
+  'settings.mcpTitle',
+  'settings.mediaProviderApiKey',
+  'settings.mediaProviderBaseUrl',
+  'settings.onboardingAmrCloudBenefitModels',
+  'settings.onboardingAmrCloudBenefitOfficial',
+  'settings.onboardingAmrCloudBenefitPricing',
+  'settings.onboardingAmrCloudBenefitReady',
+  'settings.onboardingAmrCloudUpcomingImageVideo',
+  'settings.onboardingAmrCloudUpcomingLabel',
+  'settings.onboardingAmrCloudUpcomingRouting',
+  'settings.onboardingAmrCloudUpcomingSkills',
+];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -256,5 +289,11 @@ describe('i18n locales', () => {
     }
 
     expect(untranslated).toEqual([]);
+  });
+
+  it('keeps zh-TW AMR, settings, plugin, and chat copy translated instead of falling back to English', () => {
+    for (const key of ZH_TW_REQUIRED_TRANSLATED_KEYS) {
+      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+    }
   });
 });
