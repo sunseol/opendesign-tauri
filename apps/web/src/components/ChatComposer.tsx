@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { useT } from '../i18n';
@@ -43,6 +44,7 @@ import {
 } from '../utils/inlineMentions';
 import {
   LexicalComposerInput,
+  type ComposerPopoverAnchor,
   type LexicalComposerInputHandle,
 } from './composer/LexicalComposerInput';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
@@ -270,7 +272,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [dragActive, setDragActive] = useState(false);
     const [mention, setMention] = useState<{
       q: string;
-      cursor: number;
+      anchor: ComposerPopoverAnchor | null;
     } | null>(null);
     // Slash-command popover state — when the draft starts with `/` and
     // the cursor is still inside that token (no space committed yet),
@@ -278,7 +280,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // text after `/` so the user can type-to-filter.
     const [slash, setSlash] = useState<{
       q: string;
-      cursor: number;
+      anchor: ComposerPopoverAnchor | null;
     } | null>(null);
     const [slashIndex, setSlashIndex] = useState(0);
     const [uploading, setUploading] = useState(false);
@@ -996,16 +998,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     }
 
     function handleEditorTrigger(state: {
-      mention: { q: string } | null;
-      slash: { q: string } | null;
+      mention: { q: string; anchor: ComposerPopoverAnchor | null } | null;
+      slash: { q: string; anchor: ComposerPopoverAnchor | null } | null;
     }) {
       if (state.mention) {
-        setMention({ q: state.mention.q, cursor: draft.length });
+        setMention({ q: state.mention.q, anchor: state.mention.anchor });
       } else {
         setMention(null);
       }
       if (state.slash) {
-        setSlash({ q: state.slash.q, cursor: draft.length });
+        setSlash({ q: state.slash.q, anchor: state.slash.anchor });
         setSlashIndex(0);
       } else {
         setSlash(null);
@@ -1402,6 +1404,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 onPickSkill={(skill) => void insertSkillMention(skill)}
                 onPickMcp={insertMcpMention}
                 onPickConnector={insertConnectorMention}
+                anchor={mention.anchor}
               />
             ) : null}
             {slash && filteredSlash.length > 0 ? (
@@ -1411,6 +1414,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 onPick={pickSlash}
                 onHover={(i) => setSlashIndex(i)}
                 t={t}
+                anchor={slash.anchor}
               />
             ) : null}
           </div>
@@ -2592,18 +2596,33 @@ function ImportItem({
   );
 }
 
+type PopoverAnchorStyle = CSSProperties & {
+  '--composer-popover-left'?: string;
+  '--composer-popover-top'?: string;
+};
+
+function popoverAnchorStyle(anchor: ComposerPopoverAnchor | null): PopoverAnchorStyle | undefined {
+  if (!anchor) return undefined;
+  return {
+    '--composer-popover-left': `${Math.round(anchor.left)}px`,
+    '--composer-popover-top': `${Math.round(anchor.top)}px`,
+  };
+}
+
 function SlashPopover({
   commands,
   activeIndex,
   onPick,
   onHover,
   t,
+  anchor,
 }: {
   commands: SlashCommand[];
   activeIndex: number;
   onPick: (cmd: SlashCommand) => void;
   onHover: (index: number) => void;
   t: TranslateFn;
+  anchor: ComposerPopoverAnchor | null;
 }) {
   return (
     <div
@@ -2611,6 +2630,7 @@ function SlashPopover({
       data-testid="slash-popover"
       role="listbox"
       aria-label={t('pet.slashPopoverAria')}
+      style={popoverAnchorStyle(anchor)}
     >
       <div className="slash-popover-head">
         <span>{t('pet.slashPopoverTitle')}</span>
@@ -2666,6 +2686,7 @@ function MentionPopover({
   onPickSkill,
   onPickMcp,
   onPickConnector,
+  anchor,
 }: {
   files: ProjectFile[];
   connectors: ConnectorDetail[];
@@ -2679,6 +2700,7 @@ function MentionPopover({
   onPickSkill: (skill: SkillSummary) => void;
   onPickMcp: (server: McpServerConfig) => void;
   onPickConnector: (connector: ConnectorDetail) => void;
+  anchor: ComposerPopoverAnchor | null;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<MentionTab>('all');
@@ -2705,7 +2727,11 @@ function MentionPopover({
     if (ref.current) ref.current.scrollTop = 0;
   }, [connectors, files, plugins, skills, mcpServers, tab]);
   return (
-    <div className="mention-popover" data-testid="mention-popover">
+    <div
+      className="mention-popover"
+      data-testid="mention-popover"
+      style={popoverAnchorStyle(anchor)}
+    >
       <div className="mention-tabs" role="tablist" aria-label="Mention surfaces">
         {tabs.map((item) => (
           <button

@@ -53,8 +53,13 @@ import {
 } from './MentionNode';
 
 export interface ComposerTriggerState {
-  mention: { q: string } | null;
-  slash: { q: string } | null;
+  mention: { q: string; anchor: ComposerPopoverAnchor | null } | null;
+  slash: { q: string; anchor: ComposerPopoverAnchor | null } | null;
+}
+
+export interface ComposerPopoverAnchor {
+  left: number;
+  top: number;
 }
 
 export interface MentionInsert {
@@ -160,6 +165,52 @@ function activeTriggerPrefix(selection: RangeSelection): string | null {
   const node = selection.anchor.getNode();
   if (!$isTextNode(node)) return null;
   return previousTextOnLine(node, selection.anchor.offset);
+}
+
+function selectionPopoverAnchor(
+  editor: LexicalEditor,
+  selection: RangeSelection,
+): ComposerPopoverAnchor | null {
+  const rootElement = editor.getRootElement();
+  if (!rootElement) return null;
+  const anchorNode = selection.anchor.getNode();
+  const element = editor.getElementByKey(anchorNode.getKey());
+  if (!element) return null;
+  const anchorRect = textCaretRect(element, selection.anchor.offset) ?? element.getBoundingClientRect();
+  const container = rootElement.closest('.composer-input-wrap') ?? rootElement;
+  const containerRect = container.getBoundingClientRect();
+  return {
+    left: clamp(anchorRect.left - containerRect.left, 0, containerRect.width),
+    top: clamp(anchorRect.top - containerRect.top, 0, containerRect.height),
+  };
+}
+
+function textCaretRect(element: HTMLElement, offset: number): DOMRect | null {
+  const textNode = firstTextDomNode(element);
+  if (!textNode) return null;
+  const textLength = textNode.textContent?.length ?? 0;
+  const safeOffset = clamp(offset, 0, textLength);
+  const range = textNode.ownerDocument.createRange();
+  try {
+    range.setStart(textNode, safeOffset);
+    range.setEnd(textNode, safeOffset);
+    return range.getBoundingClientRect();
+  } finally {
+    range.detach();
+  }
+}
+
+function firstTextDomNode(node: Node): Text | null {
+  if (node instanceof Text) return node;
+  for (const child of Array.from(node.childNodes)) {
+    const text = firstTextDomNode(child);
+    if (text) return text;
+  }
+  return null;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function replaceActiveTriggerInSelection(selection: RangeSelection, text: string): boolean {
@@ -295,9 +346,10 @@ function TriggerPlugin({
         }
         const mention = /(^|\s)@([^\s@]*)$/.exec(before);
         const slash = /^\/([^\s/]*)$/.exec(before);
+        const anchor = selectionPopoverAnchor(editor, selection);
         onTriggerRef.current({
-          mention: mention ? { q: mention[2] ?? '' } : null,
-          slash: slash ? { q: slash[1] ?? '' } : null,
+          mention: mention ? { q: mention[2] ?? '', anchor } : null,
+          slash: slash ? { q: slash[1] ?? '', anchor } : null,
         });
       });
     });

@@ -2435,11 +2435,13 @@ a.avatar-item:visited {
 
 /* -------- Mention popover ------------------------------------------- */
 .mention-popover {
-  order: -1;
-  flex: 0 0 clamp(300px, 52vh, 480px);
+  position: absolute;
+  left: max(4px, var(--composer-popover-left, 4px));
+  bottom: calc(100% - var(--composer-popover-top, 0px) + 8px);
+  z-index: 10;
+  width: min(420px, calc(100% - 8px));
   min-height: 248px;
   max-height: min(480px, 72vh);
-  margin: 0 0 6px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -20132,10 +20134,9 @@ body.desktop-pet-shell .pet-task-item {
 
 .slash-popover {
   position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
+  bottom: calc(100% - var(--composer-popover-top, 0px) + 8px);
+  left: max(4px, var(--composer-popover-left, 4px));
+  width: min(360px, calc(100% - 8px));
   max-height: 260px;
   overflow-y: auto;
   background: var(--bg-panel);

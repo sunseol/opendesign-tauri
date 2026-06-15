@@ -133,6 +133,24 @@ function mentionChips(): HTMLElement[] {
   );
 }
 
+function domRect(rect: Partial<DOMRect>): DOMRect {
+  const left = rect.left ?? rect.x ?? 0;
+  const top = rect.top ?? rect.y ?? 0;
+  const width = rect.width ?? 0;
+  const height = rect.height ?? 0;
+  return {
+    x: rect.x ?? left,
+    y: rect.y ?? top,
+    width,
+    height,
+    top,
+    left,
+    right: rect.right ?? left + width,
+    bottom: rect.bottom ?? top + height,
+    toJSON: () => ({}),
+  };
+}
+
 beforeEach(() => {
   plugins = [COMMUNITY_PLUGIN, USER_PLUGIN];
   skills = [SKILL];
@@ -312,6 +330,30 @@ describe('ChatComposer context pickers', () => {
       expect(fileChip?.textContent).toBe('@assets/hero.png');
       expect(fileChip?.dataset.mentionId).toBe('assets/hero.png');
     });
+  });
+
+  it('anchors the mention popover to the Lexical caret', async () => {
+    const originalRangeRect = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = () =>
+      domRect({ left: 132, top: 96, width: 1, height: 18 });
+
+    try {
+      renderComposer();
+      await flushComposerMount();
+      const input = screen.getByTestId('chat-composer-input');
+      const wrap = input.closest('.composer-input-wrap');
+      if (!(wrap instanceof HTMLElement)) throw new TypeError('Expected composer input wrap');
+      wrap.getBoundingClientRect = () =>
+        domRect({ left: 24, top: 40, width: 420, height: 128 });
+
+      await typeAndSettle('hello @exp');
+
+      const popover = await screen.findByTestId('mention-popover');
+      expect(popover.style.getPropertyValue('--composer-popover-left')).toBe('108px');
+      expect(popover.style.getPropertyValue('--composer-popover-top')).toBe('56px');
+    } finally {
+      Range.prototype.getBoundingClientRect = originalRangeRect;
+    }
   });
 
 });
