@@ -6,6 +6,7 @@ paths:
 self-hosted-runner:
   labels:
     - agent-pr-explore
+    - macos-15-intel
     - nexu-spark
     - nexu-mac
     - nexu-win
