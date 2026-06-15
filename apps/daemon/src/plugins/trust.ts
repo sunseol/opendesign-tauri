@@ -1,8 +1,9 @@
 // Trust resolver. Spec §5.3 has two tiers — `trusted` and `restricted`.
 // Phase 1 keeps the policy minimal:
 //
-//   - Local folder installs default to `trusted` because the user explicitly
-//     routed those bytes through the OD installer pipeline.
+//   - User-installed plugins default to `restricted`, including local folders.
+//     A local path proves provenance only; it is not an approval to grant broad
+//     runtime capabilities.
 //   - Bundled plugins and trusted/official marketplace installs can be promoted
 //     by the upstream-approved install pipeline. Everything else stays
 //     `restricted` until an explicit `od plugin trust <id>` flips it.
@@ -23,7 +24,7 @@ export const TRUSTED_DEFAULT_CAPABILITIES: ReadonlyArray<string> = [
 export const RESTRICTED_DEFAULT_CAPABILITIES: ReadonlyArray<string> = ['prompt:inject'];
 
 export function defaultTrustForRecord(record: Pick<InstalledPluginRecord, 'sourceKind'>): TrustTier {
-  return record.sourceKind === 'bundled' || record.sourceKind === 'local' ? 'trusted' : 'restricted';
+  return record.sourceKind === 'bundled' ? 'trusted' : 'restricted';
 }
 
 export function defaultCapabilities(trust: TrustTier): string[] {
