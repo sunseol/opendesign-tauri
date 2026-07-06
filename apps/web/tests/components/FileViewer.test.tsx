@@ -7,7 +7,17 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { saveTemplateMock } = vi.hoisted(() => ({
+const {
+  analyticsNewRequestIdMock,
+  analyticsTrackMock,
+  exportAsImageMock,
+  requestPreviewSnapshotMock,
+  saveTemplateMock,
+} = vi.hoisted(() => ({
+  analyticsNewRequestIdMock: vi.fn(() => 'request-image-export'),
+  analyticsTrackMock: vi.fn(),
+  exportAsImageMock: vi.fn(),
+  requestPreviewSnapshotMock: vi.fn(async () => ({ dataUrl: 'data:image/png;base64,AA==' })),
   saveTemplateMock: vi.fn(),
 }));
 
@@ -18,6 +28,32 @@ vi.mock('../../src/state/projects', async () => {
   return {
     ...actual,
     saveTemplate: saveTemplateMock,
+  };
+});
+
+vi.mock('../../src/analytics/provider', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/analytics/provider')>();
+  return {
+    ...actual,
+    useAnalytics: () => ({
+      track: analyticsTrackMock,
+      setConsent: () => undefined,
+      setIdentity: () => undefined,
+      setConfigureGlobals: () => undefined,
+      setUserId: () => undefined,
+      anonymousId: 'test-anonymous-id',
+      sessionId: 'test-session-id',
+      newRequestId: analyticsNewRequestIdMock,
+    }),
+  };
+});
+
+vi.mock('../../src/runtime/exports', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/runtime/exports')>();
+  return {
+    ...actual,
+    exportAsImage: exportAsImageMock,
+    requestPreviewSnapshot: requestPreviewSnapshotMock,
   };
 });
 
@@ -44,6 +80,11 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(navigator, 'clipboard');
+  analyticsNewRequestIdMock.mockClear();
+  analyticsTrackMock.mockClear();
+  exportAsImageMock.mockClear();
+  requestPreviewSnapshotMock.mockClear();
+  saveTemplateMock.mockClear();
 });
 
 function baseFile(overrides: Partial<ProjectFile>): ProjectFile {
@@ -988,6 +1029,53 @@ describe('FileViewer SVG artifacts', () => {
     await waitFor(() => {
       expect(secondExportButton.classList.contains('export-ready-nudge')).toBe(true);
     });
+  });
+
+  it('tracks image export failures with classified renderer error codes', async () => {
+    // Given: a srcDoc-backed artifact whose preview renderer cannot provide a snapshot.
+    requestPreviewSnapshotMock.mockRejectedValueOnce(new Error('renderer is unavailable'));
+    const file = baseFile({
+      name: 'deck.html',
+      path: 'deck.html',
+      mime: 'text/html',
+      kind: 'html',
+      artifactManifest: {
+        version: 1,
+        kind: 'deck',
+        title: 'Deck',
+        entry: 'deck.html',
+        renderer: 'deck-html',
+        exports: ['html'],
+      },
+    });
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={file}
+        isDeck
+        liveHtml="<html><body><section class=&quot;slide&quot;>one</section></body></html>"
+      />,
+    );
+
+    // When: the user drives the real share menu image export action.
+    fireEvent.click(screen.getByRole('button', { name: /share/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Export as image/i }));
+
+    // Then: the result event preserves the specific renderer failure code.
+    await waitFor(() => {
+      expect(analyticsTrackMock).toHaveBeenCalledWith(
+        'artifact_export_result',
+        expect.objectContaining({
+          export_format: 'image',
+          result: 'failed',
+          error_code: 'DESKTOP_RENDERER_UNAVAILABLE',
+        }),
+        { requestId: 'request-image-export' },
+      );
+    });
+    expect(exportAsImageMock).not.toHaveBeenCalled();
   });
 
   it('keeps the explicitly selected deploy provider when another provider already has a deployment', async () => {

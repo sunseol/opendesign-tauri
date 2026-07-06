@@ -6,6 +6,7 @@ import {
   artifactKindToTracking,
   type TrackingProjectKind,
 } from '@open-design/contracts/analytics';
+import { exportErrorCode } from '../analytics/export-error-code';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackArtifactExportResult,
@@ -3559,6 +3560,7 @@ function HtmlViewer({
       | 'pptx'
       | 'zip'
       | 'html'
+      | 'image'
       | 'markdown'
       | 'template'
       | 'vercel'
@@ -3605,7 +3607,7 @@ function HtmlViewer({
       if (out && typeof (out as Promise<unknown>).then === 'function') {
         (out as Promise<unknown>).then(
           (result) => finish(result === 'cancelled' ? 'cancelled' : 'success'),
-          (err) => finish('failed', err instanceof Error ? err.name : 'UNKNOWN'),
+          (err) => finish('failed', exportErrorCode(err)),
         );
       } else {
         if (out === 'cancelled') {
@@ -3615,7 +3617,7 @@ function HtmlViewer({
         finish('success');
       }
     } catch (err) {
-      finish('failed', err instanceof Error ? err.name : 'UNKNOWN');
+      finish('failed', err instanceof Error ? exportErrorCode(err) : 'UNKNOWN');
     }
   };
   // P0 helpers — keep the artifact_id + artifact_kind derivation in one place
@@ -3711,6 +3713,7 @@ function HtmlViewer({
   const deployProviderLoadSeqRef = useRef(0);
   const [inTabPresent, setInTabPresent] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const sourceEverLoadedRef = useRef(false);
   const [boardMode, setBoardMode] = useState(false);
   const [boardTool, setBoardTool] = useState<BoardTool>('inspect');
   const [inspectMode, setInspectMode] = useState(false);
@@ -3861,6 +3864,12 @@ function HtmlViewer({
   const manualEditStyleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualEditPreviewVersionRef = useRef(0);
   const sourceRef = useRef<string | null>(source);
+  const prevSourceBeforeReloadRef = useRef<{
+    source: string;
+    projectId: string;
+    fileName: string;
+  } | null>(null);
+  const lastGoodSourceForRoutingRef = useRef<string | null>(null);
   const sourceFileKeyRef = useRef<string | null>(null);
   const templateNameId = useId();
   const templateDescriptionId = useId();
@@ -4059,6 +4068,8 @@ function HtmlViewer({
     const sourceFileKey = `${projectId}\0${file.name}\0${liveHtml === undefined ? 'raw' : 'live'}`;
     if (liveHtml !== undefined) {
       sourceFileKeyRef.current = sourceFileKey;
+      sourceEverLoadedRef.current = true;
+      lastGoodSourceForRoutingRef.current = liveHtml;
       setSource(liveHtml);
       sourceRef.current = liveHtml;
       return;
@@ -4068,13 +4079,29 @@ function HtmlViewer({
     if (fileChanged) {
       setSource(null);
       sourceRef.current = null;
+      sourceEverLoadedRef.current = false;
+      prevSourceBeforeReloadRef.current = null;
+      lastGoodSourceForRoutingRef.current = null;
     }
     let cancelled = false;
     void fetchProjectFileText(projectId, file.name).then((text) => {
-      if (!cancelled) {
-        setSource(text);
-        sourceRef.current = text;
+      if (cancelled) return;
+      if (text == null) {
+        const snap = prevSourceBeforeReloadRef.current;
+        if (snap?.projectId === projectId && snap.fileName === file.name) {
+          setSource(snap.source);
+          sourceRef.current = snap.source;
+          prevSourceBeforeReloadRef.current = null;
+        } else if (snap != null) {
+          prevSourceBeforeReloadRef.current = null;
+        }
+        return;
       }
+      prevSourceBeforeReloadRef.current = null;
+      sourceEverLoadedRef.current = true;
+      lastGoodSourceForRoutingRef.current = text;
+      setSource(text);
+      sourceRef.current = text;
     });
     return () => {
       cancelled = true;
@@ -4104,10 +4131,11 @@ function HtmlViewer({
   // `mode: deck`. Freeform projects often produce a deck because the user
   // asked for one in plain prose; without this, prev/next and Present
   // never surface and the deck becomes a static, unnavigable preview.
+  const routingSource = source ?? lastGoodSourceForRoutingRef.current;
   const looksLikeDeck = useMemo(() => {
-    if (!source) return false;
-    return /class\s*=\s*['"][^'"]*\bslide\b/i.test(source);
-  }, [source]);
+    if (!routingSource) return false;
+    return /class\s*=\s*['"][^'"]*\bslide\b/i.test(routingSource);
+  }, [routingSource]);
   const effectiveDeck = isDeck || looksLikeDeck;
   const livePreviewSource = inlinedSource ?? source;
   // Freeze the iframe input on the snapshot taken at Edit-mode entry. Any
@@ -4124,14 +4152,14 @@ function HtmlViewer({
     : livePreviewSource;
   const manualEditPageStylesEnabled = typeof source === 'string' && isManualEditFullHtmlDocument(source);
   const drawClickSelectionMode = drawOverlayOpen && drawOverlayMode === 'click' && !manualEditMode;
-  const urlModeBridge = hasUrlModeBridge(source);
+  const urlModeBridge = hasUrlModeBridge(routingSource);
   // When we URL-load the iframe directly, skip every in-host inlining /
   // srcDoc-rebuilding step. The browser does the asset resolution itself,
   // which is the whole point of the URL-load path.
   // Detect the class based tweaks template so we keep the srcDoc path on
   // first load: the bridge that emits `od:tweaks-available` is only injected
   // by buildSrcdoc, never on the URL load iframe.
-  const tweaksBridgeRequired = hasTweaksTemplate(source);
+  const tweaksBridgeRequired = hasTweaksTemplate(routingSource);
   // Auto-fall back to the srcDoc path when the artifact will crash under
   // the URL-load iframe's bare `sandbox="allow-scripts"` — Babel-standalone
   // React prototypes and any HTML that reads Web Storage at mount throw
@@ -4140,12 +4168,12 @@ function HtmlViewer({
   // Memoized on `source` so HtmlViewer's frequent re-renders (board/inspect/
   // edit mode toggles, slide nav) don't re-scan the HTML each time.
   const needsSandboxShim = useMemo(
-    () => source != null && htmlNeedsSandboxShim(source),
-    [source],
+    () => routingSource != null && htmlNeedsSandboxShim(routingSource),
+    [routingSource],
   );
   const needsFocusGuard = useMemo(
-    () => source != null && htmlNeedsFocusGuard(source),
-    [source],
+    () => routingSource != null && htmlNeedsFocusGuard(routingSource),
+    [routingSource],
   );
   const useUrlLoadPreview = shouldUrlLoadHtmlPreview({
     mode,
@@ -4230,8 +4258,9 @@ function HtmlViewer({
       paletteBridge: true,
       initialPalette: selectedPalette,
       previewFocusGuard: true,
+      reloadKey,
     }) : ''),
-    [previewSource, effectiveDeck, projectId, file.name, previewStateKey, manualEditMode, selectedPalette],
+    [previewSource, effectiveDeck, projectId, file.name, previewStateKey, manualEditMode, selectedPalette, reloadKey],
   );
   const lazySrcDocTransport = useMemo(() => buildLazySrcdocTransport(), []);
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
@@ -4662,7 +4691,7 @@ function HtmlViewer({
     // no panel underneath). Reset both and let the iframe bridge re-announce.
     setTweaksMode(false);
     setTweaksAvailable(false);
-  }, [file.name]);
+  }, [projectId, file.name]);
 
   // Selecting a new file or turning inspect off resets the panel target.
   useEffect(() => {
@@ -5798,6 +5827,22 @@ function HtmlViewer({
   };
   const boardAvailable = mode === 'preview' && source !== null;
   const showPreviewToolbarControls = mode === 'preview';
+  function reloadHtmlPreview() {
+    setInlinedSource(null);
+    setReloadKey((n) => n + 1);
+    if (useUrlLoadPreview) return;
+    if (source !== null) {
+      prevSourceBeforeReloadRef.current = {
+        source,
+        projectId,
+        fileName: file.name,
+      };
+    }
+    if (manualEditFrozenSource === null) setSource(null);
+    activatedSrcDocTransportHtmlRef.current = null;
+    setSrcDocShellReady(false);
+    setSrcDocTransportResetKey((key) => key + 1);
+  }
 
   return (
     <div className="viewer html-viewer">
@@ -5808,7 +5853,7 @@ function HtmlViewer({
             className="icon-only"
             onClick={() => {
               fireArtifactToolbarClick('reload');
-              setReloadKey((n) => n + 1);
+              reloadHtmlPreview();
             }}
             title={t('fileViewer.reload')}
             aria-label={t('fileViewer.reloadAria')}
@@ -6310,23 +6355,28 @@ function HtmlViewer({
                       type="button"
                       className="share-menu-item"
                       role="menuitem"
-                      onClick={async () => {
+                      onClick={() => {
                         setShareMenuOpen(false);
-                        const iframe = iframeRef.current;
-                        if (!iframe) return;
-                        const snap = await requestPreviewSnapshot(iframe);
-                        try {
-                          if (snap) {
-                            exportAsImage(snap.dataUrl, exportTitle);
-                          } else {
+                        fireShareExport('image', async () => {
+                          const iframe = iframeRef.current;
+                          if (!iframe) return 'cancelled';
+                          const snap = await requestPreviewSnapshot(iframe);
+                          if (!snap) {
                             console.warn('[exportAsImage] snapshot capture returned null');
                             alert(t('fileViewer.exportImageFailed'));
+                            throw Object.assign(new Error('image snapshot capture failed'), {
+                              code: 'CAPTURE_FAILED',
+                            });
                           }
-                        } catch (err) {
-                          const message = err instanceof Error ? err.message : String(err);
-                          console.warn('[exportAsImage] failed to convert snapshot:', message);
-                          alert(t('fileViewer.exportImageFailed'));
-                        }
+                          try {
+                            exportAsImage(snap.dataUrl, exportTitle);
+                          } catch (err) {
+                            const message = err instanceof Error ? err.message : String(err);
+                            console.warn('[exportAsImage] failed to convert snapshot:', message);
+                            alert(t('fileViewer.exportImageFailed'));
+                            throw err;
+                          }
+                        });
                       }}
                     >
                       <span className="share-menu-icon"><Icon name="image" size={14} /></span>
@@ -6399,7 +6449,7 @@ function HtmlViewer({
           ) : null}
         </>)}
       <div className="viewer-body" ref={previewBodyRef}>
-        {source === null ? (
+        {source === null && !sourceEverLoadedRef.current ? (
           <div className="viewer-empty">{t('fileViewer.loading')}</div>
         ) : mode === 'preview' ? (
           <div

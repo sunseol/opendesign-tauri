@@ -32,6 +32,7 @@ export type SrcdocOptions = {
   paletteBridge?: boolean;
   initialPalette?: string | null;
   previewFocusGuard?: boolean;
+  reloadKey?: number;
 };
 
 export function buildSrcdoc(
@@ -79,7 +80,10 @@ export function buildSrcdoc(
   // it to a per-call option would force iframe srcdoc regeneration (and a
   // visible flash) every time the host toggle flips.
   const withTweaks = injectTweaksBridge(withEdit);
-  return injectSrcdocTransportActivationBridge(injectSnapshotBridge(withTweaks));
+  const withTransport = injectSrcdocTransportActivationBridge(injectSnapshotBridge(withTweaks));
+  return options.reloadKey === undefined
+    ? withTransport
+    : withTransport.replace(/(<html\b)([^>]*>)/i, `$1 data-od-reload-key="${options.reloadKey}"$2`);
 }
 
 /**
@@ -545,7 +549,9 @@ function injectBeforeHeadEnd(doc: string, payload: string): string {
       const parsed = new DOMParser().parseFromString(doc, 'text/html');
       if (parsed.head) parsed.head.insertAdjacentHTML('beforeend', payload);
       return serializeHtmlDocument(parsed);
-    } catch { /* DOMParser failed; fall through to string path */ }
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+    }
   }
   // String fallback: find the real </head> (last one before <body>)
   // to skip </head> literals inside <script>/<style> in <head>.
@@ -564,7 +570,9 @@ function injectBeforeBodyEnd(doc: string, payload: string): string {
       const parsed = new DOMParser().parseFromString(doc, 'text/html');
       if (parsed.body) parsed.body.insertAdjacentHTML('beforeend', payload);
       return serializeHtmlDocument(parsed);
-    } catch { /* DOMParser failed; fall through to string path */ }
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+    }
   }
   // String fallback: find the real </body> (last one before </html>)
   // to skip </body> literals inside <script>/<style> in <body>.
