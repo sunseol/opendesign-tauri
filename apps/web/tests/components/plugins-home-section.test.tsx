@@ -252,3 +252,62 @@ describe('PluginsHomeSection (category bar)', () => {
     ]);
   });
 });
+
+describe('PluginsHomeSection (sort toggle)', () => {
+  const timestamped: InstalledPluginRecord[] = [
+    {
+      ...makePlugin({ id: 'shiny-but-old', mode: 'deck', featured: true }),
+      installedAt: 100,
+      updatedAt: 100,
+    },
+    {
+      ...makePlugin({ id: 'plain-but-fresh', mode: 'prototype', tags: ['dashboard'] }),
+      installedAt: 300,
+      updatedAt: 300,
+    },
+    {
+      ...makePlugin({ id: 'plain-and-mid', mode: 'prototype', tags: ['dashboard'] }),
+      installedAt: 200,
+      updatedAt: 200,
+    },
+  ];
+
+  it('defaults to hot and re-ranks by freshness when Newest is picked', () => {
+    renderSection(timestamped, { preferDefaultFacet: false });
+
+    expect(pluginIds()[0]).toBe('shiny-but-old');
+    expect(screen.getByTestId('plugins-home-sort-hot').getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.click(screen.getByTestId('plugins-home-sort-newest'));
+
+    expect(pluginIds()).toEqual(['plain-but-fresh', 'plain-and-mid', 'shiny-but-old']);
+    expect(screen.getByTestId('plugins-home-sort-newest').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('remembers the picked order across remounts', () => {
+    const first = renderSection(timestamped, { preferDefaultFacet: false });
+    fireEvent.click(screen.getByTestId('plugins-home-sort-newest'));
+    first.unmount();
+
+    renderSection(timestamped, { preferDefaultFacet: false });
+
+    expect(screen.getByTestId('plugins-home-sort-newest').getAttribute('aria-checked')).toBe('true');
+    expect(pluginIds()).toEqual(['plain-but-fresh', 'plain-and-mid', 'shiny-but-old']);
+  });
+
+  it('supports keyboard radio navigation', () => {
+    renderSection(timestamped, { preferDefaultFacet: false });
+    const hotSegment = screen.getByTestId('plugins-home-sort-hot');
+    hotSegment.focus();
+
+    fireEvent.keyDown(hotSegment, { key: 'ArrowRight' });
+    expect(screen.getByTestId('plugins-home-sort-newest').getAttribute('aria-checked')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByTestId('plugins-home-sort-newest'));
+    expect(pluginIds()).toEqual(['plain-but-fresh', 'plain-and-mid', 'shiny-but-old']);
+
+    fireEvent.keyDown(screen.getByTestId('plugins-home-sort-newest'), { key: 'Home' });
+    expect(screen.getByTestId('plugins-home-sort-hot').getAttribute('aria-checked')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByTestId('plugins-home-sort-hot'));
+    expect(pluginIds()[0]).toBe('shiny-but-old');
+  });
+});

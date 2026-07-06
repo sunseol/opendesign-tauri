@@ -21,6 +21,12 @@ import {
   type FacetCatalog,
   type FacetSelection,
 } from './facets';
+import {
+  readStoredSortOrder,
+  sortByNewest,
+  writeStoredSortOrder,
+  type PluginSortOrder,
+} from './sortOrder';
 import { sortByVisualAppeal } from './visualScore';
 
 export type FilterMode = 'all' | 'saved';
@@ -52,6 +58,8 @@ export interface UsePluginFacetsResult {
   setMode: (next: FilterMode) => void;
   query: string;
   setQuery: (next: string) => void;
+  sortOrder: PluginSortOrder;
+  setSortOrder: (next: PluginSortOrder) => void;
   totalVisible: number;
 }
 
@@ -69,6 +77,9 @@ export function usePluginFacets({
   const [mode, setMode] = useState<FilterMode>('all');
   const [selection, setSelection] = useState<FacetSelection>(EMPTY_SELECTION);
   const [query, setQuery] = useState('');
+  const [sortOrder, setSortOrderState] = useState<PluginSortOrder>(
+    () => readStoredSortOrder(),
+  );
   // Apply the preferred default selection once, on the first render that
   // sees a non-empty catalog. Using a flag (instead of a useState lazy
   // initializer) handles the realistic case where `args.plugins` is
@@ -91,9 +102,14 @@ export function usePluginFacets({
     [plugins],
   );
 
+  const orderedPlugins = useMemo(
+    () => (sortOrder === 'newest' ? sortByNewest(visiblePlugins) : visiblePlugins),
+    [sortOrder, visiblePlugins],
+  );
+
   const savedList = useMemo(
-    () => visiblePlugins.filter((plugin) => savedPluginIds?.has(plugin.id)),
-    [savedPluginIds, visiblePlugins],
+    () => orderedPlugins.filter((plugin) => savedPluginIds?.has(plugin.id)),
+    [savedPluginIds, orderedPlugins],
   );
 
   const catalog = useMemo(() => buildFacetCatalog(visiblePlugins), [visiblePlugins]);
@@ -136,9 +152,9 @@ export function usePluginFacets({
     const base =
       mode === 'saved'
         ? savedList
-        : applyFacetSelection(visiblePlugins, selection);
+        : applyFacetSelection(orderedPlugins, selection);
     return filterByQuery(base, query);
-  }, [mode, savedList, visiblePlugins, selection, query]);
+  }, [mode, savedList, orderedPlugins, selection, query]);
 
   function pickCategory(slug: string | null): void {
     if (mode === 'saved') setMode('all');
@@ -154,6 +170,11 @@ export function usePluginFacets({
       ...prev,
       subcategory: prev.subcategory === slug ? null : slug,
     }));
+  }
+
+  function setSortOrder(next: PluginSortOrder): void {
+    setSortOrderState(next);
+    writeStoredSortOrder(next);
   }
 
   function clearFacets(): void {
@@ -184,6 +205,8 @@ export function usePluginFacets({
     setMode,
     query,
     setQuery,
+    sortOrder,
+    setSortOrder,
     totalVisible: visiblePlugins.length,
   };
 }
